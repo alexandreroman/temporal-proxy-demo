@@ -1,0 +1,50 @@
+# Local demo stack: a Temporal dev server sitting behind temporal-proxy.
+#
+# Only the proxy publishes a gRPC port. Workers and Clients — running on
+# the host or in a container — target localhost:7233 and never learn
+# anything about the upstream behind it.
+name: temporal-proxy-demo
+
+services:
+  # Upstream Temporal Service. Single process with a built-in database
+  # and the Web UI. Development only — never for production.
+  temporal:
+    image: temporalio/temporal:1.8.2
+    command:
+      - server
+      - start-dev
+      - --ip
+      - 0.0.0.0
+    expose:
+      - "7233"        # Reachable from the proxy only, not from the host
+    ports:
+      - "8233:8233"   # Web UI — http://localhost:8233
+    healthcheck:
+      test: ["CMD-SHELL", "temporal operator cluster health"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+
+  # The single endpoint every Worker and Client connects to.
+  temporal-proxy:
+    image: temporalio/temporal-proxy:v0.5.1
+    command: ["serve", "-c", "/etc/proxy/config.yaml"]
+    volumes:
+      - ./proxy/config.yaml:/etc/proxy/config.yaml:ro
+    ports:
+      - "7233:7233"   # gRPC endpoint for Workers and Clients
+    depends_on:
+      temporal:
+        condition: service_healthy
+    # No healthcheck: the image is built FROM scratch, so it carries no
+    # shell and no probe binary to run one with.
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped

@@ -1,0 +1,29 @@
+---
+name: "Founding technical choices"
+description: "Why Go, Docker Compose and Apache-2.0 were chosen for temporal-proxy-demo"
+type: project
+---
+
+# Founding technical choices
+
+- **Go SDK** for the Worker and starter, matching
+  the language temporal-proxy itself is written
+  in, so readers can follow both sides of the wire
+  without a language switch.
+- **Docker Compose** as the only runtime for the
+  demo: the Temporal dev server, the proxy, and
+  the Worker come up with one command on a laptop.
+  Kubernetes and the published Helm chart stay out
+  of this repository.
+- **Apache-2.0** as the repository license, even
+  though temporal-proxy upstream is MIT.
+
+**Why:** the demo must be runnable end to end in
+minutes on any machine with a container runtime,
+and its code must read as ordinary Temporal Go SDK
+code.
+
+**How to apply:** keep the entry point a single
+`compose.yaml` plus a `Makefile`. Propose a second
+runtime or a second SDK language as an addition to
+discuss, never as a silent replacement.

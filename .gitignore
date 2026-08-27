@@ -1,0 +1,17 @@
+# Build output
+/bin/
+/tmp/
+
+# Local environment — never commit credentials
+.env
+.env.local
+
+# Go
+*.test
+/coverage.out
+
+# macOS
+.DS_Store
+
+# Scenario walkthroughs — kept out of version control
+/docs/

@@ -1,0 +1,17 @@
+# temporal-proxy configuration — local upstream scenario.
+#
+# The gateway is the only endpoint Workers and Clients know about. It
+# listens in plaintext and forwards every request to the Temporal dev
+# server running alongside it in Compose.
+#
+# Bind 0.0.0.0 rather than 127.0.0.1 so the gateway is reachable from the
+# host and from other containers on the Compose network.
+hostPort: 0.0.0.0:7233
+
+routing:
+  default: local   # Namespaced requests
+  system: local    # Namespace-less requests, e.g. GetSystemInfo on connect
+
+upstreams:
+  - name: local
+    hostPort: temporal:7233
