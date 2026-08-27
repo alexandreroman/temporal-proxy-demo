@@ -1,0 +1,10 @@
+{
+  "workspace": {
+    "copyFiles": [".env"],
+    "scripts": {
+      "setup": "make worktree-init PORT=$CASPER_PORT GATEWAY_PORT=$((CASPER_PORT + 1)) UI_PORT=$((CASPER_PORT + 2))",
+      "run": "make app-up",
+      "teardown": "make app-down"
+    }
+  }
+}

@@ -26,3 +26,5 @@
 - [temporal-proxy upstream resources](references/reference_temporal-proxy-upstream.md) — source, docs, examples, image and Helm chart
 - [Shape of the hello-workflow demo app](references/project_hello-workflow-app.md) — HTTP trigger, two binaries, and the two-second Activity
 - [Application code stays endpoint-agnostic](references/feedback_agnostic-app-code.md) — no proxy vocabulary in Go code, not even in comments
+- [Casper workspace integration](references/feedback_casper-workspace-integration.md) — where the workspace wiring lives, and what stays tool-agnostic
+- [Per-worktree configuration lives on disk](references/feedback_worktree-config-on-disk.md) — a generated Compose override, and ports read back from Compose

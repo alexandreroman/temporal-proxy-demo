@@ -1,8 +1,8 @@
 # Local demo stack: a Temporal dev server sitting behind temporal-proxy.
 #
 # Only the proxy publishes a gRPC port. Workers and Clients — running on
-# the host or in a container — target localhost:7233 and never learn
-# anything about the upstream behind it.
+# the host or in a container — target that single endpoint and never
+# learn anything about the upstream behind it.
 name: temporal-proxy-demo
 
 services:
@@ -48,3 +48,41 @@ services:
         limits:
           memory: 256M
     restart: unless-stopped
+
+  # The Worker: polls a Task Queue and runs the hello-workflow code.
+  worker:
+    build: .
+    command: ["/app/worker"]
+    # Spelled out rather than inherited, so a value exported on the host for
+    # the `make dev` flow can never leak into the container.
+    environment:
+      TEMPORAL_ADDRESS: temporal-proxy:7233
+      TEMPORAL_NAMESPACE: ${TEMPORAL_NAMESPACE:-default}
+    # The proxy has no healthcheck to wait for, and this process exits as soon
+    # as its first dial fails. Restarting on failure is what absorbs that
+    # startup race, without bringing back a process that stopped cleanly.
+    depends_on:
+      - temporal-proxy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: on-failure
+
+  # The HTTP API: POST /hello starts one Workflow Execution.
+  api:
+    build: .
+    command: ["/app/api"]
+    environment:
+      TEMPORAL_ADDRESS: temporal-proxy:7233
+      TEMPORAL_NAMESPACE: ${TEMPORAL_NAMESPACE:-default}
+    ports:
+      - "8080:8080"   # http://localhost:8080/hello
+    # Same startup race as the Worker, absorbed the same way.
+    depends_on:
+      - temporal-proxy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: on-failure

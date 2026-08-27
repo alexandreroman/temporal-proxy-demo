@@ -32,7 +32,8 @@ Cloud is a configuration change, not a code change.
 ## Prerequisites
 
 - Docker (or Podman) with Compose v2
-- Go 1.27 or later — the Worker and the API run on the host
+- Go 1.27 or later — for `make dev`, which runs the Worker and the
+  API on the host
 - A Temporal Cloud Namespace with API key authentication enabled, for
   the Cloud scenario only. See [API keys][api-keys].
 
@@ -79,6 +80,16 @@ Stop everything with Ctrl-C, then tear the stack down:
 make infra-down
 ```
 
+The Worker and the API can also run in containers, next to the dev
+server and the proxy. `make app-up` builds the image and starts the
+whole stack; `make demo` works the same way against it:
+
+```bash
+make app-up
+make demo
+make app-down
+```
+
 ## Configuration
 
 The app reads three variables, none of which describe an upstream:
@@ -118,6 +129,7 @@ graph LR
 | `internal/hello`          | The hello-workflow Workflow and its Activity   |
 | `internal/temporalclient` | Shared client: plaintext, no credentials       |
 | `proxy`                   | temporal-proxy configuration, one per scenario |
+| `Dockerfile`              | One image carrying both binaries               |
 
 ## License
 

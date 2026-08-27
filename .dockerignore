@@ -1,0 +1,18 @@
+# Keep the build context down to what the image actually compiles.
+.git
+.github
+.claude
+
+# Local environment and per-worktree Compose settings
+.env*
+compose.override.yaml
+
+# Build and test output
+bin/
+tmp/
+*.test
+coverage.out
+
+# Not part of the build
+docs/
+.DS_Store

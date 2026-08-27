@@ -6,6 +6,9 @@
 .env
 .env.local
 
+# Per-worktree host ports — written by `make worktree-init`
+/compose.override.yaml
+
 # Go
 *.test
 /coverage.out
