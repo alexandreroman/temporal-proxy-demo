@@ -21,6 +21,11 @@ name and avoid proxy vocabulary in general:
 all presuppose the thing the code is meant to be
 ignorant of.
 
+Spelling those words out here is deliberate: this
+note is where the repository quotes its banned
+vocabulary, so the check below has something to
+match.
+
 Stating what is deliberately **absent** from the
 client options stays welcome — no TLS material, no
 credentials, no fully-qualified Namespace — as long

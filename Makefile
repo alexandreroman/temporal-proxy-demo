@@ -27,9 +27,11 @@ PORT ?= 8080
 NAME ?= Temporal
 
 # Default host ports: what `worktree-init` writes unless told otherwise, and
-# the fallback for a service that is not running.
-GATEWAY_PORT ?= 7233
-UI_PORT ?= 8233
+# the fallback for a service that is not running. PORT above is part of the
+# same trio, unqualified because it is the variable the API itself reads from
+# its environment.
+TEMPORAL_PROXY_PORT ?= 7233
+TEMPORAL_WEB_UI_PORT ?= 8233
 
 # What a running stack publishes is whatever Compose bound, so ask Compose
 # rather than guess — the answer already accounts for compose.override.yaml.
@@ -50,9 +52,9 @@ infra-down: ## Stop the Temporal dev server and the proxy
 
 ##@ Scenarios
 
-# Which proxy configuration Compose mounts into the gateway, and the plain
-# name derived from it — ./proxy/cloud.yaml gives `cloud`. Every scenario is
-# one file in ./proxy named after it, so the name alone identifies it.
+# Which configuration Compose mounts into temporal-proxy, and the plain name
+# derived from it — ./proxy/cloud.yaml gives `cloud`. Every scenario is one
+# file in ./proxy named after it, so the name alone identifies it.
 #
 # The choice is stored in .env rather than in the environment because .env is
 # the only file `docker compose` reads on its own: a bare `docker compose up`
@@ -110,16 +112,16 @@ echo "Scenario '$(1)' is live: temporal-proxy serves it, and Workers and Clients
 endef
 
 .PHONY: use-local
-use-local: ## Route the gateway to the Temporal dev server in Compose
+use-local: ## Route temporal-proxy to the Temporal dev server in Compose
 	@$(call set-scenario,local)
 
 .PHONY: use-cloud
-use-cloud: ## Route the gateway to Temporal Cloud
+use-cloud: ## Route temporal-proxy to Temporal Cloud
 	@$(require-cloud-setup)
 	@$(call set-scenario,cloud)
 
 .PHONY: scenario
-scenario: ## Print the scenario the gateway is configured for
+scenario: ## Print the scenario temporal-proxy is configured for
 	@echo $(SCENARIO)
 
 ##@ Develop
@@ -131,8 +133,8 @@ dev: infra-up ## Start infra, then run the Worker and the HTTP API
 	# orphaned processes survive Ctrl-C. Each child calls kill 0 on exit so
 	# one crashing process tears the other down instead of leaving a half
 	# stack running.
-	@gateway=$(call published-port,temporal-proxy,7233); \
-		export TEMPORAL_ADDRESS="$${TEMPORAL_ADDRESS:-localhost:$${gateway:-$(GATEWAY_PORT)}}"; \
+	@temporal_proxy=$(call published-port,temporal-proxy,7233); \
+		export TEMPORAL_ADDRESS="$${TEMPORAL_ADDRESS:-localhost:$${temporal_proxy:-$(TEMPORAL_PROXY_PORT)}}"; \
 		trap 'kill 0' EXIT INT TERM; \
 		( go run ./cmd/worker; kill 0 ) & \
 		( go run ./cmd/app; kill 0 ) & \
@@ -161,10 +163,10 @@ worktree-init: ## Fetch dependencies and pin this worktree's ports (overwrites c
 		'      - "$(PORT):8080"' \
 		'  temporal-proxy:' \
 		'    ports: !override' \
-		'      - "$(GATEWAY_PORT):7233"' \
+		'      - "$(TEMPORAL_PROXY_PORT):7233"' \
 		'  temporal:' \
 		'    ports: !override' \
-		'      - "$(UI_PORT):8233"' \
+		'      - "$(TEMPORAL_WEB_UI_PORT):8233"' \
 		> compose.override.yaml
 
 .PHONY: demo
@@ -179,7 +181,7 @@ cloud-namespace = $(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)
 ifeq ($(SCENARIO),cloud)
 web-ui-row = "| Temporal Web UI (Cloud) | <https://cloud.temporal.io/namespaces/$(cloud-namespace)> |"
 else
-web-ui-row = "| Temporal Web UI (local) | <http://localhost:$${ui:-$(UI_PORT)}> |"
+web-ui-row = "| Temporal Web UI (local) | <http://localhost:$${web_ui:-$(TEMPORAL_WEB_UI_PORT)}> |"
 endif
 
 # Markdown on stdout, so the answer to "where is this worktree listening?" can
@@ -187,8 +189,8 @@ endif
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
 	@app=$(call published-port,app,8080); \
-	ui=$(call published-port,temporal,8233); \
-	gateway=$(call published-port,temporal-proxy,7233); \
+	web_ui=$(call published-port,temporal,8233); \
+	temporal_proxy=$(call published-port,temporal-proxy,7233); \
 	printf '%s\n' \
 		'# temporal-proxy-demo' \
 		'' \
@@ -196,7 +198,7 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 		'| --- | --- |' \
 		"| Demo App | <http://localhost:$${app:-$(PORT)}> |" \
 		$(web-ui-row) \
-		"| Temporal gRPC Proxy | \`localhost:$${gateway:-$(GATEWAY_PORT)}\` |" \
+		"| Temporal gRPC Proxy | \`localhost:$${temporal_proxy:-$(TEMPORAL_PROXY_PORT)}\` |" \
 		"| Scenario | \`$(SCENARIO)\` |" \
 		'' \
 		'Trigger a Workflow with `make demo`.'
