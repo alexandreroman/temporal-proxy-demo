@@ -1,6 +1,6 @@
 ---
 name: "Founding technical choices"
-description: "Why Go, Docker Compose and Apache-2.0 were chosen for temporal-proxy-demo"
+description: "Why Go, Docker Compose and Apache-2.0 were chosen for Temporal Proxy Demo"
 type: project
 ---
 

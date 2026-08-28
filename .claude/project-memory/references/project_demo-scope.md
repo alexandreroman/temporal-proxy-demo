@@ -1,6 +1,6 @@
 ---
 name: "Demo scope and scenarios"
-description: "What temporal-proxy-demo demonstrates, for whom, and which proxy scenarios are in scope"
+description: "What Temporal Proxy Demo demonstrates, for whom, and which proxy scenarios are in scope"
 type: project
 ---
 

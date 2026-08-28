@@ -1,4 +1,4 @@
-# temporal-proxy-demo
+# Temporal Proxy Demo
 
 A hands-on demo showing how Temporal Workers written with the Go SDK
 run against [temporal-proxy](https://github.com/temporalio/temporal-proxy)
