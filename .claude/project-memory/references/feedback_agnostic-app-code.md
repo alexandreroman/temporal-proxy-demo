@@ -31,6 +31,20 @@ client options stays welcome — no TLS material, no
 credentials, no fully-qualified Namespace — as long
 as it does not name who supplies it.
 
+The prohibition binds the Go source, not the
+deployment configuration or the process's own
+output. `internal/temporalclient` logs the address
+it dials, read from the `TEMPORAL_ADDRESS`
+environment variable, and in the cluster that value
+is `temporal-proxy.temporal-proxy:7233` — so the
+string `temporal-proxy` appears in the Worker's and
+the API's own log line. That is not a violation: the
+log statement names an environment variable and
+echoes whatever value it holds, carrying no proxy
+vocabulary of its own. Deployment manifests are free
+to name the component; the Go source is the one
+place that stays silent about it.
+
 **Why:** the same binaries must run unchanged
 across every scenario. A comment naming a proxy is
 a claim about the deployment, and it is exactly the

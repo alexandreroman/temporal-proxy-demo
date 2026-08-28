@@ -1,30 +1,29 @@
 ---
 name: "Per-worktree configuration lives on disk"
-description: "Why a worktree's ports and Compose project name are frozen in a generated compose.override.yaml"
+description: "Why a worktree's published port is frozen in a generated k8s/kind-config.yaml"
 type: feedback
 ---
 
 # Per-worktree configuration lives on disk
 
-A worktree's published host ports and its Compose
-project name are frozen in a generated
-`compose.override.yaml`, git-ignored and written
-by `make worktree-init`. The repository carries no
-generated environment file. Commands that need a
-port ask Compose for it with `docker compose port`
-and fall back to the documented default when the
-service is down.
+A worktree's published host port is frozen in a generated
+`k8s/kind-config.yaml`, git-ignored and written by `make
+worktree-init` from the template `k8s/kind-config.yaml.in`.
+Kind reads no environment variable of its own, so the port
+has no other way to reach cluster creation. Commands that
+need the port ask the running cluster for it with `docker
+port '<cluster>-worker' 30080` and fall back to the
+documented default, `8080`, when the cluster is down.
 
-**Why:** a bare `docker compose` typed inside a
-worktree then behaves exactly like the same
-command run through `make`, and one file holds the
-whole per-worktree configuration. Ports carried by
-the environment are invisible to anyone bypassing
-the Makefile, and drift as soon as two places
-compute them.
+**Why:** the cluster name is the worktree's own directory
+name, so two worktrees never share a cluster, and one
+generated file holds this worktree's whole per-worktree
+configuration. A port carried by the environment is
+invisible to anyone bypassing the Makefile, and drifts as
+soon as two places compute it.
 
-**How to apply:** when a worktree needs a setting
-of its own, write it into the generated override
-file rather than an environment file, and read
-values back from Compose instead of recomputing
+**How to apply:** when a worktree needs a setting of its
+own, write it into the generated `kind-config.yaml` (or
+its `.in` template) rather than an environment file, and
+read values back from the cluster instead of recomputing
 them.
