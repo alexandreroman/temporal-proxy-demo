@@ -14,10 +14,8 @@ endif
 PORT ?= 8080
 NAME ?= Temporal
 
-# Default host ports: what `worktree-init` writes unless told otherwise, and
-# the fallback for a service that is not running. PORT above is part of the
-# same trio, unqualified because it is the variable the API itself reads from
-# its environment.
+# Fallback host ports, used only when the matching service is not running and `published-port` below reports nothing.
+# PORT above is part of the same trio, unqualified because it is the variable the API itself reads from its environment.
 TEMPORAL_PROXY_PORT ?= 7233
 TEMPORAL_WEB_UI_PORT ?= 8233
 
@@ -241,8 +239,7 @@ cluster-create: ## Create the Kind cluster
 		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml
 	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
 
-# Paired with cluster-up, which is what .casper.json calls to tear a
-# workspace down.
+# Paired with cluster-up.
 .PHONY: cluster-down
 cluster-down: ## Delete the Kind cluster
 	kind delete cluster --name '$(CLUSTER)'
