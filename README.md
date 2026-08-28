@@ -19,9 +19,9 @@ Cloud is a configuration change, not a code change.
 - **Zero connection config in the app** — the Worker and the API dial
   `localhost:7233` in plaintext with a short Namespace name, and nothing
   else. No TLS material, no client certificate, no upstream host name.
-- **Trigger a Workflow over HTTP** — `POST /hello` starts one
-  `hello-workflow` Execution, identified as `hello-<UUID>`, and returns
-  its result.
+- **Trigger a Workflow over HTTP** — `POST /hello` with
+  `{"name": "Ada"}` starts one `hello-workflow` Execution, identified as
+  `hello-<UUID>`, and answers `{"greeting": "Hello, Ada!"}`.
 - **Switch upstreams by configuration** — one committed config file per
   scenario, one upstream active at a time. `make use-cloud` and
   `make use-local` swap which file temporal-proxy runs with; no Go code
@@ -58,8 +58,8 @@ the host. In another terminal, trigger a Workflow:
 make demo
 ```
 
-```text
-Hello, Temporal!
+```json
+{"greeting":"Hello, Temporal!"}
 ```
 
 The response takes about two seconds — the Activity sleeps, so you can
@@ -75,7 +75,9 @@ port the API listens on:
 
 ```bash
 make demo NAME=Alex
-curl -fsS -X POST "http://localhost:8080/hello?name=Alex"
+curl -fsS -X POST http://localhost:8080/hello \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "Alex"}'
 ```
 
 Stop everything with Ctrl-C, then tear the stack down:

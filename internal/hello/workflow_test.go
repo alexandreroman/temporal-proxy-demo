@@ -12,12 +12,12 @@ import (
 // mock also spares the tests the Activity's simulated work.
 func TestHelloWorkflow(t *testing.T) {
 	tests := []struct {
-		name  string
-		input string
-		want  string
+		name string
+		req  Request
+		want Response
 	}{
-		{"named guest", "Ada", "Hello, Ada!"},
-		{"default guest", "Temporal", "Hello, Temporal!"},
+		{"named guest", Request{Name: "Ada"}, Response{Greeting: "Hello, Ada!"}},
+		{"default guest", Request{Name: "Temporal"}, Response{Greeting: "Hello, Temporal!"}},
 	}
 
 	for _, tt := range tests {
@@ -26,9 +26,9 @@ func TestHelloWorkflow(t *testing.T) {
 
 			var suite testsuite.WorkflowTestSuite
 			env := suite.NewTestWorkflowEnvironment()
-			env.OnActivity(Greet, mock.Anything, tt.input).Return(tt.want, nil)
+			env.OnActivity(Greet, mock.Anything, tt.req).Return(tt.want, nil)
 
-			env.ExecuteWorkflow(HelloWorkflow, tt.input)
+			env.ExecuteWorkflow(HelloWorkflow, tt.req)
 
 			if !env.IsWorkflowCompleted() {
 				t.Fatal("workflow did not complete")
@@ -37,12 +37,12 @@ func TestHelloWorkflow(t *testing.T) {
 				t.Fatalf("workflow error = %v, want nil", err)
 			}
 
-			var got string
+			var got Response
 			if err := env.GetWorkflowResult(&got); err != nil {
 				t.Fatalf("GetWorkflowResult() error = %v, want nil", err)
 			}
 			if got != tt.want {
-				t.Errorf("result = %q, want %q", got, tt.want)
+				t.Errorf("result = %+v, want %+v", got, tt.want)
 			}
 			env.AssertExpectations(t)
 		})
@@ -50,11 +50,13 @@ func TestHelloWorkflow(t *testing.T) {
 }
 
 func TestHelloWorkflowActivityFails(t *testing.T) {
+	req := Request{Name: "Ada"}
+
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
-	env.OnActivity(Greet, mock.Anything, "Ada").Return("", errors.New("greeting unavailable"))
+	env.OnActivity(Greet, mock.Anything, req).Return(Response{}, errors.New("greeting unavailable"))
 
-	env.ExecuteWorkflow(HelloWorkflow, "Ada")
+	env.ExecuteWorkflow(HelloWorkflow, req)
 
 	if !env.IsWorkflowCompleted() {
 		t.Fatal("workflow did not complete")

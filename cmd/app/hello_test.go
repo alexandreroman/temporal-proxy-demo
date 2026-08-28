@@ -2,42 +2,47 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/alexandreroman/temporal-proxy-demo/internal/hello"
 	"github.com/google/uuid"
 )
 
-// fakeGreeter records the name it was called with, so the tests can check what the HTTP
+// fakeGreeter records the request it was called with, so the tests can check what the HTTP
 // layer would have sent to Temporal. No Temporal server is involved.
 type fakeGreeter struct {
 	called bool
-	name   string
+	req    hello.Request
 	err    error
 }
 
-func (f *fakeGreeter) greet(_ context.Context, name string) (string, error) {
+func (f *fakeGreeter) greet(_ context.Context, req hello.Request) (hello.Response, error) {
 	f.called = true
-	f.name = name
+	f.req = req
 	if f.err != nil {
-		return "", f.err
+		return hello.Response{}, f.err
 	}
-	return "Hello, " + name + "!", nil
+	return hello.Response{Greeting: "Hello, " + req.Name + "!"}, nil
 }
 
 func TestHelloEndpoint(t *testing.T) {
 	tests := []struct {
 		name     string
-		target   string
+		body     io.Reader
 		wantName string
-		wantBody string
 	}{
-		{"name from the query", "/hello?name=Ada", "Ada", "Hello, Ada!\n"},
-		{"missing name", "/hello", defaultName, "Hello, Temporal!\n"},
-		{"empty name", "/hello?name=", defaultName, "Hello, Temporal!\n"},
+		{"name in the body", strings.NewReader(`{"name": "Ada"}`), "Ada"},
+		{"extra field alongside the name", strings.NewReader(`{"name": "Ada", "nickname": "A"}`), "Ada"},
+		{"no body at all", nil, defaultName},
+		{"empty body", strings.NewReader(""), defaultName},
+		{"empty object", strings.NewReader(`{}`), defaultName},
+		{"empty name", strings.NewReader(`{"name": ""}`), defaultName},
 	}
 
 	for _, tt := range tests {
@@ -46,16 +51,57 @@ func TestHelloEndpoint(t *testing.T) {
 
 			var fake fakeGreeter
 			rec := httptest.NewRecorder()
-			newMux(fake.greet).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, tt.target, nil))
+			req := httptest.NewRequest(http.MethodPost, "/hello", tt.body)
+			req.Header.Set("Content-Type", "application/json")
+			newMux(fake.greet).ServeHTTP(rec, req)
 
 			if rec.Code != http.StatusOK {
 				t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 			}
-			if fake.name != tt.wantName {
-				t.Errorf("greeted name = %q, want %q", fake.name, tt.wantName)
+			if got, want := rec.Header().Get("Content-Type"), "application/json"; got != want {
+				t.Errorf("Content-Type = %q, want %q", got, want)
 			}
-			if rec.Body.String() != tt.wantBody {
-				t.Errorf("body = %q, want %q", rec.Body.String(), tt.wantBody)
+			if fake.req.Name != tt.wantName {
+				t.Errorf("greeted name = %q, want %q", fake.req.Name, tt.wantName)
+			}
+
+			var res hello.Response
+			if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
+				t.Fatalf("decoding response body: %v", err)
+			}
+			if want := "Hello, " + tt.wantName + "!"; res.Greeting != want {
+				t.Errorf("greeting = %q, want %q", res.Greeting, want)
+			}
+		})
+	}
+}
+
+func TestHelloEndpointRejectsInvalidBody(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{"not json", `Ada`},
+		{"truncated", `{"name": "Ada"`},
+		{"wrong type", `{"name": 42}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var fake fakeGreeter
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/hello", strings.NewReader(tt.body))
+			newMux(fake.greet).ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+			}
+			if fake.called {
+				t.Error("greeter was called, want no workflow started")
 			}
 		})
 	}

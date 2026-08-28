@@ -160,7 +160,9 @@ worktree-init: ## Fetch dependencies and pin this worktree's ports (overwrites c
 .PHONY: demo
 demo: ## Trigger one Workflow through the HTTP API
 	@app=$(call published-port,app,8080); \
-		curl -fsS -X POST "http://localhost:$${app:-$(PORT)}/hello?name=$(NAME)"
+		curl -fsS -X POST "http://localhost:$${app:-$(PORT)}/hello" \
+			-H 'Content-Type: application/json' \
+			-d '{"name": "$(NAME)"}'
 
 # Which Web UI is worth linking depends on the scenario: in `cloud` the local
 # dev server is still running, but every Workflow lands in Temporal Cloud, so

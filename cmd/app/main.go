@@ -1,7 +1,8 @@
 // Command app exposes the hello Workflow over HTTP.
 //
-// POST /hello starts one Workflow Execution, waits for its result and writes the greeting
-// back. Like the Worker, it only knows a plaintext local Temporal endpoint.
+// POST /hello takes a JSON body naming who to greet, starts one Workflow Execution, waits
+// for its result and writes the greeting back as JSON. Like the Worker, it only knows a
+// plaintext local Temporal endpoint.
 package main
 
 import (
