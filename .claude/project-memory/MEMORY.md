@@ -31,3 +31,4 @@
 - [Switching upstreams is a proxy-config change](references/feedback_scenario-switch.md) — one config file per scenario, active choice recorded in `.env`
 - [Naming the proxy outside the Go code](references/feedback_naming-the-proxy.md) — call it `temporal-proxy`, and why `PORT` is unqualified
 - [Outbound TLS rules for a temporal-proxy upstream](references/reference_proxy-outbound-tls.md) — a client certificate also requires a `ca`, and that `ca` verifies the server
+- [One environment file, loaded for every target](references/feedback_single-env-file.md) — a single `.env` for every target, no per-target tier

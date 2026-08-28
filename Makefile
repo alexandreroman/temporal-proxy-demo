@@ -3,23 +3,11 @@
 
 .DEFAULT_GOAL := help
 
-# Canonical environment, loaded for every target.
+# Environment for every target, read from .env.
 # A missing .env file is not an error.
 ifneq (,$(wildcard .env))
 include .env
 export
-endif
-
-# Local overrides, loaded only for dev/test targets so that
-# deploy/release targets see the canonical .env values only.
-# Sequential include means later assignments win.
-DEV_TARGETS := dev test check infra-up infra-down demo
-GOALS := $(or $(MAKECMDGOALS),$(.DEFAULT_GOAL))
-ifneq (,$(filter $(DEV_TARGETS),$(GOALS)))
-ifneq (,$(wildcard .env.local))
-include .env.local
-export
-endif
 endif
 
 # Where `make demo` sends its request, and who it greets.
