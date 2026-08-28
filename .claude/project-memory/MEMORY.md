@@ -28,3 +28,5 @@
 - [Application code stays endpoint-agnostic](references/feedback_agnostic-app-code.md) — no proxy vocabulary in Go code, not even in comments
 - [Casper workspace integration](references/feedback_casper-workspace-integration.md) — where the workspace wiring lives, and what stays tool-agnostic
 - [Per-worktree configuration lives on disk](references/feedback_worktree-config-on-disk.md) — a generated Compose override, and ports read back from Compose
+- [Switching upstreams is a proxy-config change](references/feedback_scenario-switch.md) — one config file per scenario, active choice recorded in `.env`
+- [Outbound TLS rules for a temporal-proxy upstream](references/reference_proxy-outbound-tls.md) — a client certificate also requires a `ca`, and that `ca` verifies the server

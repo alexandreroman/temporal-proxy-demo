@@ -48,6 +48,86 @@ infra-down: ## Stop the Temporal dev server and the proxy
 	docker compose stop temporal temporal-proxy
 	@$(clear-endpoints)
 
+##@ Scenarios
+
+# Which proxy configuration Compose mounts into the gateway, and the plain
+# name derived from it — ./proxy/cloud.yaml gives `cloud`. Every scenario is
+# one file in ./proxy named after it, so the name alone identifies it.
+#
+# The choice is stored in .env rather than in the environment because .env is
+# the only file `docker compose` reads on its own: a bare `docker compose up`
+# typed in this worktree then runs the same scenario as any `make` target.
+# Same rule as compose.override.yaml, which holds this worktree's ports.
+PROXY_CONFIG ?= ./proxy/local.yaml
+SCENARIO = $(basename $(notdir $(PROXY_CONFIG)))
+
+# Is the gateway serving right now? `docker compose ps` lists a container that
+# keeps restarting as readily as a healthy one, so match the state it reports
+# rather than test `ps -q` for an id — a crash-looping gateway is not running.
+# `grep -q` prints nothing and exits non-zero when it finds no match, which is
+# exactly what the `if` below reads.
+gateway-running = docker compose ps --format '{{.Service}} {{.State}}' 2>/dev/null | grep -q '^temporal-proxy running'
+
+# The cloud scenario needs two values and a client certificate, all of which
+# the gateway validates on startup: with any of them missing it recreates and
+# then crash-loops on a configuration error, far from the command that caused
+# it. Refuse before touching .env, and name everything that is missing rather
+# than only the first thing. A .env that does not exist yet leaves these
+# variables empty, which counts as missing here.
+define require-cloud-setup
+missing=''; \
+[ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
+[ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
+[ -f proxy/certs/client.pem ] || missing="$$missing proxy/certs/client.pem"; \
+[ -f proxy/certs/client.key ] || missing="$$missing proxy/certs/client.key"; \
+if [ -n "$$missing" ]; then \
+  echo "Cannot switch to the cloud scenario, these are missing:$$missing"; \
+  echo "The values go in .env (copy .env.example); the certificate goes in proxy/certs/"; \
+  echo "as client.pem and client.key. Then run make use-cloud again."; \
+  exit 1; \
+fi
+endef
+
+# Records the chosen scenario in .env, then applies it to a gateway that is
+# already up. Both outcomes are announced: a switch that silently changes
+# nothing is the one failure mode that reads as success.
+#
+# awk rewrites the PROXY_CONFIG line where it stands, so the comment above it
+# keeps describing the line below it, and appends the line only when the file
+# has none. It writes through a temporary file rather than using `sed -i`,
+# whose syntax differs between BSD and GNU. Exporting the new value first
+# means the `docker compose` calls below see it: the value make exported at
+# startup is the previous one, and Compose lets the environment win over .env.
+define set-scenario
+export PROXY_CONFIG='./proxy/$(1).yaml'; \
+[ -f .env ] || cp .env.example .env; \
+tmp=$$(mktemp); \
+awk -v line="PROXY_CONFIG=$$PROXY_CONFIG" \
+  '/^PROXY_CONFIG=/ { print line; found = 1; next } { print } END { if (!found) print line }' \
+  .env > $$tmp; \
+mv $$tmp .env; \
+if $(gateway-running); then \
+  docker compose up -d --force-recreate temporal-proxy; \
+  $(publish-endpoints); \
+  echo "Scenario '$(1)' selected, gateway recreated."; \
+else \
+  echo "Scenario '$(1)' selected, recorded in .env: it applies the next time the stack starts."; \
+fi
+endef
+
+.PHONY: use-local
+use-local: ## Route the gateway to the Temporal dev server in Compose
+	@$(call set-scenario,local)
+
+.PHONY: use-cloud
+use-cloud: ## Route the gateway to Temporal Cloud
+	@$(require-cloud-setup)
+	@$(call set-scenario,cloud)
+
+.PHONY: scenario
+scenario: ## Print the scenario the gateway is configured for
+	@echo $(SCENARIO)
+
 ##@ Develop
 
 .PHONY: dev
@@ -98,6 +178,16 @@ demo: ## Trigger one Workflow through the HTTP API
 	@app=$(call published-port,api,8080); \
 		curl -fsS -X POST "http://localhost:$${app:-$(PORT)}/hello?name=$(NAME)"
 
+# Which Web UI is worth linking depends on the scenario: in `cloud` the local
+# dev server is still running, but every Workflow lands in Temporal Cloud, so
+# the local UI would only ever show an empty Namespace.
+cloud-namespace = $(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)
+ifeq ($(SCENARIO),cloud)
+web-ui-row = "| Temporal Web UI (Cloud) | <https://cloud.temporal.io/namespaces/$(cloud-namespace)> |"
+else
+web-ui-row = "| Temporal Web UI (local) | <http://localhost:$${ui:-$(UI_PORT)}> |"
+endif
+
 # Markdown on stdout, so the answer to "where is this worktree listening?" can
 # be read in a terminal or piped into whatever renders it.
 .PHONY: endpoints
@@ -111,8 +201,9 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 		'| Service | Address |' \
 		'| --- | --- |' \
 		"| Demo App | <http://localhost:$${app:-$(PORT)}> |" \
-		"| Temporal Web UI (local) | <http://localhost:$${ui:-$(UI_PORT)}> |" \
+		$(web-ui-row) \
 		"| Temporal gRPC Proxy | \`localhost:$${gateway:-$(GATEWAY_PORT)}\` |" \
+		"| Scenario | \`$(SCENARIO)\` |" \
 		'' \
 		'Trigger a Workflow with `make demo`.'
 

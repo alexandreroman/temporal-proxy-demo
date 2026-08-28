@@ -10,21 +10,23 @@ Cloud is a configuration change, not a code change.
 
 > [!NOTE]
 >
-> The local scenario runs end to end today. The Temporal Cloud and
-> payload encryption scenarios are described below but their proxy
-> configurations are not written yet.
+> The local and the Temporal Cloud scenarios both ship as proxy
+> configurations you can switch between. Payload encryption is
+> described below but is not implemented yet.
 
 ## Features
 
 - **Zero connection config in the app** — the Worker and the API dial
   `localhost:7233` in plaintext with a short Namespace name, and nothing
-  else. No TLS material, no API key, no upstream host name.
+  else. No TLS material, no client certificate, no upstream host name.
 - **Trigger a Workflow over HTTP** — `POST /hello` starts one
   `hello-workflow` Execution and returns its result.
-- **Multi-upstream routing** — one local endpoint fans out to several
-  upstreams, chosen per request by Namespace.
+- **Switch upstreams by configuration** — one committed config file per
+  scenario, one upstream active at a time. `make use-cloud` and
+  `make use-local` swap which file the gateway runs with; no Go code
+  changes and no image is rebuilt.
 - **Temporal Cloud without the ceremony** — the proxy attaches TLS, the
-  API key, and the Namespace rewrite on the way out.
+  client certificate, and the Namespace rewrite on the way out.
 - **Payload encryption** — envelope encryption on the hop to the
   upstream, so the Temporal Service only ever stores ciphertext while the
   app keeps exchanging cleartext.
@@ -34,8 +36,9 @@ Cloud is a configuration change, not a code change.
 - Docker (or Podman) with Compose v2
 - Go 1.27 or later — for `make dev`, which runs the Worker and the
   API on the host
-- A Temporal Cloud Namespace with API key authentication enabled, for
-  the Cloud scenario only. See [API keys][api-keys].
+- A Temporal Cloud Namespace whose accepted client CA signed the
+  certificate the gateway presents, for the Cloud scenario only. See
+  [Authenticate with mTLS certificates][mtls].
 
 ## Getting Started
 
@@ -90,36 +93,159 @@ make demo
 make app-down
 ```
 
+## Switching upstreams
+
+Moving the whole demo from the local dev server to Temporal Cloud is a
+change of proxy configuration and nothing else — no Go code touched, no
+image rebuilt, and no restart of the Worker or the API:
+
+```bash
+make use-cloud
+make demo
+make use-local
+```
+
+`make use-cloud` refuses unless `TEMPORAL_CLOUD_NAMESPACE` and
+`TEMPORAL_ACCOUNT` are set in `.env` and both `proxy/certs/client.pem`
+and `proxy/certs/client.key` exist, and it names everything that is
+missing. The check is deliberate: the gateway validates all of it on
+startup, so an incomplete setup would leave it crash-looping with the
+reason buried in its log.
+
+Both targets record the choice in `.env` and print the scenario they
+selected. When the gateway is running they recreate it on the spot, so
+the new upstream is live straight away; when it is not, the choice is
+recorded and applies the next time the stack starts. `make scenario`
+prints the active one.
+
+The switch needs no restart of the Worker or the API: both re-establish
+their poll through the new gateway on their own, which is the property
+this demo claims. Left alone they take 35 seconds — around half a minute
+is normal — and repeated switches lengthen that, because the SDK's gRPC
+channel backs off exponentially while the old gateway address is
+unreachable. To make the switch look instant, in front of an audience
+for instance, `docker compose restart worker api` brings the demo back
+in 3 seconds; that is a convenience, not a requirement. Until one or the
+other happens, `make demo` returns 500.
+
+Two things the switch does not do:
+
+- **It changes the destination, not the history.** Workflow Executions
+  started against the dev server stay on the dev server; they do not
+  appear in Cloud.
+- **It does not stop the dev server.** The gateway still declares it as
+  a Compose dependency, so in the cloud scenario the local Web UI is
+  still up — and empty. That is why `make endpoints` links the Cloud Web
+  UI instead while that scenario is active.
+
+### Generating the client certificate
+
+Temporal Cloud authenticates the gateway with mTLS, so it needs a client
+certificate signed by a CA the Namespace accepts. [`tcld`][tcld]
+generates both halves. Keep the CA outside this repository — only the
+client pair belongs in `proxy/certs/`:
+
+```bash
+tcld generate-certificates certificate-authority-certificate \
+  --organization "my-org" \
+  --validity-period 365d \
+  --ca-certificate-file ca.pem \
+  --ca-key-file ca.key
+
+tcld generate-certificates end-entity-certificate \
+  --organization "my-org" \
+  --ca-certificate-file ca.pem \
+  --ca-key-file ca.key \
+  --certificate-file proxy/certs/client.pem \
+  --key-file proxy/certs/client.key
+```
+
+Then register the CA on the Namespace, so Cloud accepts certificates it
+signed. `--namespace` takes the fully-qualified name, and the command
+talks to Cloud, so authenticate first:
+
+```bash
+tcld login
+tcld namespace accepted-client-ca add \
+  --namespace "quickstart.a1b2c" \
+  --ca-certificate-file ca.pem
+```
+
+`proxy/certs/` is git-ignored apart from its `.gitkeep`, so the client
+pair stays out of version control. The gateway is the only service that
+mounts it.
+
+### What actually differs
+
+The two configuration files are the whole story. Each opens with a
+header comment explaining its own scenario, which makes the raw
+`diff proxy/local.yaml proxy/cloud.yaml` noisier than the substance;
+filtering them out shows how little there is to it:
+
+```bash
+diff <(grep -v '^#' proxy/local.yaml) <(grep -v '^#' proxy/cloud.yaml)
+```
+
+What differs is the `upstreams` block, plus the upstream's name in
+`routing`. Everything Temporal Cloud needs lives in that block, and the
+application sees none of it: TLS, the client certificate the gateway
+presents, and the rewrite from the short Namespace name `default` to the
+fully-qualified Cloud one.
+
 ## Configuration
 
-The app reads three variables, none of which describe an upstream:
+Two sets of variables that never meet. The app reads three, none of
+which describe an upstream:
 
-| Variable             | Description                        | Default          |
-| -------------------- | ---------------------------------- | ---------------- |
-| `TEMPORAL_ADDRESS`   | Proxy gateway the app dials        | `localhost:7233` |
-| `TEMPORAL_NAMESPACE` | Short, local Namespace name        | `default`        |
-| `PORT`               | HTTP listen port for the API       | `8080`           |
+| Variable             | Description                     | Default          |
+| -------------------- | ------------------------------- | ---------------- |
+| `TEMPORAL_ADDRESS`   | Local endpoint the app dials    | `localhost:7233` |
+| `TEMPORAL_NAMESPACE` | Short, local Namespace name     | `default`        |
+| `PORT`               | HTTP listen port for the API    | `8080`           |
 
-The proxy is configured by [`proxy/config.yaml`](proxy/config.yaml),
-mounted read-only into its container. The base configuration declares a
-single upstream — the Compose dev server — and routes everything to it.
+`TEMPORAL_NAMESPACE` is `default` in every scenario, and
+[`compose.yaml`](compose.yaml) pins that literal on the Worker and the
+API. It says which Namespace the app asks for, not which upstream serves
+it: picking an upstream is not something the app can do.
 
-Credentials for the Temporal Cloud scenario live in `.env`, which is
-git-ignored. Copy [`.env.example`](.env.example) to get started.
+The gateway reads the second set, from `.env`:
+
+| Variable                   | Description                     | Scenario |
+| -------------------------- | ------------------------------- | -------- |
+| `PROXY_CONFIG`             | Config file Compose mounts      | all      |
+| `TEMPORAL_CLOUD_NAMESPACE` | Cloud Namespace, short name     | cloud    |
+| `TEMPORAL_ACCOUNT`         | Cloud account id                | cloud    |
+
+`PROXY_CONFIG` defaults to [`proxy/local.yaml`](proxy/local.yaml); the
+Cloud twin is [`proxy/cloud.yaml`](proxy/cloud.yaml). The short Namespace
+name and the account id are the two halves of a fully-qualified Cloud
+Namespace: `quickstart.a1b2c` is `quickstart` plus `a1b2c`.
+
+Only the gateway is given anything Cloud-specific — `compose.yaml` passes
+the two Namespace values, and mounts `proxy/certs/` read-only, on the
+`temporal-proxy` service and on no other. The Worker and the API get
+`TEMPORAL_ADDRESS` and `TEMPORAL_NAMESPACE`, and that is the whole of
+what they know. That asymmetry is the point of the demo.
+
+The scenario lives in `.env` because `.env` is the one file
+`docker compose` reads on its own: a bare `docker compose up` then runs
+the same scenario as any `make` target. `.env` is git-ignored — copy
+[`.env.example`](.env.example) to get started.
 
 ## Architecture
 
-The Worker and the API only ever see the gateway. Which upstream a
-request reaches is decided by the proxy, from the Namespace on the
-request.
+The Worker and the API only ever see the gateway. Exactly one upstream
+is active at a time, and the configuration file the gateway runs with is
+what decides which.
 
 ```mermaid
 graph LR
     H[curl] -->|POST /hello| A[cmd/api]
     A --> G
     W[cmd/worker] --> G
-    G[temporal-proxy gateway<br/>localhost:7233] --> L[(Temporal dev server<br/>Compose)]
-    G --> C[(Temporal Cloud<br/>TLS + API key)]
+    G[temporal-proxy gateway<br/>localhost:7233]
+    G -->|proxy/local.yaml| L[(Temporal dev server<br/>Compose)]
+    G -.->|or proxy/cloud.yaml| C[(Temporal Cloud<br/>TLS + client certificate)]
 ```
 
 | Module                    | Description                                    |
@@ -139,4 +265,5 @@ This project is licensed under the Apache-2.0 License — see
 temporal-proxy itself is a separate project, licensed under MIT.
 
 [proxy]: https://github.com/temporalio/temporal-proxy
-[api-keys]: https://docs.temporal.io/cloud/api-keys
+[mtls]: https://docs.temporal.io/cloud/certificates
+[tcld]: https://docs.temporal.io/cloud/tcld

@@ -12,7 +12,7 @@ See [README.md](README.md) for full documentation.
 - Go — Temporal Go SDK (Worker) and net/http (API)
 - temporal-proxy — gRPC gateway in front of every upstream
 - Docker Compose — Temporal dev server and proxy
-- Temporal Cloud — one of the demo upstreams (TLS + API key)
+- Temporal Cloud — one of the demo upstreams (TLS + client certificate)
 
 ## Build & run
 
