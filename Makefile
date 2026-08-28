@@ -141,7 +141,7 @@ dev: infra-up ## Start infra, then run the Worker and the HTTP API
 		export TEMPORAL_ADDRESS="$${TEMPORAL_ADDRESS:-localhost:$${gateway:-$(GATEWAY_PORT)}}"; \
 		trap 'kill 0' EXIT INT TERM; \
 		( go run ./cmd/worker; kill 0 ) & \
-		( go run ./cmd/api; kill 0 ) & \
+		( go run ./cmd/app; kill 0 ) & \
 		wait
 
 # Compose merges compose.override.yaml automatically, so freezing this
@@ -162,7 +162,7 @@ worktree-init: ## Fetch dependencies and pin this worktree's ports (overwrites c
 		'name: $(notdir $(CURDIR))' \
 		'' \
 		'services:' \
-		'  api:' \
+		'  app:' \
 		'    ports: !override' \
 		'      - "$(PORT):8080"' \
 		'  temporal-proxy:' \
@@ -175,7 +175,7 @@ worktree-init: ## Fetch dependencies and pin this worktree's ports (overwrites c
 
 .PHONY: demo
 demo: ## Trigger one Workflow through the HTTP API
-	@app=$(call published-port,api,8080); \
+	@app=$(call published-port,app,8080); \
 		curl -fsS -X POST "http://localhost:$${app:-$(PORT)}/hello?name=$(NAME)"
 
 # Which Web UI is worth linking depends on the scenario: in `cloud` the local
@@ -192,7 +192,7 @@ endif
 # be read in a terminal or piped into whatever renders it.
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
-	@app=$(call published-port,api,8080); \
+	@app=$(call published-port,app,8080); \
 	ui=$(call published-port,temporal,8233); \
 	gateway=$(call published-port,temporal-proxy,7233); \
 	printf '%s\n' \
@@ -248,7 +248,7 @@ check: test ## Run tests and static checks
 .PHONY: build
 build: ## Build the production artifact
 	go build -o bin/worker ./cmd/worker
-	go build -o bin/api ./cmd/api
+	go build -o bin/app ./cmd/app
 
 ##@ Helpers
 

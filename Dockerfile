@@ -15,10 +15,10 @@ COPY . .
 # stage be a distroless image with no libc at all.
 RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/ ./cmd/worker ./cmd/api
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/ ./cmd/worker ./cmd/app
 
 FROM gcr.io/distroless/static-debian13:nonroot
-COPY --from=build /app/worker /app/api /app/
+COPY --from=build /app/worker /app/app /app/
 USER nonroot:nonroot
 # No default command on purpose: an image carrying two binaries has no single
 # one to prefer, so every service names the binary it wants.

@@ -86,9 +86,9 @@ services:
     restart: on-failure
 
   # The HTTP API: POST /hello starts one Workflow Execution.
-  api:
+  app:
     build: .
-    command: ["/app/api"]
+    command: ["/app/app"]
     environment:
       TEMPORAL_ADDRESS: temporal-proxy:7233
       # The Namespace name the application uses is the same in every

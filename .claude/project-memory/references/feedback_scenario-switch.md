@@ -23,7 +23,7 @@ again through the recreated gateway, and
 consecutive switches take longer, because the
 SDK's gRPC channel backs off exponentially while
 the previous gateway address is unreachable.
-`docker compose restart worker api` brings the
+`docker compose restart worker app` brings the
 demo back in about 3 seconds, which is how to
 make a switch look instant in front of an
 audience; before either happens, triggering a

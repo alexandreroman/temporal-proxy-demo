@@ -27,7 +27,7 @@ make check          # tests and static checks
 ## Modules
 
 - `cmd/worker` — Temporal Worker, polling through the proxy
-- `cmd/api` — HTTP API that starts one Workflow Execution
+- `cmd/app` — HTTP API that starts one Workflow Execution
 - `internal/hello` — the hello-workflow Workflow and its Activity
 - `internal/temporalclient` — the shared client: plaintext, no credentials
 - `proxy` — temporal-proxy configuration, one per scenario

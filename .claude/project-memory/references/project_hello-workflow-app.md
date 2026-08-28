@@ -17,7 +17,7 @@ Three choices shape it:
 - **HTTP trigger rather than a CLI starter.** The
   entry point is a running service, so the demo
   looks like an application rather than a script.
-- **Two binaries, `cmd/worker` and `cmd/api`.**
+- **Two binaries, `cmd/worker` and `cmd/app`.**
   Worker-side and Client-side traffic reach the
   proxy separately and can be pointed at different
   upstreams independently.

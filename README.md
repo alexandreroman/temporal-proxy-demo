@@ -124,7 +124,7 @@ this demo claims. Left alone they take 35 seconds — around half a minute
 is normal — and repeated switches lengthen that, because the SDK's gRPC
 channel backs off exponentially while the old gateway address is
 unreachable. To make the switch look instant, in front of an audience
-for instance, `docker compose restart worker api` brings the demo back
+for instance, `docker compose restart worker app` brings the demo back
 in 3 seconds; that is a convenience, not a requirement. Until one or the
 other happens, `make demo` returns 500.
 
@@ -240,7 +240,7 @@ what decides which.
 
 ```mermaid
 graph LR
-    H[curl] -->|POST /hello| A[cmd/api]
+    H[curl] -->|POST /hello| A[cmd/app]
     A --> G
     W[cmd/worker] --> G
     G[temporal-proxy gateway<br/>localhost:7233]
@@ -251,7 +251,7 @@ graph LR
 | Module                    | Description                                    |
 | ------------------------- | ---------------------------------------------- |
 | `cmd/worker`              | Temporal Worker, polling through the proxy     |
-| `cmd/api`                 | HTTP API that starts one Workflow Execution    |
+| `cmd/app`                 | HTTP API that starts one Workflow Execution    |
 | `internal/hello`          | The hello-workflow Workflow and its Activity   |
 | `internal/temporalclient` | Shared client: plaintext, no credentials       |
 | `proxy`                   | temporal-proxy configuration, one per scenario |
