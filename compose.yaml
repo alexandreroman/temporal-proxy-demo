@@ -34,8 +34,20 @@ services:
   temporal-proxy:
     image: temporalio/temporal-proxy:v0.5.1
     command: ["serve", "-c", "/etc/proxy/config.yaml"]
+    # The scenario *is* the configuration: pointing the demo at Temporal
+    # Cloud means mounting the other file, nothing more. `make use-local`
+    # and `make use-cloud` set PROXY_CONFIG in .env.
     volumes:
-      - ./proxy/config.yaml:/etc/proxy/config.yaml:ro
+      - ${PROXY_CONFIG:-./proxy/local.yaml}:/etc/proxy/config.yaml:ro
+      # The client certificate cloud.yaml presents to Temporal Cloud. Only
+      # the gateway ever receives this material; no other service mounts it.
+      - ./proxy/certs:/etc/proxy/certs:ro
+    # Read by cloud.yaml only; local.yaml ignores them. The gateway is the
+    # single place that holds anything Cloud-specific, and it inherits these
+    # from the environment — Compose fills them in from .env.
+    environment:
+      - TEMPORAL_CLOUD_NAMESPACE
+      - TEMPORAL_ACCOUNT
     ports:
       - "7233:7233"   # gRPC endpoint for Workers and Clients
     depends_on:
@@ -57,7 +69,11 @@ services:
     # the `make dev` flow can never leak into the container.
     environment:
       TEMPORAL_ADDRESS: temporal-proxy:7233
-      TEMPORAL_NAMESPACE: ${TEMPORAL_NAMESPACE:-default}
+      # The Namespace name the application uses is the same in every
+      # scenario. That is what makes switching upstreams a proxy-only
+      # change: the gateway rewrites the name when the upstream needs a
+      # different one.
+      TEMPORAL_NAMESPACE: default
     # The proxy has no healthcheck to wait for, and this process exits as soon
     # as its first dial fails. Restarting on failure is what absorbs that
     # startup race, without bringing back a process that stopped cleanly.
@@ -75,7 +91,11 @@ services:
     command: ["/app/api"]
     environment:
       TEMPORAL_ADDRESS: temporal-proxy:7233
-      TEMPORAL_NAMESPACE: ${TEMPORAL_NAMESPACE:-default}
+      # The Namespace name the application uses is the same in every
+      # scenario. That is what makes switching upstreams a proxy-only
+      # change: the gateway rewrites the name when the upstream needs a
+      # different one.
+      TEMPORAL_NAMESPACE: default
     ports:
       - "8080:8080"   # http://localhost:8080/hello
     # Same startup race as the Worker, absorbed the same way.

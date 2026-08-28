@@ -6,6 +6,10 @@
 .env
 .env.local
 
+# Client certificate for the Cloud scenario — never commit key material
+/proxy/certs/*
+!/proxy/certs/.gitkeep
+
 # Per-worktree host ports — written by `make worktree-init`
 /compose.override.yaml
 

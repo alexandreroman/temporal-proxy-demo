@@ -16,8 +16,8 @@ are in scope:
    Worker endpoint, requests routed by Namespace
    to several upstreams.
 2. **Temporal Cloud** — the proxy owns TLS, the
-   API key, and the Namespace rewrite; the Worker
-   knows nothing about Cloud.
+   client certificate, and the Namespace rewrite;
+   the Worker knows nothing about Cloud.
 3. **Payload encryption (KMS)** — envelope
    encryption on the hop to the upstream, so the
    Temporal Service only ever stores ciphertext.
