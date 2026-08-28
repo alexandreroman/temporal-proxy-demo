@@ -237,23 +237,6 @@ help: ## Show this help
 
 ##@ Kubernetes
 
-# The client certificate is what the cloud upstream authenticates with.
-# Refuse before touching the cluster, and name everything missing rather
-# than only the first thing.
-define require-cloud-setup
-missing=''; \
-[ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
-[ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
-[ -f proxy/certs/client.pem ] || missing="$$missing proxy/certs/client.pem"; \
-[ -f proxy/certs/client.key ] || missing="$$missing proxy/certs/client.key"; \
-if [ -n "$$missing" ]; then \
-  echo "Cannot deploy, these are missing:$$missing"; \
-  echo "The values go in .env (copy .env.example); the certificate goes in"; \
-  echo "proxy/certs/ as client.pem and client.key. Then try again."; \
-  exit 1; \
-fi
-endef
-
 .PHONY: cluster-create
 cluster-create: ## Create the Kind cluster
 	@kind get clusters | grep -qx '$(CLUSTER)' || \
@@ -291,7 +274,7 @@ cluster-down: ## Delete the Kind cluster
 # process table; `cat` rather than `kubectl cp` keeps the step free of
 # any dependency beyond kubectl. The KV keys are named tls.crt and
 # tls.key because that is exactly what a kubernetes.io/tls Secret
-# requires, which is what spares Task 4 any transformation.
+# requires, so the operator's Secret sync needs no transformation.
 KUBECTL_VAULT = kubectl --context kind-$(CLUSTER) -n vault
 
 .PHONY: vault-cert
