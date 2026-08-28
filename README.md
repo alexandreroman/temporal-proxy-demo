@@ -20,7 +20,8 @@ Cloud is a configuration change, not a code change.
   `localhost:7233` in plaintext with a short Namespace name, and nothing
   else. No TLS material, no client certificate, no upstream host name.
 - **Trigger a Workflow over HTTP** — `POST /hello` starts one
-  `hello-workflow` Execution and returns its result.
+  `hello-workflow` Execution, identified as `hello-<UUID>`, and returns
+  its result.
 - **Switch upstreams by configuration** — one committed config file per
   scenario, one upstream active at a time. `make use-cloud` and
   `make use-local` swap which file temporal-proxy runs with; no Go code

@@ -5,7 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 // fakeGreeter records the name it was called with, so the tests can check what the HTTP
@@ -88,5 +91,27 @@ func TestHelloEndpointGreetingFails(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestNewWorkflowID(t *testing.T) {
+	t.Parallel()
+
+	id := newWorkflowID()
+
+	suffix, ok := strings.CutPrefix(id, "hello-")
+	if !ok {
+		t.Fatalf("workflow ID = %q, want a %q prefix", id, "hello-")
+	}
+	if _, err := uuid.Parse(suffix); err != nil {
+		t.Errorf("workflow ID suffix %q is not a UUID: %v", suffix, err)
+	}
+}
+
+func TestNewWorkflowIDIsUnique(t *testing.T) {
+	t.Parallel()
+
+	if first, second := newWorkflowID(), newWorkflowID(); first == second {
+		t.Errorf("two workflow IDs are equal: %q", first)
 	}
 }

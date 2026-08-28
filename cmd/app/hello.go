@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/alexandreroman/temporal-proxy-demo/internal/hello"
+	"github.com/google/uuid"
 	"go.temporal.io/sdk/client"
 )
 
@@ -35,10 +36,20 @@ func helloHandler(greet greeter) http.HandlerFunc {
 	}
 }
 
+// newWorkflowID returns the identifier of one Workflow Execution. The prefix makes the
+// Execution recognizable in the Temporal Web UI, and the random suffix lets the demo be
+// replayed without colliding with an earlier Execution.
+func newWorkflowID() string {
+	return "hello-" + uuid.NewString()
+}
+
 // startHelloWorkflow starts one Workflow Execution and waits for its result.
 func startHelloWorkflow(c client.Client) greeter {
 	return func(ctx context.Context, name string) (string, error) {
-		options := client.StartWorkflowOptions{TaskQueue: hello.TaskQueue}
+		options := client.StartWorkflowOptions{
+			ID:        newWorkflowID(),
+			TaskQueue: hello.TaskQueue,
+		}
 
 		run, err := c.ExecuteWorkflow(ctx, options, hello.HelloWorkflow, name)
 		if err != nil {
