@@ -1,9 +1,0 @@
-# Plain HTTP: Vault runs in dev mode inside the cluster, so there is no
-# TLS on this hop and nothing to configure for it.
-apiVersion: secrets.hashicorp.com/v1beta1
-kind: VaultConnection
-metadata:
-  name: vault
-  namespace: temporal-proxy
-spec:
-  address: http://vault.vault.svc.cluster.local:8200

@@ -31,7 +31,7 @@ TRAEFIK_PORT ?= 8080
 GATEWAY_API_VERSION ?= v1.6.1
 
 # Which scenario to deploy to the cluster. Each one is a directory under
-# k8s/scenarios/: a Kustomize overlay and one temporal-proxy values
+# k8s/scenarios/: a Kustomize overlay and one temporal-proxy configuration
 # file. Switch with `make deploy SCENARIO=<name>`.
 SCENARIO ?= credentials
 
@@ -138,18 +138,6 @@ cluster-up: cluster-create ## Create the cluster and install its platform compon
 		--repo https://traefik.github.io/charts --version 41.4.0 \
 		--namespace traefik --create-namespace \
 		-f k8s/charts/traefik.yaml --wait
-	kubectl --context kind-$(CLUSTER) apply -k k8s/vault
-	helm --kube-context kind-$(CLUSTER) upgrade --install vault vault \
-		--repo https://helm.releases.hashicorp.com --version 0.34.1 \
-		--namespace vault \
-		-f k8s/charts/vault.yaml --wait
-# Runs on the chart's own defaults: the Vault address lives in the
-# VaultConnection under k8s/base/vault-secrets, next to the
-# resources that use it, so there is nothing to override here.
-	helm --kube-context kind-$(CLUSTER) upgrade --install \
-		vault-secrets-operator vault-secrets-operator \
-		--repo https://helm.releases.hashicorp.com --version 1.5.1 \
-		--namespace vault-secrets-operator --create-namespace --wait
 
 # Paired with cluster-up.
 .PHONY: cluster-down
@@ -180,12 +168,12 @@ define require-cloud-setup
 missing=''; \
 [ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
 [ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
-[ -f proxy/certs/client.pem ] || missing="$$missing proxy/certs/client.pem"; \
-[ -f proxy/certs/client.key ] || missing="$$missing proxy/certs/client.key"; \
+[ -f k8s/base/proxy/certs/client.pem ] || missing="$$missing k8s/base/proxy/certs/client.pem"; \
+[ -f k8s/base/proxy/certs/client.key ] || missing="$$missing k8s/base/proxy/certs/client.key"; \
 if [ -n "$$missing" ]; then \
   echo "Cannot deploy, these are missing:$$missing"; \
-  echo "The values go in .env (copy .env.example); the certificate goes in proxy/certs/"; \
-  echo "as client.pem and client.key. Then run the command again."; \
+  echo "The values go in .env (copy .env.example); the certificate goes in"; \
+  echo "k8s/base/proxy/certs/ as client.pem and client.key. Then run the command again."; \
   exit 1; \
 fi
 endef
@@ -194,59 +182,29 @@ endef
 require-cloud: ## Refuse to continue without Temporal Cloud credentials and a certificate
 	@$(require-cloud-setup)
 
-# Vault is the certificate's custodian, not its origin: this pushes the
-# repository's own certificate in. That is what makes the demo
-# self-contained, and it is the one step that cannot be declarative —
-# the material lives in the working directory, not in the cluster.
-#
-# Each file is streamed on stdin into a temporary file in the pod, then
-# read back by `vault kv put key=@file`. Streaming rather than passing
-# the contents as arguments keeps the private key out of the pod's
-# process table; `cat` rather than `kubectl cp` keeps the step free of
-# any dependency beyond kubectl. The KV keys are named tls.crt and
-# tls.key because that is exactly what a kubernetes.io/tls Secret
-# requires, so the operator's Secret sync needs no transformation.
-KUBECTL_VAULT = kubectl --context kind-$(CLUSTER) -n vault
-
-.PHONY: vault-cert
-vault-cert: ## Load the Temporal Cloud client certificate into Vault
-	@$(require-cloud-setup)
-	@$(KUBECTL_VAULT) exec -i vault-0 -- sh -c 'cat > /tmp/tls.crt' < proxy/certs/client.pem
-	@$(KUBECTL_VAULT) exec -i vault-0 -- sh -c 'cat > /tmp/tls.key' < proxy/certs/client.key
-	@$(KUBECTL_VAULT) exec vault-0 -- sh -c 'VAULT_TOKEN=root \
-		vault kv put secret/temporal-cloud tls.crt=@/tmp/tls.crt tls.key=@/tmp/tls.key; \
-		rm -f /tmp/tls.crt /tmp/tls.key'
-
+# The Namespace and account identifiers are not credentials, but they are
+# account-specific, so they stay out of the committed configuration and reach
+# temporal-proxy as a Secret built here from .env. Its envFrom expands them
+# into the ${VAR} references left literal in the generated ConfigMap. The
+# Namespaces are applied first, because that Secret has to land in one of
+# them before the Deployment that reads it exists.
 .PHONY: apply
-apply: ## Apply the scenario's Kustomize overlay (after cluster-up)
-	kubectl --context kind-$(CLUSTER) apply -k k8s/scenarios/$(SCENARIO)
-
-# The Namespace and account id are account-specific, so they are kept out of
-# the committed values file and supplied as a Secret instead, built here from
-# .env. temporal-proxy's envFrom then expands them into the ${VAR} references
-# left literal in its ConfigMap.
-.PHONY: proxy-up
-proxy-up: ## Install temporal-proxy for SCENARIO (after apply)
-	@$(require-cloud-setup)
+apply: require-cloud ## Deploy the scenario (after cluster-up)
+	kubectl --context kind-$(CLUSTER) apply -f k8s/base/namespaces.yaml
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy \
 		create secret generic temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
 		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)' \
 		--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
-	helm --kube-context kind-$(CLUSTER) upgrade --install temporal-proxy temporal-proxy \
-		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
-		--namespace temporal-proxy \
-		-f k8s/scenarios/$(SCENARIO)/proxy-values.yaml --wait
-
-.PHONY: proxy-down
-proxy-down: ## Uninstall temporal-proxy
-	helm --kube-context kind-$(CLUSTER) uninstall temporal-proxy \
-		--namespace temporal-proxy --ignore-not-found
+	kubectl --context kind-$(CLUSTER) apply -k k8s/scenarios/$(SCENARIO)
 
 # The image tag is fixed, so a rebuild is invisible to Kubernetes
-# until the pods are told to restart.
+# until the pods are told to restart. temporal-proxy needs no such
+# nudge: its pod template changes whenever its configuration or its
+# certificate does.
 .PHONY: deploy
-deploy: require-cloud cluster-up image vault-cert apply proxy-up ## Bring up the whole demo
+deploy: require-cloud cluster-up image apply ## Bring up the whole demo
+	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
