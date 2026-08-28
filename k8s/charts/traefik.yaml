@@ -22,7 +22,7 @@ gateway:
       namespacePolicy:
         from: All
 
-# The demo makes no outbound calls of its own, so Traefik shouldn't either.
+# The demo makes no outbound calls of its own; checkNewVersion is the one
+# Traefik default that would make one, so it is turned off here.
 global:
-  sendAnonymousUsage: false
   checkNewVersion: false

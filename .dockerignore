@@ -12,6 +12,15 @@ tmp/
 *.test
 coverage.out
 
-# Not part of the build
+# Not part of the build: deployment manifests, the demo's own
+# documentation, and the client certificate the runtime image never
+# copies in.
 docs/
+k8s/
+proxy/
+.superpowers/
+*.md
+Makefile
+LICENSE
+.casper.json
 .DS_Store

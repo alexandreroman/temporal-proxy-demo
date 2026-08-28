@@ -21,6 +21,7 @@ See [README.md](README.md) for full documentation.
 ## Build & run
 
 ```bash
+make worktree-init  # generate this worktree's cluster config
 make                # list every target
 make deploy         # cluster, temporal-proxy, Worker and API
 make demo           # curl the API to start one Workflow
@@ -30,7 +31,7 @@ make cluster-down   # delete the cluster
 
 ## Modules
 
-- `cmd/worker` — Temporal Worker, polling through the proxy
+- `cmd/worker` — Temporal Worker, polling a Task Queue
 - `cmd/app` — HTTP API that starts one Workflow Execution
 - `internal/hello` — the hello-workflow Workflow and its Activity
 - `internal/temporalclient` — the shared client: plaintext, no credentials

@@ -41,7 +41,7 @@ API would disprove the claim on stage.
 
 **How to apply:** add a scenario as a new directory under
 `k8s/scenarios/<name>/`, with a `kustomization.yaml` and a
-`proxy-values.yaml` decalqued from `credentials`, keeping
+`proxy-values.yaml` copied from `credentials`, keeping
 everything outside the Vault-specific blocks unchanged
 where the scenario allows it. Anything a scenario needs
 beyond temporal-proxy — a credential, an account id —

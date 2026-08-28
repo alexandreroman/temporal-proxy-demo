@@ -14,9 +14,13 @@ temporal-proxy is the only workload that knows where Temporal is.
 
 ## Prerequisites
 
-- Docker or Podman — builds the image, and runs the cluster's nodes
+- Docker — builds the image, and runs the cluster's nodes. Podman also
+  works: export `KIND_EXPERIMENTAL_PROVIDER=podman` so `kind` uses it,
+  and either put a `docker` shim on `PATH` or run `make` with
+  `CONTAINER_TOOL=podman`
 - [kind][kind] — the local Kubernetes cluster
-- `kubectl` and [Helm][helm]
+- `kubectl` and [Helm][helm] 3.13 or later — `helm uninstall
+  --ignore-not-found` needs it
 - Go 1.27 or later — for `make worktree-init` and `make check`
 - A Temporal Cloud Namespace whose accepted client CA signed the
   certificate in `proxy/certs/`

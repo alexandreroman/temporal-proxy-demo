@@ -29,9 +29,12 @@ tests both `CASPER_WORKSPACE_ID` and the presence of the
 `.casper.json` is read by Casper alone, so a check for the
 CLI there is noise.
 
-The info panel mirrors the stack: every target that starts
-it publishes `make endpoints`, every target that stops it
-clears the panel.
+The info panel mirrors the stack at the two ends of its
+lifecycle: `deploy` publishes `make endpoints` once the
+rollout is up, and `cluster-down` clears the panel once the
+cluster is gone. Targets in between, such as `cluster-up`
+and `proxy-down`, touch neither the panel nor
+`make endpoints`.
 
 **Why:** the demo has to read as an ordinary Temporal demo
 to someone who has never heard of the workspace tool, and

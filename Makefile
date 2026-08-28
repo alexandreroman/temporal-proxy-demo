@@ -3,6 +3,10 @@
 
 .DEFAULT_GOAL := help
 
+# deploy's correctness rests entirely on its prerequisites running in the
+# order they are listed, so a parallel make would race them.
+.NOTPARALLEL:
+
 # Environment for every target, read from .env.
 # A missing .env file is not an error.
 ifneq (,$(wildcard .env))
@@ -31,12 +35,18 @@ GATEWAY_API_VERSION ?= v1.6.1
 # file. Switch with `make deploy SCENARIO=<name>`.
 SCENARIO ?= credentials
 
+# The CLI that builds the image and runs the cluster's nodes. A Podman user
+# overrides this one variable; everything else Podman needs (the
+# KIND_EXPERIMENTAL_PROVIDER kind reads, and a docker-compatible CLI on PATH)
+# lives outside this Makefile.
+CONTAINER_TOOL ?= docker
+
 # Ask the runtime what it actually published rather than recomputing it, so a
 # command typed without TRAEFIK_PORT still reaches this worktree's cluster.
 # awk takes the last colon-separated field of the first line, which is right
 # for an IPv4 and an IPv6 binding alike. An empty answer means the cluster is
 # down, and the documented default is then the right one.
-published-traefik-port = $$(docker port '$(CLUSTER)-worker' 30080 2>/dev/null | awk -F: 'NR==1 {print $$NF}')
+published-traefik-port = $$($(CONTAINER_TOOL) port '$(CLUSTER)-worker' 30080 2>/dev/null | awk -F: 'NR==1 {print $$NF}')
 
 ##@ Develop
 
@@ -115,6 +125,7 @@ help: ## Show this help
 
 .PHONY: cluster-create
 cluster-create: ## Create the Kind cluster
+	@test -f k8s/kind-config.yaml || { echo "Run make worktree-init first"; exit 1; }
 	@kind get clusters | grep -qx '$(CLUSTER)' || \
 		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml
 	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
@@ -132,9 +143,9 @@ cluster-up: cluster-create ## Create the cluster and install its platform compon
 		--repo https://helm.releases.hashicorp.com --version 0.34.1 \
 		--namespace vault \
 		-f k8s/charts/vault.yaml --wait
-	# Runs on the chart's own defaults: the Vault address lives in the
-	# VaultConnection under k8s/base/vault-secrets, next to the
-	# resources that use it, so there is nothing to override here.
+# Runs on the chart's own defaults: the Vault address lives in the
+# VaultConnection under k8s/base/vault-secrets, next to the
+# resources that use it, so there is nothing to override here.
 	helm --kube-context kind-$(CLUSTER) upgrade --install \
 		vault-secrets-operator vault-secrets-operator \
 		--repo https://helm.releases.hashicorp.com --version 1.5.1 \
@@ -155,8 +166,8 @@ cluster-down: ## Delete the Kind cluster
 IMAGE = docker.io/library/temporal-proxy-demo:dev
 
 .PHONY: image
-image: ## Build the image and load it into the cluster
-	docker build -t $(IMAGE) .
+image: ## Build the image and load it into the cluster (after cluster-create)
+	$(CONTAINER_TOOL) build -t $(IMAGE) .
 	kind load docker-image $(IMAGE) --name '$(CLUSTER)'
 
 # The Temporal Cloud upstream needs two values and a client certificate, all
@@ -174,10 +185,14 @@ missing=''; \
 if [ -n "$$missing" ]; then \
   echo "Cannot deploy, these are missing:$$missing"; \
   echo "The values go in .env (copy .env.example); the certificate goes in proxy/certs/"; \
-  echo "as client.pem and client.key. Then run make deploy again."; \
+  echo "as client.pem and client.key. Then run the command again."; \
   exit 1; \
 fi
 endef
+
+.PHONY: require-cloud
+require-cloud: ## Refuse to continue without Temporal Cloud credentials and a certificate
+	@$(require-cloud-setup)
 
 # Vault is the certificate's custodian, not its origin: this pushes the
 # repository's own certificate in. That is what makes the demo
@@ -203,7 +218,7 @@ vault-cert: ## Load the Temporal Cloud client certificate into Vault
 		rm -f /tmp/tls.crt /tmp/tls.key'
 
 .PHONY: apply
-apply: ## Apply the scenario's Kustomize overlay
+apply: ## Apply the scenario's Kustomize overlay (after cluster-up)
 	kubectl --context kind-$(CLUSTER) apply -k k8s/scenarios/$(SCENARIO)
 
 # The Namespace and account id are account-specific, so they are kept out of
@@ -211,7 +226,7 @@ apply: ## Apply the scenario's Kustomize overlay
 # .env. temporal-proxy's envFrom then expands them into the ${VAR} references
 # left literal in its ConfigMap.
 .PHONY: proxy-up
-proxy-up: ## Install temporal-proxy for SCENARIO
+proxy-up: ## Install temporal-proxy for SCENARIO (after apply)
 	@$(require-cloud-setup)
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy \
 		create secret generic temporal-cloud-config \
@@ -228,10 +243,10 @@ proxy-down: ## Uninstall temporal-proxy
 	helm --kube-context kind-$(CLUSTER) uninstall temporal-proxy \
 		--namespace temporal-proxy --ignore-not-found
 
+# The image tag is fixed, so a rebuild is invisible to Kubernetes
+# until the pods are told to restart.
 .PHONY: deploy
-deploy: cluster-up image vault-cert apply proxy-up ## Bring up the whole demo
-	# The image tag is fixed, so a rebuild is invisible to Kubernetes
-	# until the pods are told to restart.
+deploy: require-cloud cluster-up image vault-cert apply proxy-up ## Bring up the whole demo
 	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
