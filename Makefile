@@ -37,9 +37,9 @@ GATEWAY_API_VERSION ?= v1.6.1
 # k8s/scenarios/: a Kustomize overlay and one temporal-proxy values
 # file. Switch with `make apply K8S_SCENARIO=<name>`.
 #
-# Named apart from the Compose SCENARIO above: that one is computed
-# from PROXY_CONFIG with a plain `=`, which would silently overwrite a
-# `?=` default given the same name, in either order.
+# Named apart from the Compose `SCENARIO`, computed from PROXY_CONFIG
+# with a plain `=`, which would silently overwrite a `?=` default of
+# the same name in either order.
 K8S_SCENARIO ?= credentials
 
 # What a running stack publishes is whatever Compose bound, so ask Compose
@@ -265,11 +265,13 @@ cluster-up: cluster-create ## Create the cluster and install its platform compon
 		--repo https://helm.releases.hashicorp.com --version 0.34.1 \
 		--namespace vault \
 		-f k8s/charts/vault.yaml --wait
+	# Runs on the chart's own defaults: the Vault address lives in the
+	# VaultConnection under k8s/base/vault-secrets, next to the
+	# resources that use it, so there is nothing to override here.
 	helm --kube-context kind-$(CLUSTER) upgrade --install \
 		vault-secrets-operator vault-secrets-operator \
 		--repo https://helm.releases.hashicorp.com --version 1.5.1 \
-		--namespace vault-secrets-operator --create-namespace \
-		-f k8s/charts/vault-secrets-operator.yaml --wait
+		--namespace vault-secrets-operator --create-namespace --wait
 
 # Paired with cluster-up.
 .PHONY: cluster-down
