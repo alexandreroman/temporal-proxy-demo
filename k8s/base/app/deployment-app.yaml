@@ -1,0 +1,40 @@
+# The HTTP API: POST /hello starts one Workflow Execution.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: hello
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+        - name: app
+          # Built by `make image` and loaded straight into the cluster's
+          # nodes, so there is no registry and nothing to pull.
+          image: temporal-proxy-demo:dev
+          imagePullPolicy: IfNotPresent
+          command: ["/app/app"]
+          env:
+            # A local endpoint, in plaintext, with a short Namespace
+            # name. No TLS material, no credential, no fully-qualified
+            # Namespace: everything the upstream needs lives elsewhere.
+            - name: TEMPORAL_ADDRESS
+              value: temporal-proxy.temporal-proxy:7233
+            - name: TEMPORAL_NAMESPACE
+              value: default
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

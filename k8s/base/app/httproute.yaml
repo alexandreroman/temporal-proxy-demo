@@ -1,0 +1,22 @@
+# The only thing this cluster exposes. Traefik's port is the single
+# published port, and the API is the only route behind it — the
+# `encryption` scenario adds exactly one more, for its codec server.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: app
+  namespace: hello
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+  hostnames:
+    - "hello.127-0-0-1.nip.io"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: app
+          port: 80

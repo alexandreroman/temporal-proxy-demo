@@ -1,0 +1,32 @@
+# The Worker: polls a Task Queue and runs the hello-workflow code.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: hello
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: temporal-proxy-demo:dev
+          imagePullPolicy: IfNotPresent
+          command: ["/app/worker"]
+          env:
+            - name: TEMPORAL_ADDRESS
+              value: temporal-proxy.temporal-proxy:7233
+            - name: TEMPORAL_NAMESPACE
+              value: default
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

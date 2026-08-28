@@ -10,12 +10,15 @@ include .env
 export
 endif
 
-# Where `make demo` sends its request, and who it greets.
+# The port the API binds to under `make dev`, and who `make demo` greets.
 PORT ?= 8080
 NAME ?= Temporal
 
-# Fallback host ports, used only when the matching service is not running and `published-port` below reports nothing.
-# PORT above is part of the same trio, unqualified because it is the variable the API itself reads from its environment.
+# Fallback host port for temporal-proxy, used only when it is not running and
+# `published-port` below reports nothing. PORT above is part of the same
+# family, unqualified because it is the variable the API itself reads from
+# its environment. TEMPORAL_WEB_UI_PORT keeps the same shape for
+# `.casper.json`, which still reserves a port for it.
 TEMPORAL_PROXY_PORT ?= 7233
 TEMPORAL_WEB_UI_PORT ?= 8233
 
@@ -47,6 +50,13 @@ K8S_SCENARIO ?= credentials
 # An empty answer means the service is down, and the default above is then the
 # right one: `make dev` runs the API on the host, on PORT.
 published-port = $$(docker compose port $(1) $(2) 2>/dev/null | cut -d: -f2)
+
+# Ask the runtime what it actually published rather than recomputing it, so a
+# command typed without TRAEFIK_PORT still reaches this worktree's cluster.
+# awk takes the last colon-separated field of the first line, which is right
+# for an IPv4 and an IPv6 binding alike. An empty answer means the cluster is
+# down, and the documented default is then the right one.
+published-traefik-port = $$(docker port '$(CLUSTER)-worker' 30080 2>/dev/null | awk -F: 'NR==1 {print $$NF}')
 
 ##@ Infra
 
@@ -159,37 +169,25 @@ worktree-init: ## Fetch dependencies and pin this worktree's port (overwrites k8
 
 .PHONY: demo
 demo: ## Trigger one Workflow through the HTTP API
-	@app=$(call published-port,app,8080); \
-		curl -fsS -X POST "http://localhost:$${app:-$(PORT)}/hello" \
+	@port=$(published-traefik-port); \
+		curl -fsS -X POST "http://hello.127-0-0-1.nip.io:$${port:-$(TRAEFIK_PORT)}/hello" \
 			-H 'Content-Type: application/json' \
 			-d '{"name": "$(NAME)"}'
-
-# Which Web UI is worth linking depends on the scenario: in `cloud` the local
-# dev server is still running, but every Workflow lands in Temporal Cloud, so
-# the local UI would only ever show an empty Namespace.
-cloud-namespace = $(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)
-ifeq ($(SCENARIO),cloud)
-web-ui-row = "| Temporal Web UI (Cloud) | <https://cloud.temporal.io/namespaces/$(cloud-namespace)> |"
-else
-web-ui-row = "| Temporal Web UI (local) | <http://localhost:$${web_ui:-$(TEMPORAL_WEB_UI_PORT)}> |"
-endif
 
 # Markdown on stdout, so the answer to "where is this worktree listening?" can
 # be read in a terminal or piped into whatever renders it.
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
-	@app=$(call published-port,app,8080); \
-	web_ui=$(call published-port,temporal,8233); \
-	temporal_proxy=$(call published-port,temporal-proxy,7233); \
+	@port=$(published-traefik-port); port=$${port:-$(TRAEFIK_PORT)}; \
 	printf '%s\n' \
 		'# Temporal Proxy Demo' \
 		'' \
 		'| Service | Address |' \
 		'| --- | --- |' \
-		"| Demo App | <http://localhost:$${app:-$(PORT)}> |" \
-		$(web-ui-row) \
-		"| Temporal gRPC Proxy | \`localhost:$${temporal_proxy:-$(TEMPORAL_PROXY_PORT)}\` |" \
-		"| Scenario | \`$(SCENARIO)\` |" \
+		"| Demo App | <http://hello.127-0-0-1.nip.io:$$port> |" \
+		"| Temporal Web UI (Cloud) | <https://cloud.temporal.io/namespaces/\
+$(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)> |" \
+		"| Scenario | \`$(K8S_SCENARIO)\` |" \
 		'' \
 		'Trigger a Workflow with `make demo`.'
 
@@ -279,6 +277,19 @@ cluster-down: ## Delete the Kind cluster
 	kind delete cluster --name '$(CLUSTER)'
 	@$(clear-endpoints)
 
+# Tagged with the registry Kubernetes assumes for an unqualified name,
+# so the Deployments' plain `temporal-proxy-demo:dev` resolves to the
+# image this target built rather than triggering a pull. Building with
+# a container tool whose default namespace differs from that assumption
+# (podman tags an unqualified build `localhost/...`) would otherwise
+# load a name the cluster never looks up.
+IMAGE = docker.io/library/temporal-proxy-demo:dev
+
+.PHONY: image
+image: ## Build the image and load it into the cluster
+	docker build -t $(IMAGE) .
+	kind load docker-image $(IMAGE) --name '$(CLUSTER)'
+
 # Vault is the certificate's custodian, not its origin: this pushes the
 # repository's own certificate in. That is what makes the demo
 # self-contained, and it is the one step that cannot be declarative —
@@ -327,3 +338,12 @@ proxy-up: ## Install temporal-proxy for K8S_SCENARIO
 proxy-down: ## Uninstall temporal-proxy
 	helm --kube-context kind-$(CLUSTER) uninstall temporal-proxy \
 		--namespace temporal-proxy --ignore-not-found
+
+.PHONY: deploy
+deploy: cluster-up image vault-cert apply proxy-up ## Bring up the whole demo
+	# The image tag is fixed, so a rebuild is invisible to Kubernetes
+	# until the pods are told to restart.
+	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
+	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
+	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
+	@$(publish-endpoints)
