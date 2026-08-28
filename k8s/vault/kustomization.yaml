@@ -1,0 +1,17 @@
+# Applied before the Vault chart, because the pod mounts the ConfigMap
+# this generates at startup.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: vault
+resources:
+  - namespace.yaml
+configMapGenerator:
+  - name: vault-bootstrap
+    files:
+      - bootstrap.sh
+    options:
+      # The Helm values reference this ConfigMap by a fixed name, so the
+      # content hash has to stay out of it. The cost is that editing the
+      # script does not roll the pod on its own; delete the pod to pick
+      # up a change, which this Vault is built to survive anyway.
+      disableNameSuffixHash: true

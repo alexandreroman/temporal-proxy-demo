@@ -1,0 +1,37 @@
+# Vault in dev mode: in-memory, unsealed at startup, one known root
+# token. Everything it holds is lost on restart, which is why the
+# bootstrap script reapplies itself through postStart.
+server:
+  dev:
+    enabled: true
+
+  volumes:
+    - name: bootstrap
+      configMap:
+        name: vault-bootstrap
+  volumeMounts:
+    - name: bootstrap
+      mountPath: /vault/userconfig/bootstrap
+      readOnly: true
+
+  # Invoked through `sh` rather than executed, so the ConfigMap's file
+  # mode is irrelevant.
+  postStart:
+    - /bin/sh
+    - /vault/userconfig/bootstrap/bootstrap.sh
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+# The chart installs the Agent Injector whenever global.enabled is true,
+# which it is by default, so it is turned off here: the Vault Secrets
+# Operator projects secrets into Kubernetes Secrets instead, and the
+# injector would otherwise have nothing to inject into. The CSI provider
+# and the UI service both default off already in this chart, so neither
+# needs a line here.
+injector:
+  enabled: false
