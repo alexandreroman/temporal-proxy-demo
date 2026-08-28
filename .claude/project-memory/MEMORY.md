@@ -33,3 +33,4 @@
 - [Outbound TLS rules for a temporal-proxy upstream](references/reference_proxy-outbound-tls.md) — a client certificate also requires a `ca`, and that `ca` verifies the server
 - [One environment file, loaded for every target](references/feedback_single-env-file.md) — a single `.env` for every target, no per-target tier
 - [The API tolerates unknown request fields](references/project_lenient-request-decoding.md) — extra JSON fields are ignored, so the contract can grow
+- [The require-cloud-setup guard is one Make variable, reused by name](references/feedback_shared-require-cloud-setup-guard.md) — two call sites, later definition in the file wins for both
