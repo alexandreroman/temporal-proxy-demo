@@ -1,5 +1,5 @@
 # What the Worker and the API dial: temporal-proxy.temporal-proxy:7233.
-# Cluster-internal only — the single published port is Traefik's.
+# No type is set, so this Service is reachable only from inside the cluster.
 apiVersion: v1
 kind: Service
 metadata:
