@@ -1,0 +1,14 @@
+# What the Worker and the API dial: temporal-proxy.temporal-proxy:7233.
+# Cluster-internal only — the single published port is Traefik's.
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal-proxy
+  namespace: temporal-proxy
+spec:
+  selector:
+    app: temporal-proxy
+  ports:
+    - name: grpc
+      port: 7233
+      targetPort: grpc

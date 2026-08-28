@@ -6,8 +6,8 @@
 .env
 
 # Temporal Cloud client certificate — never commit key material
-/proxy/certs/*
-!/proxy/certs/.gitkeep
+/k8s/base/proxy/certs/*
+!/k8s/base/proxy/certs/.gitkeep
 
 # Per-worktree cluster config — written by `make worktree-init`
 /k8s/kind-config.yaml
