@@ -11,17 +11,21 @@ See [README.md](README.md) for full documentation.
 
 - Go — Temporal Go SDK (Worker) and net/http (API)
 - temporal-proxy — one gRPC endpoint in front of every upstream
-- Docker Compose — Temporal dev server and proxy
-- Temporal Cloud — one of the demo upstreams (TLS + client certificate)
+- Kubernetes on Kind — the local cluster the demo runs in
+- Helm and Kustomize — charts for the platform, overlays for the demo
+- Traefik — the cluster's only published entrypoint
+- Vault and the Vault Secrets Operator — custody of the Temporal Cloud
+  client certificate, synced into a Kubernetes Secret
+- Temporal Cloud — the demo's upstream (TLS + client certificate)
 
 ## Build & run
 
 ```bash
 make                # list every target
-make infra-up       # Temporal dev server + proxy in Compose
-make dev            # infra, then the Worker and the API on the host
+make deploy         # cluster, temporal-proxy, Worker and API
 make demo           # curl the API to start one Workflow
 make check          # tests and static checks
+make cluster-down   # delete the cluster
 ```
 
 ## Modules
@@ -30,7 +34,7 @@ make check          # tests and static checks
 - `cmd/app` — HTTP API that starts one Workflow Execution
 - `internal/hello` — the hello-workflow Workflow and its Activity
 - `internal/temporalclient` — the shared client: plaintext, no credentials
-- `proxy` — temporal-proxy configuration, one per scenario
+- `k8s` — the cluster configuration, one scenario per directory
 
 ## Agents
 
@@ -93,4 +97,5 @@ not shared with the team.
   into the code is a bug.
 - temporal-proxy is **pre-release**. Pin its version
   explicitly and re-check its config schema against
-  the upstream repo before changing `proxy/`.
+  the upstream repo before changing its values files
+  under `k8s/scenarios/`.

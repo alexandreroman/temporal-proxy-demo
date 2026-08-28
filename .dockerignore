@@ -3,9 +3,8 @@
 .github
 .claude
 
-# Local environment and per-worktree Compose settings
+# Local environment — never in the build context
 .env*
-compose.override.yaml
 
 # Build and test output
 bin/

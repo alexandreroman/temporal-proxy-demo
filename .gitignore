@@ -5,12 +5,9 @@
 # Local environment — never commit credentials
 .env
 
-# Client certificate for the Cloud scenario — never commit key material
+# Temporal Cloud client certificate — never commit key material
 /proxy/certs/*
 !/proxy/certs/.gitkeep
-
-# Per-worktree host ports — written by `make worktree-init`
-/compose.override.yaml
 
 # Per-worktree cluster config — written by `make worktree-init`
 /k8s/kind-config.yaml
