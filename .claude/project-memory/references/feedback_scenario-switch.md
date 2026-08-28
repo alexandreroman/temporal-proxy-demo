@@ -22,8 +22,14 @@ side by side, or diffing them, is the teaching material:
 what differs between scenarios is how Vault backs
 temporal-proxy, and nothing else does.
 
+Deploying a scenario restarts every component: `helm
+upgrade --install` reinstalls temporal-proxy under the new
+scenario's configuration, and `kubectl rollout restart`
+recreates the Worker and the API Deployments. Nothing keeps
+polling an upstream a scenario switch leaves behind.
+
 A scenario whose credentials are absent is refused before
-`make deploy` touches the cluster, because temporal-proxy
+temporal-proxy is installed, because temporal-proxy
 crash-loops on a configuration it cannot parse, with the
 reason buried in its pod's log.
 
