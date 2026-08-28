@@ -1,0 +1,17 @@
+# Template for this worktree's Kind cluster. `make worktree-init`
+# substitutes @TRAEFIK_PORT@ and writes k8s/kind-config.yaml, which is
+# not committed — see .gitignore.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  apiServerAddress: "127.0.0.1"
+nodes:
+  # Workloads run on the worker, never on the control-plane.
+  - role: control-plane
+  - role: worker
+    # The only port this cluster publishes. Traefik answers on NodePort
+    # 30080; everything the demo exposes goes through it.
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: @TRAEFIK_PORT@
+        protocol: TCP

@@ -12,6 +12,9 @@
 # Per-worktree host ports — written by `make worktree-init`
 /compose.override.yaml
 
+# Per-worktree cluster config — written by `make worktree-init`
+/k8s/kind-config.yaml
+
 # Go
 *.test
 /coverage.out
