@@ -12,7 +12,7 @@ See [README.md](README.md) for full documentation.
 - Go — Temporal Go SDK (Worker) and net/http (API)
 - temporal-proxy — one gRPC endpoint in front of every upstream
 - Kubernetes on Kind — the local cluster the demo runs in
-- Kustomize — every workload in the cluster, one overlay per scenario
+- Kustomize — every workload except Traefik, one overlay per scenario
 - Helm — Traefik, and nothing else
 - Traefik — the cluster's only published entrypoint
 - Temporal Cloud — the demo's upstream (TLS + client certificate)

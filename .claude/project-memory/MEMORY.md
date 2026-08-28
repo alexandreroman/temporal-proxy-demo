@@ -35,4 +35,4 @@
 - [The API tolerates unknown request fields](references/project_lenient-request-decoding.md) — extra JSON fields are ignored, so the contract can grow
 - [Local development needs no cluster](references/project_local-development.md) — the Go inner loop runs against an ephemeral Temporal dev server
 - [temporal-proxy encryption constraints](references/reference_proxy-encryption-constraints.md) — what an encryption scenario must satisfy
-- [Kustomize rewrites generated names within a namespace](references/reference_kustomize-generated-names.md) — a generator entry needs an explicit namespace, or the rewrite silently does not happen
+- [Kustomize rewrites generated names within a namespace](references/reference_kustomize-generated-names.md) — a generator entry needs an explicit `namespace`

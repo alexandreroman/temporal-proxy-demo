@@ -102,11 +102,11 @@ cluster.
 
 ## What runs where
 
-| Namespace        | What it holds                                    |
-| ---------------- | ------------------------------------------------ |
-| `traefik`        | Traefik and its Gateway, the cluster's only port |
-| `temporal-proxy` | temporal-proxy and the Secret it mounts          |
-| `hello`          | The Worker and the API, with Service and route   |
+| Namespace        | What it holds                                         |
+| ---------------- | ----------------------------------------------------- |
+| `traefik`        | Traefik and its Gateway, the cluster's only port      |
+| `temporal-proxy` | temporal-proxy and the ConfigMap and Secrets it reads |
+| `hello`          | The Worker and the API, with Service and route        |
 
 Traefik's web entrypoint is the single published port, and the API is
 the only route behind it. Everything else is reachable only from inside
@@ -127,11 +127,11 @@ k8s/base/proxy/certs/client.pem + client.key
 ```
 
 That hash is the rotation mechanism. Replace the certificate, run
-`make deploy`, and the Secret's name changes; Kustomize rewrites the
+`make apply`, and the Secret's name changes; Kustomize rewrites the
 Deployment's reference to match, the pod template changes, and Kubernetes
-rolls temporal-proxy on its own. No operator watches the Secret, and no
-`kubectl rollout restart` is needed — which matters, because
-temporal-proxy reads its certificate once, at startup.
+rolls temporal-proxy — and only temporal-proxy — on its own. No operator
+watches the Secret, and no `kubectl rollout restart` is needed, which
+matters because temporal-proxy reads its certificate once, at startup.
 
 The scenario's `config.yaml` works the same way, through a
 `configMapGenerator`: editing the configuration rolls the pods too.
