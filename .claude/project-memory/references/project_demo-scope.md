@@ -28,7 +28,7 @@ temporal-proxy is configured to do:
    temporal-proxy resolves to gocloud's local
    `base64key://` keeper, so one shape of the scenario
    needs no additional component — at the cost of a scheme
-   upstream marks as unfit for anything but local runs.
+   that upstream marks as unfit for anything but local runs.
 
 Inbound authentication and authorization (static token,
 JWKS, authorizer extension server) are deliberately out of

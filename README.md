@@ -126,8 +126,9 @@ k8s/base/proxy/certs/client.pem + client.key
   → the cert and key paths in the scenario's config.yaml
 ```
 
-That hash is the rotation mechanism. Replace the certificate, run
-`make apply`, and the Secret's name changes; Kustomize rewrites the
+That hash is the rotation mechanism. Replace the certificate and run
+`make apply`, the narrower target that deploys the scenario without
+rebuilding the image. The Secret's name changes; Kustomize rewrites the
 Deployment's reference to match, the pod template changes, and Kubernetes
 rolls temporal-proxy — and only temporal-proxy — on its own. No operator
 watches the Secret, and no `kubectl rollout restart` is needed, which
