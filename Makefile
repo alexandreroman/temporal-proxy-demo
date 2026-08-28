@@ -33,6 +33,15 @@ TRAEFIK_PORT ?= 8080
 # applied from the pinned upstream release before it.
 GATEWAY_API_VERSION ?= v1.6.1
 
+# Which scenario to deploy to the cluster. Each one is a directory under
+# k8s/scenarios/: a Kustomize overlay and one temporal-proxy values
+# file. Switch with `make apply K8S_SCENARIO=<name>`.
+#
+# Named apart from the Compose SCENARIO above: that one is computed
+# from PROXY_CONFIG with a plain `=`, which would silently overwrite a
+# `?=` default given the same name, in either order.
+K8S_SCENARIO ?= credentials
+
 # What a running stack publishes is whatever Compose bound, so ask Compose
 # rather than guess — the answer already accounts for compose.override.yaml.
 # An empty answer means the service is down, and the default above is then the
@@ -256,6 +265,11 @@ cluster-up: cluster-create ## Create the cluster and install its platform compon
 		--repo https://helm.releases.hashicorp.com --version 0.34.1 \
 		--namespace vault \
 		-f k8s/charts/vault.yaml --wait
+	helm --kube-context kind-$(CLUSTER) upgrade --install \
+		vault-secrets-operator vault-secrets-operator \
+		--repo https://helm.releases.hashicorp.com --version 1.5.1 \
+		--namespace vault-secrets-operator --create-namespace \
+		-f k8s/charts/vault-secrets-operator.yaml --wait
 
 # Paired with cluster-up.
 .PHONY: cluster-down
@@ -285,3 +299,7 @@ vault-cert: ## Load the Temporal Cloud client certificate into Vault
 	@$(KUBECTL_VAULT) exec vault-0 -- sh -c 'VAULT_TOKEN=root \
 		vault kv put secret/temporal-cloud tls.crt=@/tmp/tls.crt tls.key=@/tmp/tls.key; \
 		rm -f /tmp/tls.crt /tmp/tls.key'
+
+.PHONY: apply
+apply: ## Apply the scenario's Kustomize overlay
+	kubectl --context kind-$(CLUSTER) apply -k k8s/scenarios/$(K8S_SCENARIO)
