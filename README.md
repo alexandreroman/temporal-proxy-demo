@@ -1,4 +1,4 @@
-# temporal-proxy-demo
+# Temporal Proxy Demo
 
 Runs Temporal Workers that know nothing about the Temporal Service they
 talk to. [temporal-proxy][proxy] sits in front of them and owns the

@@ -180,7 +180,7 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 	web_ui=$(call published-port,temporal,8233); \
 	temporal_proxy=$(call published-port,temporal-proxy,7233); \
 	printf '%s\n' \
-		'# temporal-proxy-demo' \
+		'# Temporal Proxy Demo' \
 		'' \
 		'| Service | Address |' \
 		'| --- | --- |' \
