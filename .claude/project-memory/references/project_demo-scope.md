@@ -1,6 +1,6 @@
 ---
 name: "Demo scope and scenarios"
-description: "What Temporal Proxy Demo demonstrates, for whom, and which Vault scenarios are in scope"
+description: "What Temporal Proxy Demo demonstrates, for whom, and which scenarios are in scope"
 type: project
 ---
 
@@ -10,18 +10,20 @@ The project is a teaching demo, not a product: it shows
 how a Temporal Worker and HTTP API run against
 temporal-proxy on Kubernetes while carrying no upstream
 connection details of their own. Temporal Cloud is the
-demo's one upstream. The scenario axis is what Vault is
-used for:
+demo's one upstream. The scenario axis is what
+temporal-proxy is configured to do:
 
-1. **`credentials`** — Vault as a vault: custodian of the
-   Temporal Cloud client certificate, synced into a
-   Kubernetes Secret by the Vault Secrets Operator and
-   mounted by temporal-proxy.
-2. **`encryption`** — Vault as a KMS: Vault's Transit
-   engine wraps a data encryption key per payload through
-   an extension server, so Temporal Cloud stores
-   ciphertext only, rendered readable again by a codec
-   server in the Cloud Web UI.
+1. **`credentials`** — temporal-proxy reaches Temporal
+   Cloud with a client certificate mounted from a
+   Kubernetes Secret that Kustomize generates, its name
+   carrying a content hash so that replacing the
+   certificate rolls the Deployment.
+2. **`encryption`** — an open question: an encryption
+   scenario is intended, wrapping a data encryption key
+   per payload through an extension server so that Temporal
+   Cloud stores ciphertext only, rendered readable again by
+   a codec server in the Cloud Web UI. Which KMS backs that
+   extension server is undecided.
 
 Inbound authentication and authorization (static token,
 JWKS, authorizer extension server) are deliberately out of
@@ -30,10 +32,11 @@ scope.
 **Why:** the audience is developers and platform teams
 evaluating temporal-proxy; a demo that covers everything
 teaches nothing. These two scenarios are the ones that
-change how Vault is used, not how Worker code is written —
-the Worker and the API stay byte-identical across both.
+change how temporal-proxy is configured, not how Worker
+code is written — the Worker and the API stay
+byte-identical across both.
 
 **How to apply:** when adding material, ask which scenario
-it serves, or whether it changes how Vault is used at all.
-Anything that serves neither belongs in a different
-repository.
+it serves, or whether it changes how temporal-proxy is
+configured at all. Anything that serves neither belongs in
+a different repository.

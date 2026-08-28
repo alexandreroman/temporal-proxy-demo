@@ -16,9 +16,9 @@ is built from, so that variable name is a contract between
 the two files. `.casper.json` also copies `.env`,
 `client.pem` and `client.key` into a fresh workspace —
 matched by basename, so the certificate pair lands back
-under `proxy/certs/` — and a workspace deploys the whole
-demo as soon as `.env` holds valid Temporal Cloud values
-and that certificate pair is present.
+under `k8s/base/proxy/certs/` — and a workspace deploys
+the whole demo as soon as `.env` holds valid Temporal
+Cloud values and that certificate pair is present.
 
 The Make targets it calls are neutral: they are named for
 what they do and are useful without any workspace tool.
@@ -33,7 +33,7 @@ The info panel mirrors the stack at the two ends of its
 lifecycle: `deploy` publishes `make endpoints` once the
 rollout is up, and `cluster-down` clears the panel once the
 cluster is gone. Targets in between, such as `cluster-up`
-and `proxy-down`, touch neither the panel nor
+and `apply`, touch neither the panel nor
 `make endpoints`.
 
 **Why:** the demo has to read as an ordinary Temporal demo

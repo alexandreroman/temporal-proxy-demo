@@ -15,12 +15,11 @@ server listens on `localhost:7233` with a Namespace named
 no environment variable needs setting.
 
 **Why:** the Kind cluster demonstrates the deployment
-story — Traefik, Vault, the Vault Secrets Operator and
-temporal-proxy wired together — and rebuilding an image
-and restarting pods on every change is the wrong inner
-loop for editing Go. The Worker and the API are the same
-binaries either way, so nothing about the dev-server loop
-diverges from what the cluster runs.
+story — Traefik and temporal-proxy wired together — and
+rebuilding an image and restarting pods on every change is
+the wrong inner loop for editing Go. The Worker and the
+API are the same binaries either way, so nothing about the
+dev-server loop diverges from what the cluster runs.
 
 **How to apply:** run `temporal server start-dev` in one
 terminal, then `go run ./cmd/worker` and `go run

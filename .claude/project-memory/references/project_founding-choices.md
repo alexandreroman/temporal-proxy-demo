@@ -11,10 +11,10 @@ type: project
   can follow both sides of the wire without a language
   switch.
 - **Kubernetes on Kind** as the only runtime for the demo:
-  a local cluster brings up Traefik, Vault, the Vault
-  Secrets Operator and temporal-proxy through Helm, and the
-  application's own manifests through Kustomize, all with
-  one command, `make deploy`.
+  a local cluster brings up Traefik through Helm, and
+  everything else — temporal-proxy, the Worker and the
+  API — through Kustomize, all with one command,
+  `make deploy`.
 - **Apache-2.0** as the repository license, even though
   temporal-proxy upstream is MIT.
 
