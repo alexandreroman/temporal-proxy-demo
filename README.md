@@ -97,7 +97,7 @@ make app-down
 
 Moving the whole demo from the local dev server to Temporal Cloud is a
 change of proxy configuration and nothing else — no Go code touched, no
-image rebuilt, and no restart of the Worker or the API:
+image rebuilt:
 
 ```bash
 make use-cloud
@@ -108,25 +108,22 @@ make use-local
 `make use-cloud` refuses unless `TEMPORAL_CLOUD_NAMESPACE` and
 `TEMPORAL_ACCOUNT` are set in `.env` and both `proxy/certs/client.pem`
 and `proxy/certs/client.key` exist, and it names everything that is
-missing. The check is deliberate: the gateway validates all of it on
-startup, so an incomplete setup would leave it crash-looping with the
-reason buried in its log.
+missing. The check is deliberate: temporal-proxy validates all of it
+on startup, so an incomplete setup would leave it crash-looping with
+the reason buried in its log.
 
-Both targets record the choice in `.env` and print the scenario they
-selected. When the gateway is running they recreate it on the spot, so
-the new upstream is live straight away; when it is not, the choice is
-recorded and applies the next time the stack starts. `make scenario`
-prints the active one.
+Both targets record the choice in `.env`, apply it, and print the
+scenario they selected, so the new upstream is live straight away. The
+switch starts temporal-proxy if it is down rather than deferring the
+choice. `make scenario` prints the active one.
 
-The switch needs no restart of the Worker or the API: both re-establish
-their poll through the new gateway on their own, which is the property
-this demo claims. Left alone they take 35 seconds — around half a minute
-is normal — and repeated switches lengthen that, because the SDK's gRPC
-channel backs off exponentially while the old gateway address is
-unreachable. To make the switch look instant, in front of an audience
-for instance, `docker compose restart worker app` brings the demo back
-in 3 seconds; that is a convenience, not a requirement. Until one or the
-other happens, `make demo` returns 500.
+Applying it means recreating temporal-proxy and restarting the Worker
+and the API, so nothing keeps polling the upstream that was just left
+behind. The command comes back in about six seconds and `make demo`
+answers right after: some nine seconds from typing the switch to reading
+a greeting, two and a half of which are the hello Workflow's own
+Activity. A request fired in the very same instant can still be refused
+while the API binds its port again — retry once.
 
 Two things the switch does not do:
 

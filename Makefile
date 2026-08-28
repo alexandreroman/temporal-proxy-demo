@@ -61,19 +61,12 @@ infra-down: ## Stop the Temporal dev server and the proxy
 PROXY_CONFIG ?= ./proxy/local.yaml
 SCENARIO = $(basename $(notdir $(PROXY_CONFIG)))
 
-# Is the gateway serving right now? `docker compose ps` lists a container that
-# keeps restarting as readily as a healthy one, so match the state it reports
-# rather than test `ps -q` for an id — a crash-looping gateway is not running.
-# `grep -q` prints nothing and exits non-zero when it finds no match, which is
-# exactly what the `if` below reads.
-gateway-running = docker compose ps --format '{{.Service}} {{.State}}' 2>/dev/null | grep -q '^temporal-proxy running'
-
 # The cloud scenario needs two values and a client certificate, all of which
-# the gateway validates on startup: with any of them missing it recreates and
-# then crash-loops on a configuration error, far from the command that caused
-# it. Refuse before touching .env, and name everything that is missing rather
-# than only the first thing. A .env that does not exist yet leaves these
-# variables empty, which counts as missing here.
+# temporal-proxy validates on startup: with any of them missing it recreates
+# and then crash-loops on a configuration error, far from the command that
+# caused it. Refuse before touching .env, and name everything that is missing
+# rather than only the first thing. A .env that does not exist yet leaves
+# these variables empty, which counts as missing here.
 define require-cloud-setup
 missing=''; \
 [ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
@@ -88,9 +81,9 @@ if [ -n "$$missing" ]; then \
 fi
 endef
 
-# Records the chosen scenario in .env, then applies it to a gateway that is
-# already up. Both outcomes are announced: a switch that silently changes
-# nothing is the one failure mode that reads as success.
+# Records the chosen scenario in .env, then applies it: temporal-proxy is
+# recreated on the new configuration and the application containers restart
+# behind it.
 #
 # awk rewrites the PROXY_CONFIG line where it stands, so the comment above it
 # keeps describing the line below it, and appends the line only when the file
@@ -98,6 +91,10 @@ endef
 # whose syntax differs between BSD and GNU. Exporting the new value first
 # means the `docker compose` calls below see it: the value make exported at
 # startup is the previous one, and Compose lets the environment win over .env.
+#
+# The switch needs no guard on what is running: `up -d --force-recreate` starts
+# temporal-proxy when it is down as readily as it replaces a live one, and
+# `restart` is a silent no-op that exits 0 on a container that does not exist.
 define set-scenario
 export PROXY_CONFIG='./proxy/$(1).yaml'; \
 [ -f .env ] || cp .env.example .env; \
@@ -106,13 +103,10 @@ awk -v line="PROXY_CONFIG=$$PROXY_CONFIG" \
   '/^PROXY_CONFIG=/ { print line; found = 1; next } { print } END { if (!found) print line }' \
   .env > $$tmp; \
 mv $$tmp .env; \
-if $(gateway-running); then \
-  docker compose up -d --force-recreate temporal-proxy; \
-  $(publish-endpoints); \
-  echo "Scenario '$(1)' selected, gateway recreated."; \
-else \
-  echo "Scenario '$(1)' selected, recorded in .env: it applies the next time the stack starts."; \
-fi
+docker compose up -d --force-recreate temporal-proxy; \
+$(publish-endpoints); \
+docker compose restart worker app; \
+echo "Scenario '$(1)' is live: temporal-proxy serves it, and Workers and Clients connect through it."
 endef
 
 .PHONY: use-local
