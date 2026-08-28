@@ -87,7 +87,7 @@ make demo
 ```
 
 ```json
-{"greeting":"Hello, Temporal!"}
+{"greeting":"Hello, Temporal!","workflowId":"hello-9f1c…","runId":"01a0…"}
 ```
 
 `make worktree-init` writes `k8s/kind-config.yaml`, which pins the one
@@ -96,6 +96,11 @@ installs everything in it and waits for the rollout. The answer takes
 about two seconds — the Activity sleeps, so there is time to watch the
 Execution in the Cloud Web UI. `make endpoints` prints the addresses,
 and `make demo NAME=Alex` greets someone else.
+
+The API also serves a page at the published address, which
+`make endpoints` prints: one button starts an Execution, and the request
+is drawn travelling through the stack. The page and `make demo` are two
+ways into the same endpoint.
 
 On a cluster that has just been created, Traefik loads a new route a
 moment after the rollout finishes, so the very first `make demo` can
@@ -144,15 +149,17 @@ at startup.
 
 ## What the application does not carry
 
-The Worker and the API get two environment variables, and neither
-describes an upstream:
+The Worker and the API each get the same two environment variables, and
+neither describes an upstream. The API gets a third, the display label
+for the page it serves:
 
-| Variable             | Value                                |
-| -------------------- | ------------------------------------ |
-| `TEMPORAL_ADDRESS`   | `temporal-proxy.temporal-proxy:7233` |
-| `TEMPORAL_NAMESPACE` | `demo`                               |
+| Variable             | Value                                | Workload       |
+| -------------------- | ------------------------------------ | -------------- |
+| `TEMPORAL_ADDRESS`   | `temporal-proxy.temporal-proxy:7233` | Worker and API |
+| `TEMPORAL_NAMESPACE` | `demo`                               | Worker and API |
+| `TEMPORAL_TARGET`    | `cloud`                              | API            |
 
-That is a cluster-local address, dialled in plaintext, and a short
+Those two are a cluster-local address, dialled in plaintext, and a short
 Namespace name. Nothing else is needed because everything else lives in
 temporal-proxy's configuration: the Cloud host name, the TLS material,
 and the rewrite from `demo` to the fully-qualified Cloud Namespace.
@@ -160,11 +167,19 @@ and the rewrite from `demo` to the fully-qualified Cloud Namespace.
 which upstream serves it — picking an upstream is not something the
 application can do.
 
+`TEMPORAL_TARGET` is the one word the application carries about where it
+connects, and it holds to the same rule because it is a label rather
+than knowledge: the value arrives from the deployment, the page renders
+it, and nothing in the Go code compares it to anything. Leave it unset
+and the page reports that the destination is unnamed rather than
+guessing one.
+
 The short name is `demo` rather than `default` because one
 temporal-proxy fronts several applications, so the name each one asks
-for has to identify it. Both variables also have fallbacks in the
-code — `localhost:7233` and `default`, what a `temporal server
-start-dev` serves — so the binaries run unchanged outside the cluster.
+for has to identify it. `TEMPORAL_ADDRESS` and `TEMPORAL_NAMESPACE` also
+have fallbacks in the code — `localhost:7233` and `default`, what a
+`temporal server start-dev` serves — so the binaries run unchanged
+outside the cluster.
 
 ## Limit of this demo
 

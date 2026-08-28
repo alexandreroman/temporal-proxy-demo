@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>hello-workflow · temporal-proxy demo</title>
+
+    <!-- Alpine reveals these once it has evaluated their state, so nothing flashes first. -->
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+    </style>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono&display=swap"
+    />
+
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.3"></script>
+
+    <style type="text/tailwindcss">
+      @theme {
+        /* temporal.io's own palette. No colour outside this list appears on the page. */
+        --color-ink: #141414;
+        --color-surface: #1B1B1B;
+        --color-hairline: #2A2A2A;
+        --color-violet: #B664FF;
+        --color-indigo: #444CE7;
+        --color-mint: #1FF1A5;
+        --color-pink: #FF6BFF;
+        --color-fg: #F5F5F5;
+        --color-muted: #8A8A8A;
+
+        --font-sans: "Schibsted Grotesk", ui-sans-serif, sans-serif;
+        --font-mono: "Noto Sans Mono", ui-monospace, monospace;
+      }
+
+      /* ------------------------------------------------------------------------------------
+         The rail: four stations sitting on one hairline. It runs top to bottom on narrow
+         screens and left to right from 1024px, in the same order either way.
+
+         The 1rem node is the alignment reference: the line and the arrowheads carry small
+         offsets so they sit on its centre. Each station and each leg picks its own accent
+         through --rail-accent.
+         ------------------------------------------------------------------------------------ */
+      .rail {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        --rail-accent: var(--color-violet);
+      }
+
+      .rail-violet {
+        --rail-accent: var(--color-violet);
+      }
+
+      .rail-indigo {
+        --rail-accent: var(--color-indigo);
+      }
+
+      .rail-pink {
+        --rail-accent: var(--color-pink);
+      }
+
+      .rail-station {
+        display: flex;
+        gap: 0.875rem;
+      }
+
+      .rail-node {
+        flex: none;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid var(--color-hairline);
+        border-radius: 9999px;
+        background-color: var(--color-ink);
+        transition: background-color 200ms, border-color 200ms, box-shadow 200ms;
+      }
+
+      .rail-station-lit .rail-node {
+        border-color: var(--rail-accent);
+        background-color: var(--rail-accent);
+        box-shadow: 0 0 0 5px color-mix(in oklab, var(--rail-accent) 16%, transparent);
+      }
+
+      .rail-station-lit .rail-name {
+        color: var(--color-fg);
+      }
+
+      /* The record of the run that just finished: quieter than the pulse that went through,
+         still unmistakably brighter than a rail nothing has travelled. */
+      .rail-station-done .rail-node {
+        border-color: color-mix(in oklab, var(--rail-accent) 55%, var(--color-hairline));
+        background-color: color-mix(in oklab, var(--rail-accent) 30%, var(--color-ink));
+      }
+
+      .rail-station-done .rail-name {
+        color: color-mix(in oklab, var(--color-fg) 65%, var(--color-muted));
+      }
+
+      /* The dwell: the request is at the Worker and the Activity really is sleeping. */
+      .rail-station-waiting .rail-node {
+        animation: rail-dwell 1.4s ease-in-out infinite;
+      }
+
+      @keyframes rail-dwell {
+        0%,
+        100% {
+          box-shadow: 0 0 0 5px color-mix(in oklab, var(--rail-accent) 28%, transparent);
+        }
+        50% {
+          box-shadow: 0 0 0 13px color-mix(in oklab, var(--rail-accent) 0%, transparent);
+        }
+      }
+
+      .rail-leg {
+        position: relative; /* the caliper mark below is positioned against the leg */
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .rail-line {
+        flex: 1;
+        width: 2px;
+        min-height: 2.75rem;
+        margin-left: 7px; /* centred under the 1rem node */
+        background-color: var(--color-hairline);
+        background-repeat: no-repeat;
+        transition: background-color 200ms;
+      }
+
+      .rail-leg-lit .rail-line {
+        background-color: var(--rail-accent);
+      }
+
+      .rail-leg-lit .rail-arrow {
+        color: var(--rail-accent);
+      }
+
+      .rail-leg-done .rail-line {
+        background-color: color-mix(in oklab, var(--rail-accent) 45%, var(--color-hairline));
+      }
+
+      .rail-leg-done .rail-arrow {
+        color: color-mix(in oklab, var(--rail-accent) 45%, var(--color-hairline));
+      }
+
+      /* The travelling pulse. Its duration has to match OUTBOUND_LEG_MS / RETURN_LEG_MS. */
+      .rail-leg-out .rail-line,
+      .rail-leg-back .rail-line {
+        background-image: linear-gradient(180deg, transparent, var(--rail-accent), transparent);
+        background-size: 100% 45%;
+        animation: rail-travel-block 200ms linear;
+      }
+
+      .rail-leg-back .rail-line {
+        --rail-accent: var(--color-mint);
+        animation-duration: 170ms;
+        animation-direction: reverse;
+      }
+
+      @keyframes rail-travel-block {
+        from {
+          background-position: 0 -45%;
+        }
+        to {
+          background-position: 0 145%;
+        }
+      }
+
+      @keyframes rail-travel-inline {
+        from {
+          background-position: -45% 0;
+        }
+        to {
+          background-position: 145% 0;
+        }
+      }
+
+      .rail-arrow {
+        flex: none;
+        width: 8px;
+        height: 8px;
+        margin-left: 4px; /* the arrowhead points down the vertical rail */
+        color: var(--color-hairline);
+        transform: rotate(90deg);
+        transition: color 200ms;
+      }
+
+      /* A caliper mark on the rail. Both the tick and its label are out of flow, so this leg's
+         line and arrowhead measure exactly like the legs on either side of it. On the vertical
+         rail the mark reads left to right, next to the line. */
+      .rail-marker {
+        position: absolute;
+        top: 50%;
+        left: 8px; /* just off the 2px line, which starts at 7px */
+        width: 1.25rem;
+        border-top: 1px dashed var(--color-hairline);
+      }
+
+      .rail-marker-label {
+        position: absolute;
+        top: 50%;
+        left: 2.25rem; /* clear of the tick */
+        transform: translateY(-50%);
+        white-space: nowrap;
+      }
+
+      /* The two destinations the Temporal station forks into. The one the deployment named is
+         solid and lit; the other stays a dashed ghost. */
+      .rail-fork {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .rail-branch {
+        border: 1px dashed var(--color-hairline);
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        color: var(--color-muted);
+        transition: background-color 200ms, border-color 200ms, color 200ms;
+      }
+
+      .rail-branch-active {
+        border-style: solid;
+        border-color: var(--rail-accent);
+        background-color: color-mix(in oklab, var(--rail-accent) 10%, transparent);
+        color: var(--color-fg);
+      }
+
+      .rail-detail {
+        max-width: 18rem;
+      }
+
+      @media (min-width: 1024px) {
+        .rail {
+          flex-direction: row;
+          align-items: flex-start;
+        }
+
+        .rail-station {
+          flex-direction: column;
+          align-items: center;
+          width: 9.5rem;
+          text-align: center;
+        }
+
+        .rail-station-wide {
+          width: 15rem;
+        }
+
+        .rail-leg {
+          flex: 1;
+          flex-direction: row;
+          align-items: flex-start;
+        }
+
+        .rail-line {
+          width: auto;
+          min-width: 2rem;
+          height: 2px;
+          min-height: 0;
+          margin-top: 7px; /* on the centre line of the 1rem nodes */
+          margin-left: 0;
+        }
+
+        .rail-leg-out .rail-line,
+        .rail-leg-back .rail-line {
+          background-image: linear-gradient(90deg, transparent, var(--rail-accent), transparent);
+          background-size: 45% 100%;
+          animation-name: rail-travel-inline;
+        }
+
+        .rail-arrow {
+          margin-top: 4px;
+          margin-left: 0;
+          transform: none;
+        }
+
+        /* On the horizontal rail the mark drops from the line like a dimension leader, far
+           enough that its label clears every station caption on either side. */
+        .rail-marker {
+          top: 8px; /* the centre line of the 1rem nodes */
+          left: 50%;
+          width: 0;
+          height: 6.5rem;
+          border-top: 0;
+          border-left: 1px dashed var(--color-hairline);
+        }
+
+        .rail-marker-label {
+          top: 7.25rem;
+          right: 50%; /* the note hangs to the left of the leader line */
+          left: auto;
+          width: 9.5rem;
+          padding-right: 0.5rem;
+          transform: none;
+          white-space: normal;
+          text-align: right;
+        }
+      }
+
+      /* Every state change survives; only the travel and the glow stop. */
+      @media (prefers-reduced-motion: reduce) {
+        .rail-node,
+        .rail-line,
+        .rail-arrow,
+        .rail-branch {
+          transition: none;
+        }
+
+        .rail-station-waiting .rail-node,
+        .rail-leg-out .rail-line,
+        .rail-leg-back .rail-line {
+          animation: none;
+          background-image: none;
+        }
+      }
+    </style>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.16.3/dist/cdn.min.js"></script>
+  </head>
+
+  <body class="min-h-dvh bg-ink font-sans text-fg antialiased">
+    <main
+      class="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10 lg:gap-12 lg:py-12"
+      x-data="demoConsole('{{ .Target }}')"
+    >
+      <!-- From lg the control row sits beside the header, which is where the page finds the
+           vertical room the rail and the result panel need on a projected screen. -->
+      <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+        <header class="flex flex-col gap-4">
+          <h1 class="text-4xl font-bold tracking-tight lg:text-6xl">hello-workflow</h1>
+          <p class="max-w-2xl text-lg text-muted lg:text-xl">
+            The application dials one plaintext endpoint on localhost and knows nothing about what
+            serves it. temporal-proxy owns the upstream, the TLS, the credentials and the Namespace
+            rewrite.
+          </p>
+        </header>
+
+        <!-- A real form, so Enter in the input starts a run just like the button does. -->
+        <form class="flex flex-wrap items-end gap-4" @submit.prevent="run()">
+          <div class="flex flex-col gap-2">
+            <label class="font-mono text-xs tracking-widest text-muted uppercase" for="name">name</label>
+            <input
+              id="name"
+              name="name"
+              value="Temporal"
+              autocomplete="off"
+              x-model="name"
+              class="w-56 rounded-md border border-hairline bg-surface px-4 py-3 text-lg
+                     focus-visible:border-violet focus-visible:outline-2 focus-visible:outline-offset-2
+                     focus-visible:outline-violet lg:w-72 lg:text-xl"
+            />
+          </div>
+          <button
+            type="submit"
+            :disabled="status === 'running'"
+            x-text="status === 'running' ? 'Running…' : 'Run a Workflow'"
+            class="rounded-md bg-violet px-6 py-3 text-lg font-semibold text-ink
+                   focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet
+                   disabled:bg-hairline disabled:text-muted lg:text-xl"
+          >
+            Run a Workflow
+          </button>
+        </form>
+      </div>
+
+      <ol class="rail w-full">
+        <li class="rail-station rail-violet" :class="stationClass(0)">
+          <span class="rail-node"></span>
+          <div class="flex flex-col gap-1.5">
+            <p class="rail-name font-mono text-base text-muted lg:text-lg">application</p>
+            <p class="rail-detail font-mono text-xs leading-relaxed text-muted">
+              localhost:7233 · plaintext · namespace "default"
+            </p>
+          </div>
+        </li>
+
+        <li class="rail-leg rail-violet" :class="legClass(0)">
+          <span class="rail-line"></span>
+          <svg class="rail-arrow" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true">
+            <path d="M1 0 7 4 1 8Z" />
+          </svg>
+        </li>
+
+        <li class="rail-station rail-indigo" :class="stationClass(1)">
+          <span class="rail-node"></span>
+          <div class="flex flex-col gap-1.5">
+            <p class="rail-name font-mono text-base text-muted lg:text-lg">temporal-proxy</p>
+            <p class="rail-detail font-mono text-xs leading-relaxed text-muted">
+              one endpoint · the upstream stops here
+            </p>
+          </div>
+        </li>
+
+        <li class="rail-leg rail-indigo" :class="legClass(1)">
+          <span class="rail-line"></span>
+          <svg class="rail-arrow" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true">
+            <path d="M1 0 7 4 1 8Z" />
+          </svg>
+          <span class="rail-marker" aria-hidden="true"></span>
+          <span class="rail-marker-label font-mono text-[0.7rem] leading-snug text-muted">
+            the application's knowledge ends here
+          </span>
+        </li>
+
+        <li class="rail-station rail-station-wide rail-violet" :class="stationClass(2)">
+          <span class="rail-node"></span>
+          <div class="flex flex-col gap-2.5">
+            <p class="rail-name font-mono text-base text-muted lg:text-lg">Temporal</p>
+            <div class="rail-fork">
+              <div class="rail-branch rail-violet" :class="{ 'rail-branch-active': target === 'local' }">
+                <p class="font-mono text-xs lg:text-sm">Temporal dev server</p>
+              </div>
+              <div class="rail-branch rail-pink" :class="{ 'rail-branch-active': target === 'cloud' }">
+                <p class="font-mono text-xs lg:text-sm">Temporal Cloud</p>
+                <p class="mt-1 font-mono text-[0.7rem] leading-snug text-muted">
+                  temporal-proxy adds TLS, the client certificate and the Namespace rewrite
+                </p>
+              </div>
+            </div>
+            <p class="font-mono text-[0.7rem] leading-snug text-muted" x-show="!target" x-cloak>
+              the deployment did not name a destination
+            </p>
+          </div>
+        </li>
+
+        <li class="rail-leg rail-indigo" :class="legClass(2)">
+          <span class="rail-line"></span>
+          <svg class="rail-arrow" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true">
+            <path d="M1 0 7 4 1 8Z" />
+          </svg>
+        </li>
+
+        <li class="rail-station rail-violet" :class="stationClass(3)">
+          <span class="rail-node"></span>
+          <div class="flex flex-col gap-1.5">
+            <p class="rail-name font-mono text-base text-muted lg:text-lg">worker</p>
+            <p class="rail-detail font-mono text-xs leading-relaxed text-muted">
+              localhost:7233 · plaintext · namespace "default"
+            </p>
+          </div>
+        </li>
+      </ol>
+
+      <section
+        class="min-h-44 rounded-xl border border-hairline bg-surface p-6 lg:p-10"
+        aria-live="polite"
+      >
+        <div class="flex flex-col gap-2" x-show="status === 'idle'">
+          <p class="text-2xl lg:text-3xl">Nothing has run yet.</p>
+          <p class="text-muted lg:text-lg">
+            Press Run a Workflow — the application starts one Workflow Execution and waits for its
+            result.
+          </p>
+        </div>
+
+        <p class="font-mono text-muted lg:text-lg" x-show="status === 'running'" x-cloak>
+          waiting for the response…
+        </p>
+
+        <template x-if="status === 'done'">
+          <div class="flex flex-col gap-6">
+            <p class="text-3xl font-bold text-mint lg:text-5xl" x-text="result.greeting"></p>
+            <dl class="grid gap-x-8 gap-y-2 font-mono text-sm sm:grid-cols-[auto_1fr] lg:text-base">
+              <dt class="text-muted">workflow id</dt>
+              <dd class="break-all" x-text="result.workflowId"></dd>
+              <dt class="text-muted">run id</dt>
+              <dd class="break-all" x-text="result.runId"></dd>
+              <dt class="text-muted">duration</dt>
+              <dd x-text="formatDuration(durationMs)"></dd>
+            </dl>
+          </div>
+        </template>
+
+        <template x-if="status === 'error'">
+          <div class="flex flex-col gap-3 border-l-2 border-hairline pl-5">
+            <p class="font-mono text-xs tracking-widest text-muted uppercase">request failed</p>
+            <p class="text-2xl lg:text-3xl" x-text="error.title"></p>
+            <p class="max-w-3xl text-muted lg:text-lg" x-text="error.hint"></p>
+          </div>
+        </template>
+      </section>
+    </main>
+
+    <script>
+      // The outbound legs are ordering, not progress: they say where the request goes, quickly.
+      // Both durations have to stay in step with the .rail-leg-out / .rail-leg-back animations.
+      const OUTBOUND_LEG_MS = 200;
+      const RETURN_LEG_MS = 170;
+
+      // application, temporal-proxy, Temporal, worker — so three legs between four stations.
+      const LAST_STATION = 3;
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      document.addEventListener("alpine:init", () => {
+        Alpine.data("demoConsole", (target = "") => ({
+          // Whatever the deployment called its destination: "local", "cloud", or empty when it
+          // named none. An empty value leaves both branches ghosted rather than guessing one.
+          target,
+          name: "Temporal",
+          status: "idle", // idle | running | done | error
+          reached: -1, // the last station the request has reached
+          activeLeg: -1, // the leg the pulse is travelling right now
+          phase: "", // out | dwell | back
+          result: null,
+          durationMs: 0, // the round trip, timed around the fetch
+          error: null,
+
+          async run() {
+            if (this.status === "running") return;
+
+            this.reset();
+            this.status = "running";
+
+            // The request leaving and its response arriving are the only real events. Everything
+            // between them is the rail dwelling on the Worker for as long as the Workflow takes.
+            const request = this.callApi();
+            await this.travelOut();
+            const outcome = await request;
+
+            if (!outcome.ok) {
+              this.phase = "";
+              this.error = outcome.error;
+              this.status = "error";
+              return;
+            }
+
+            await this.travelBack();
+            this.result = outcome.body;
+            this.durationMs = outcome.durationMs;
+            this.status = "done";
+          },
+
+          // Clearing the rail is what makes a second run read like the first one.
+          reset() {
+            this.reached = -1;
+            this.activeLeg = -1;
+            this.phase = "";
+            this.result = null;
+            this.durationMs = 0;
+            this.error = null;
+          },
+
+          async travelOut() {
+            this.phase = "out";
+            this.reached = 0;
+
+            if (this.reducedMotion()) {
+              this.reached = LAST_STATION;
+            } else {
+              for (let leg = 0; leg < LAST_STATION; leg++) {
+                this.activeLeg = leg;
+                await sleep(OUTBOUND_LEG_MS);
+                this.reached = leg + 1;
+              }
+            }
+
+            this.activeLeg = -1;
+            this.phase = "dwell";
+          },
+
+          async travelBack() {
+            this.phase = "back";
+
+            if (!this.reducedMotion()) {
+              for (let leg = LAST_STATION - 1; leg >= 0; leg--) {
+                this.activeLeg = leg;
+                await sleep(RETURN_LEG_MS);
+              }
+            }
+
+            this.activeLeg = -1;
+            this.phase = "";
+          },
+
+          // Returns an outcome instead of throwing, so run() reads as one straight sequence.
+          async callApi() {
+            const name = this.name.trim() || "Temporal";
+
+            // The browser is where the round trip can be timed end to end.
+            const start = performance.now();
+
+            try {
+              const response = await fetch("/hello", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name }),
+              });
+
+              // A refusal comes back as plain text, so only a success is read as JSON.
+              if (!response.ok) {
+                const message = (await response.text()).trim();
+                return { ok: false, error: this.serverError(response.status, message) };
+              }
+
+              const body = await response.json();
+              return { ok: true, body, durationMs: Math.round(performance.now() - start) };
+            } catch {
+              return {
+                ok: false,
+                error: {
+                  title: "The API did not answer.",
+                  hint:
+                    "Nothing is serving this port any more. Start the demo again with " +
+                    "`make dev`, then reload this page.",
+                },
+              };
+            }
+          },
+
+          serverError(httpStatus, message) {
+            if (message) {
+              return {
+                title: "The API answered " + httpStatus + ": " + message + ".",
+                hint:
+                  "The Workflow Execution did not return a greeting. Check that a Worker is " +
+                  "running and polling the task queue, then read the app log.",
+              };
+            }
+            return {
+              title: "The API answered " + httpStatus + " without a message.",
+              hint: "Something other than the demo API is serving this port. Read the app log.",
+            };
+          },
+
+          // Over a second, seconds read better; under it, milliseconds are the honest unit.
+          formatDuration(ms) {
+            return ms >= 1000 ? (ms / 1000).toFixed(2) + " s" : ms + " ms";
+          },
+
+          // Two lit states: the bright one follows the request while it travels, the quiet one
+          // stays behind afterwards so the finished rail records the path. An error keeps
+          // neither — a half-done round trip must not read like a success.
+          stationClass(index) {
+            const classes = [];
+            if (this.status === "running" && this.reached >= index) classes.push("rail-station-lit");
+            if (this.status === "done") classes.push("rail-station-done");
+            if (this.phase === "dwell" && index === LAST_STATION) classes.push("rail-station-waiting");
+            return classes;
+          },
+
+          legClass(index) {
+            const classes = [];
+            if (this.status === "running" && this.reached > index) classes.push("rail-leg-lit");
+            if (this.status === "done") classes.push("rail-leg-done");
+            if (this.activeLeg === index) {
+              classes.push(this.phase === "back" ? "rail-leg-back" : "rail-leg-out");
+            }
+            return classes;
+          },
+
+          // Reduced motion keeps every state change; it only stops them travelling.
+          reducedMotion() {
+            return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          },
+        }));
+      });
+    </script>
+  </body>
+</html>

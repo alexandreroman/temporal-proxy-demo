@@ -18,9 +18,26 @@ import (
 // defaultName is greeted when the request carries no name.
 const defaultName = "Temporal"
 
-// greeter runs one greeting and returns its result. The HTTP layer depends on this function
-// rather than on a Temporal client, which keeps the handler testable without a server.
-type greeter func(ctx context.Context, req hello.Request) (hello.Response, error)
+// execution names the Workflow Execution that produced a greeting. The Workflow itself does
+// not report these identifiers — they belong to the Execution, not to its result.
+type execution struct {
+	WorkflowID string
+	RunID      string
+}
+
+// greeter runs one greeting and returns its result, plus the Execution that produced it. The
+// HTTP layer depends on this function rather than on a Temporal client, which keeps the
+// handler testable without a server.
+type greeter func(ctx context.Context, req hello.Request) (hello.Response, execution, error)
+
+// helloResponse is the JSON body of a successful request. The embedded hello.Response
+// contributes its own "greeting" field, so the greeting and the two identifiers sit side by
+// side in the body.
+type helloResponse struct {
+	hello.Response
+	WorkflowID string `json:"workflowId"`
+	RunID      string `json:"runId"`
+}
 
 func helloHandler(greet greeter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -31,15 +48,17 @@ func helloHandler(greet greeter) http.HandlerFunc {
 			return
 		}
 
-		res, err := greet(r.Context(), req)
+		res, exec, err := greet(r.Context(), req)
 		if err != nil {
 			slog.Error("greeting failed", "name", req.Name, "error", err)
 			http.Error(w, "greeting failed", http.StatusInternalServerError)
 			return
 		}
 
+		body := helloResponse{Response: res, WorkflowID: exec.WorkflowID, RunID: exec.RunID}
+
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(res); err != nil {
+		if err := json.NewEncoder(w).Encode(body); err != nil {
 			slog.Error("writing response failed", "error", err)
 		}
 	}
@@ -62,7 +81,7 @@ func decodeRequest(r *http.Request) (hello.Request, error) {
 
 // startHelloWorkflow starts one Workflow Execution and waits for its result.
 func startHelloWorkflow(c client.Client) greeter {
-	return func(ctx context.Context, req hello.Request) (hello.Response, error) {
+	return func(ctx context.Context, req hello.Request) (hello.Response, execution, error) {
 		options := client.StartWorkflowOptions{
 			ID:        "hello-" + uuid.NewString(), // Recognizable in the Web UI, and unique across replays.
 			TaskQueue: hello.TaskQueue,
@@ -70,14 +89,16 @@ func startHelloWorkflow(c client.Client) greeter {
 
 		run, err := c.ExecuteWorkflow(ctx, options, hello.HelloWorkflow, req)
 		if err != nil {
-			return hello.Response{}, fmt.Errorf("start hello workflow: %w", err)
+			return hello.Response{}, execution{}, fmt.Errorf("start hello workflow: %w", err)
 		}
-		slog.Info("workflow started", "workflow_id", run.GetID(), "run_id", run.GetRunID())
+
+		exec := execution{WorkflowID: run.GetID(), RunID: run.GetRunID()}
+		slog.Info("workflow started", "workflow_id", exec.WorkflowID, "run_id", exec.RunID)
 
 		var res hello.Response
 		if err := run.Get(ctx, &res); err != nil {
-			return hello.Response{}, fmt.Errorf("wait for workflow %s: %w", run.GetID(), err)
+			return hello.Response{}, execution{}, fmt.Errorf("wait for workflow %s: %w", exec.WorkflowID, err)
 		}
-		return res, nil
+		return res, exec, nil
 	}
 }

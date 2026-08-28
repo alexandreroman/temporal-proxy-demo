@@ -1,8 +1,9 @@
-// Command app exposes the hello Workflow over HTTP.
+// Command app serves the demo page and exposes the hello Workflow over HTTP.
 //
-// POST /hello takes a JSON body naming who to greet, starts one Workflow Execution, waits
-// for its result and writes the greeting back as JSON. Like the Worker, it only knows a
-// plaintext local Temporal endpoint.
+// GET / renders the page, embedded in the binary. POST /hello takes a JSON body naming who to
+// greet, starts one Workflow Execution, waits for its result and writes the greeting back as
+// JSON, alongside the identifiers of the Execution that produced it. Like the Worker, it only
+// knows a plaintext local Temporal endpoint.
 package main
 
 import (
@@ -83,6 +84,8 @@ func shutdown(srv *http.Server) error {
 
 func newMux(greet greeter) *http.ServeMux {
 	mux := http.NewServeMux()
+	// {$} matches "/" and nothing else, so an unknown path still gets a 404.
+	mux.HandleFunc("GET /{$}", pageHandler())
 	// The method in the pattern makes the mux answer 405 to anything but POST.
 	mux.HandleFunc("POST /hello", helloHandler(greet))
 	return mux

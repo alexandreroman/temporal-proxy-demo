@@ -10,6 +10,7 @@ See [README.md](README.md) for full documentation.
 ## Tech stack
 
 - Go — Temporal Go SDK (Worker) and net/http (API)
+- Tailwind CSS and Alpine.js — the embedded page, both from a CDN
 - temporal-proxy — one gRPC endpoint in front of every upstream
 - Kubernetes on Kind — the local cluster the demo runs in
 - Kustomize — the Worker and the API
@@ -31,7 +32,8 @@ make cluster-down   # delete the cluster
 ## Modules
 
 - `cmd/worker` — Temporal Worker, polling a Task Queue
-- `cmd/app` — HTTP API that starts one Workflow Execution
+- `cmd/app` — HTTP API that starts one Workflow Execution,
+  and the embedded page that drives it
 - `internal/hello` — the hello-workflow Workflow and its Activity
 - `internal/temporalclient` — the shared client: plaintext, no credentials
 - `k8s` — the cluster configuration: the application's manifests in

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -21,13 +22,16 @@ type fakeGreeter struct {
 	err    error
 }
 
-func (f *fakeGreeter) greet(_ context.Context, req hello.Request) (hello.Response, error) {
+func (f *fakeGreeter) greet(_ context.Context, req hello.Request) (hello.Response, execution, error) {
 	f.called = true
 	f.req = req
 	if f.err != nil {
-		return hello.Response{}, f.err
+		return hello.Response{}, execution{}, f.err
 	}
-	return hello.Response{Greeting: "Hello, " + req.Name + "!"}, nil
+
+	res := hello.Response{Greeting: "Hello, " + req.Name + "!"}
+	exec := execution{WorkflowID: "hello-" + req.Name, RunID: "run-1"}
+	return res, exec, nil
 }
 
 func TestHelloEndpoint(t *testing.T) {
@@ -64,14 +68,44 @@ func TestHelloEndpoint(t *testing.T) {
 				t.Errorf("greeted name = %q, want %q", fake.req.Name, tt.wantName)
 			}
 
-			var res hello.Response
+			var res helloResponse
 			if err := json.NewDecoder(rec.Body).Decode(&res); err != nil {
 				t.Fatalf("decoding response body: %v", err)
 			}
 			if want := "Hello, " + tt.wantName + "!"; res.Greeting != want {
 				t.Errorf("greeting = %q, want %q", res.Greeting, want)
 			}
+			if want := "hello-" + tt.wantName; res.WorkflowID != want {
+				t.Errorf("workflow ID = %q, want %q", res.WorkflowID, want)
+			}
+			if want := "run-1"; res.RunID != want {
+				t.Errorf("run ID = %q, want %q", res.RunID, want)
+			}
 		})
+	}
+}
+
+// The page reads three field names off the body, so the embedded hello.Response has to
+// contribute a flat "greeting" and not a nested object.
+func TestHelloEndpointBodyFields(t *testing.T) {
+	t.Parallel()
+
+	var fake fakeGreeter
+	rec := httptest.NewRecorder()
+	newMux(fake.greet).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/hello", nil))
+
+	var got map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode body %q: %v", rec.Body.String(), err)
+	}
+
+	want := map[string]any{
+		"greeting":   "Hello, " + defaultName + "!",
+		"workflowId": "hello-" + defaultName,
+		"runId":      "run-1",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("body = %v, want %v", got, want)
 	}
 }
 
@@ -101,6 +135,9 @@ func TestHelloEndpointRejectsInvalidBody(t *testing.T) {
 			}
 			if fake.called {
 				t.Error("greeter was called, want no workflow started")
+			}
+			if got, want := rec.Header().Get("Content-Type"), "text/plain; charset=utf-8"; got != want {
+				t.Errorf("content type = %q, want %q", got, want)
 			}
 		})
 	}
