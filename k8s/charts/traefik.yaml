@@ -1,0 +1,29 @@
+# Traefik is the cluster's only ingress controller, and its web
+# entrypoint is the only thing this cluster publishes.
+
+# NodePort, so the Kind port mapping on the worker node reaches it.
+service:
+  spec:
+    type: NodePort
+ports:
+  web:
+    nodePort: 30080
+
+providers:
+  kubernetesGateway:
+    enabled: true
+
+# The chart's default Gateway restricts routes to its own namespace, and
+# every workload here lives in another one. Only HTTPRoute is needed, so
+# the chart's Gateway is kept rather than replaced.
+gateway:
+  listeners:
+    web:
+      namespacePolicy:
+        from: All
+
+gatewayClass:
+  enabled: true
+
+global:
+  sendAnonymousUsage: false

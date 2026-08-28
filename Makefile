@@ -29,6 +29,10 @@ CLUSTER ?= $(notdir $(CURDIR))
 # environment variable of its own.
 TRAEFIK_PORT ?= 8080
 
+# Gateway API CRDs are not shipped by the Traefik chart, so they are
+# applied from the pinned upstream release before it.
+GATEWAY_API_VERSION ?= v1.6.1
+
 # What a running stack publishes is whatever Compose bound, so ask Compose
 # rather than guess — the answer already accounts for compose.override.yaml.
 # An empty answer means the service is down, and the default above is then the
@@ -238,6 +242,15 @@ cluster-create: ## Create the Kind cluster
 	@kind get clusters | grep -qx '$(CLUSTER)' || \
 		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml
 	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
+
+.PHONY: cluster-up
+cluster-up: cluster-create ## Create the cluster and install its platform components
+	kubectl --context kind-$(CLUSTER) apply -f \
+		https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
+	helm --kube-context kind-$(CLUSTER) upgrade --install traefik traefik \
+		--repo https://traefik.github.io/charts --version 41.4.0 \
+		--namespace traefik --create-namespace \
+		-f k8s/charts/traefik.yaml --wait
 
 # Paired with cluster-up.
 .PHONY: cluster-down
