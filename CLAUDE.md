@@ -12,10 +12,9 @@ See [README.md](README.md) for full documentation.
 - Go — Temporal Go SDK (Worker) and net/http (API)
 - temporal-proxy — one gRPC endpoint in front of every upstream
 - Kubernetes on Kind — the local cluster the demo runs in
-- Helm and Kustomize — charts for the platform, overlays for the demo
+- Kustomize — every workload in the cluster, one overlay per scenario
+- Helm — Traefik, and nothing else
 - Traefik — the cluster's only published entrypoint
-- Vault and the Vault Secrets Operator — custody of the Temporal Cloud
-  client certificate, synced into a Kubernetes Secret
 - Temporal Cloud — the demo's upstream (TLS + client certificate)
 
 ## Build & run
@@ -98,5 +97,5 @@ not shared with the team.
   into the code is a bug.
 - temporal-proxy is **pre-release**. Pin its version
   explicitly and re-check its config schema against
-  the upstream repo before changing its values files
-  under `k8s/scenarios/`.
+  the upstream repo before changing its configuration
+  files under `k8s/scenarios/`.
