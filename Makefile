@@ -305,3 +305,25 @@ vault-cert: ## Load the Temporal Cloud client certificate into Vault
 .PHONY: apply
 apply: ## Apply the scenario's Kustomize overlay
 	kubectl --context kind-$(CLUSTER) apply -k k8s/scenarios/$(K8S_SCENARIO)
+
+# The Namespace and account id are account-specific, so they are kept out of
+# the committed values file and supplied as a Secret instead, built here from
+# .env. temporal-proxy's envFrom then expands them into the ${VAR} references
+# left literal in its ConfigMap.
+.PHONY: proxy-up
+proxy-up: ## Install temporal-proxy for K8S_SCENARIO
+	@$(require-cloud-setup)
+	kubectl --context kind-$(CLUSTER) -n temporal-proxy \
+		create secret generic temporal-cloud-config \
+		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
+		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)' \
+		--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
+	helm --kube-context kind-$(CLUSTER) upgrade --install temporal-proxy temporal-proxy \
+		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
+		--namespace temporal-proxy \
+		-f k8s/scenarios/$(K8S_SCENARIO)/proxy-values.yaml --wait
+
+.PHONY: proxy-down
+proxy-down: ## Uninstall temporal-proxy
+	helm --kube-context kind-$(CLUSTER) uninstall temporal-proxy \
+		--namespace temporal-proxy --ignore-not-found
