@@ -7,8 +7,8 @@ so the Worker and the API carry no upstream connection, TLS, credential
 or Namespace configuration of their own.
 
 The whole demo runs on a local Kubernetes cluster: Traefik publishes the
-API, Vault holds the Temporal Cloud client certificate, and
-temporal-proxy is the only workload that knows where Temporal is.
+API, and temporal-proxy is the only workload that knows where Temporal
+is.
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
@@ -19,11 +19,11 @@ temporal-proxy is the only workload that knows where Temporal is.
   and either put a `docker` shim on `PATH` or run `make` with
   `CONTAINER_TOOL=podman`
 - [kind][kind] — the local Kubernetes cluster
-- `kubectl` and [Helm][helm] 3.13 or later — `helm uninstall
-  --ignore-not-found` needs it
+- `kubectl` and [Helm][helm] 3 — Traefik's chart is the only one this
+  demo installs
 - Go 1.27 or later — for `make worktree-init` and `make check`
 - A Temporal Cloud Namespace whose accepted client CA signed the
-  certificate in `proxy/certs/`
+  certificate in `k8s/base/proxy/certs/`
 
 The image is built locally and loaded straight into the cluster's nodes,
 so there is no registry and nothing to push.
@@ -33,7 +33,7 @@ so there is no registry and nothing to push.
 Temporal Cloud authenticates temporal-proxy with mTLS, so it needs a
 client certificate signed by a CA the Namespace accepts.
 [`tcld`][tcld] generates both halves. Keep the CA outside this
-repository — only the client pair belongs in `proxy/certs/`:
+repository — only the client pair belongs in `k8s/base/proxy/certs/`:
 
 ```bash
 tcld generate-certificates certificate-authority-certificate \
@@ -46,8 +46,8 @@ tcld generate-certificates end-entity-certificate \
   --organization "my-org" \
   --ca-certificate-file ca.pem \
   --ca-key-file ca.key \
-  --certificate-file proxy/certs/client.pem \
-  --key-file proxy/certs/client.key
+  --certificate-file k8s/base/proxy/certs/client.pem \
+  --key-file k8s/base/proxy/certs/client.key
 ```
 
 Then register the CA on the Namespace, so Cloud accepts certificates it
@@ -61,8 +61,9 @@ tcld namespace accepted-client-ca add \
   --ca-certificate-file ca.pem
 ```
 
-`proxy/certs/` is git-ignored apart from its `.gitkeep`, so the client
-pair stays out of version control. See
+`k8s/base/proxy/certs/` is git-ignored apart from its `.gitkeep`, so the
+client pair stays out of version control. It sits inside the manifests
+because Kustomize reads it from there to build the Secret. See
 [Authenticate with mTLS certificates][mtls] for the Cloud side.
 
 ## Quick start
@@ -76,8 +77,8 @@ plus `a1b2c`):
 cp .env.example .env
 ```
 
-Put the client certificate in `proxy/certs/` as `client.pem` and
-`client.key`, then bring the demo up and trigger a Workflow:
+Put the client certificate in `k8s/base/proxy/certs/` as `client.pem`
+and `client.key`, then bring the demo up and trigger a Workflow:
 
 ```bash
 make worktree-init
@@ -101,13 +102,11 @@ cluster.
 
 ## What runs where
 
-| Namespace                | What it holds                                    |
-| ------------------------ | ------------------------------------------------ |
-| `traefik`                | Traefik and its Gateway, the cluster's only port |
-| `vault`                  | Vault, custodian of the client certificate       |
-| `vault-secrets-operator` | The Vault Secrets Operator                       |
-| `temporal-proxy`         | temporal-proxy and the Secret it mounts          |
-| `hello`                  | The Worker and the API, with Service and route   |
+| Namespace        | What it holds                                    |
+| ---------------- | ------------------------------------------------ |
+| `traefik`        | Traefik and its Gateway, the cluster's only port |
+| `temporal-proxy` | temporal-proxy and the Secret it mounts          |
+| `hello`          | The Worker and the API, with Service and route   |
 
 Traefik's web entrypoint is the single published port, and the API is
 the only route behind it. Everything else is reachable only from inside
@@ -115,30 +114,27 @@ the cluster, temporal-proxy included.
 
 ## How the certificate travels
 
-The certificate never appears in a manifest. It travels from the working
-directory to temporal-proxy's mount, one hop at a time:
+The certificate never appears in a manifest. Kustomize reads it from the
+working directory and builds a Secret whose name carries a hash of the
+certificate's own content:
 
 ```text
-proxy/certs/client.pem + client.key
-  → make vault-cert
-  → Vault KV: secret/temporal-cloud (keys tls.crt and tls.key)
-  → VaultStaticSecret (temporal-cloud-client)
-  → Secret temporal-cloud-client, type kubernetes.io/tls
-  → temporal-proxy's TLS mount
+k8s/base/proxy/certs/client.pem + client.key
+  → secretGenerator in k8s/base/proxy/kustomization.yaml
+  → Secret temporal-cloud-client-<hash> (keys tls.crt and tls.key)
+  → mounted at /etc/temporal-cloud
+  → the cert and key paths in the scenario's config.yaml
 ```
 
-`make vault-cert` streams both files into the Vault pod and writes them
-to the KV path. From there the Vault Secrets Operator does the rest: the
-`VaultStaticSecret` under `k8s/base/vault-secrets/` reads that path and
-creates the Secret, and temporal-proxy's values name that Secret. The KV
-keys are already `tls.crt` and `tls.key`, which is exactly what a
-`kubernetes.io/tls` Secret requires, so nothing has to be transformed on
-the way.
+That hash is the rotation mechanism. Replace the certificate, run
+`make deploy`, and the Secret's name changes; Kustomize rewrites the
+Deployment's reference to match, the pod template changes, and Kubernetes
+rolls temporal-proxy on its own. No operator watches the Secret, and no
+`kubectl rollout restart` is needed — which matters, because
+temporal-proxy reads its certificate once, at startup.
 
-temporal-proxy reads its certificate once, at startup. A rotation in
-Vault therefore only takes effect when the pod restarts, which is what
-`rolloutRestartTargets` on the `VaultStaticSecret` is for: the operator
-restarts the Deployment itself when the Secret's content changes.
+The scenario's `config.yaml` works the same way, through a
+`configMapGenerator`: editing the configuration rolls the pods too.
 
 ## What the application does not carry
 
@@ -166,11 +162,11 @@ local port.
 ## Scenarios
 
 A scenario is one directory under `k8s/scenarios/`: a Kustomize overlay
-and one temporal-proxy values file.
+and one temporal-proxy configuration file.
 
 ```text
 k8s/scenarios/<name>/kustomization.yaml   # the workloads
-k8s/scenarios/<name>/proxy-values.yaml    # temporal-proxy's Helm values
+k8s/scenarios/<name>/config.yaml          # temporal-proxy's configuration
 ```
 
 Deploy one by name:
@@ -180,21 +176,26 @@ make deploy SCENARIO=<name>
 ```
 
 `credentials` is the default and the only scenario shipped today: one
-upstream, Temporal Cloud, reached with a client certificate that came
-from Vault. Everything a scenario changes is in those two files — no Go
-code and no image rebuild.
+upstream, Temporal Cloud, reached with a client certificate mounted from
+a Kubernetes Secret. `config.yaml` is temporal-proxy's own configuration
+file, verbatim, so two scenarios can be read side by side with `diff`.
+Everything a scenario changes is in those two files — no Go code and no
+image rebuild.
 
 ## Limits of this demo
 
-- **Vault is the custodian of the certificate, not its origin.**
-  `make vault-cert` pushes this repository's own certificate into
-  Vault. A real deployment would have Vault issue the material, or
-  receive it from whatever does; here the push is what makes the demo
-  self-contained.
-- **Vault runs in dev mode: in-memory, unsealed, one known root
-  token.** Restarting it loses the certificate. The configuration
-  returns on its own through the chart's postStart hook, and
-  `make vault-cert` reloads the certificate.
+- **The certificate comes from the working directory, not from a secret
+  manager.** temporal-proxy mounts a Kubernetes Secret and reads two
+  files from it; nothing in temporal-proxy can observe how that Secret
+  was filled. A real deployment would have a secret manager fill it.
+  Here Kustomize does, which is what makes the demo self-contained.
+- **Superseded Secrets and ConfigMaps stay on the cluster.** Each
+  rotation creates a new hashed name, and Kustomize prunes nothing, so
+  the old objects remain until the cluster goes.
+- **Changing the account identifiers does not restart temporal-proxy.**
+  They come from `.env` through `make`, outside any kustomization's
+  reach, so they get no content hash. After editing `.env`, run
+  `kubectl -n temporal-proxy rollout restart deploy/temporal-proxy`.
 
 ## License
 
