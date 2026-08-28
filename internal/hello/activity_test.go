@@ -16,17 +16,17 @@ func TestGreet(t *testing.T) {
 	env := suite.NewTestActivityEnvironment()
 	env.RegisterActivity(Greet)
 
-	result, err := env.ExecuteActivity(Greet, "Ada")
+	result, err := env.ExecuteActivity(Greet, Request{Name: "Ada"})
 	if err != nil {
 		t.Fatalf("ExecuteActivity() error = %v, want nil", err)
 	}
 
-	var got string
+	var got Response
 	if err := result.Get(&got); err != nil {
 		t.Fatalf("Get() error = %v, want nil", err)
 	}
-	if want := "Hello, Ada!"; got != want {
-		t.Errorf("greeting = %q, want %q", got, want)
+	if want := (Response{Greeting: "Hello, Ada!"}); got != want {
+		t.Errorf("response = %+v, want %+v", got, want)
 	}
 }
 
@@ -43,7 +43,7 @@ func TestGreetCancelled(t *testing.T) {
 	env.RegisterActivity(Greet)
 
 	// The SDK wraps Activity failures, so only the presence of an error is asserted.
-	if _, err := env.ExecuteActivity(Greet, "Ada"); err == nil {
+	if _, err := env.ExecuteActivity(Greet, Request{Name: "Ada"}); err == nil {
 		t.Fatal("ExecuteActivity() error = nil, want a cancellation error")
 	}
 }
