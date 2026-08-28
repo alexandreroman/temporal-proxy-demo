@@ -2,15 +2,15 @@
 #
 # One of the two scenario configs. `PROXY_CONFIG` in .env decides which one
 # Compose mounts; this one forwards every request to the Temporal dev
-# server running alongside it in Compose. Its twin, cloud.yaml, points the
-# same gateway at Temporal Cloud without the application noticing.
+# server running alongside it in Compose. Its twin, cloud.yaml, points
+# temporal-proxy at Temporal Cloud without the application noticing.
 #
-# The gateway is the only endpoint Workers and Clients know about. It
+# temporal-proxy is the only endpoint Workers and Clients know about. It
 # listens in plaintext, and so does the upstream: both sit on the same
 # Compose network, so there is no TLS and no credential to configure.
 #
-# Bind 0.0.0.0 rather than 127.0.0.1 so the gateway is reachable from the
-# host and from other containers on the Compose network.
+# Bind 0.0.0.0 rather than 127.0.0.1 so temporal-proxy is reachable from
+# the host and from other containers on the Compose network.
 hostPort: 0.0.0.0:7233
 
 routing:

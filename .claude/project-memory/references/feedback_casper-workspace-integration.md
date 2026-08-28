@@ -9,10 +9,12 @@ type: feedback
 `.casper.json` maps the three Casper lifecycle
 hooks onto ordinary Make targets and holds the
 port arithmetic: `CASPER_PORT` + 0 for the HTTP
-API, + 1 for the gRPC gateway, + 2 for the
-Temporal Web UI. The workspace's default command
-brings the stack up in containers, so a fresh
-workspace is self-contained.
+API, + 1 for temporal-proxy, + 2 for the Temporal
+Web UI. It sets those ports as the Make variables
+`worktree-init` reads, so those variable names are
+a contract between the two files. The workspace's
+default command brings the stack up in containers,
+so a fresh workspace is self-contained.
 
 The Make targets it calls are neutral: they are
 named for what they do and are useful without any

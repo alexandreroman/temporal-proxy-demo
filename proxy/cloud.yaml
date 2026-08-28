@@ -3,20 +3,20 @@
 # Deliberately a decal of local.yaml: `diff proxy/local.yaml
 # proxy/cloud.yaml` shows the upstream and little else. Moving the whole
 # demo from the dev server to Temporal Cloud is exactly that diff — no Go
-# code touched, no image rebuilt. The application still dials the gateway
-# in plaintext, still calls its Namespace `default`, and still carries no
-# TLS material and no credentials. Everything Cloud requires is added
-# below, on the far side of the gateway.
+# code touched, no image rebuilt. The application still dials
+# temporal-proxy in plaintext, still calls its Namespace `default`, and
+# still carries no TLS material and no credentials. Everything Cloud
+# requires is added below, out of the application's sight.
 #
-# The gateway proves who it is with a client certificate: `cert` and `key`
-# are the pair it presents on the handshake, at fixed container paths fed
-# by a read-only mount.
+# temporal-proxy proves who it is with a client certificate: `cert` and
+# `key` are the pair it presents on the handshake, at fixed container
+# paths fed by a read-only mount.
 #
 # `$VAR` and `${VAR}` are expanded from the proxy process's own
 # environment. Compose passes the two TEMPORAL_* values in from .env.
 #
-# Bind 0.0.0.0 rather than 127.0.0.1 so the gateway is reachable from the
-# host and from other containers on the Compose network.
+# Bind 0.0.0.0 rather than 127.0.0.1 so temporal-proxy is reachable from
+# the host and from other containers on the Compose network.
 hostPort: 0.0.0.0:7233
 
 routing:
@@ -30,9 +30,9 @@ routing:
 upstreams:
   - name: cloud
     hostPort: ${TEMPORAL_CLOUD_NAMESPACE}.${TEMPORAL_ACCOUNT}.tmprl.cloud:7233
-    # Three fields, two directions: `ca` is the trust anchor the gateway
-    # checks the upstream's own certificate against, while `cert` and
-    # `key` are what it presents to prove who it is.
+    # Three fields, two directions: `ca` is the trust anchor
+    # temporal-proxy checks the upstream's own certificate against,
+    # while `cert` and `key` are what it presents to prove who it is.
     #
     # A `ca` is required whenever a client certificate is set, and it
     # replaces the default roots rather than extending them — so it

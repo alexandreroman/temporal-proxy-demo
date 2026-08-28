@@ -33,8 +33,8 @@ optional. The requirement lives in a validator in
 another package, and the replace-not-extend
 behaviour is visible only in the pool loader.
 Deriving the rules from the wrong file yields a
-gateway that refuses to start, or one that cannot
-verify a public upstream.
+configuration temporal-proxy refuses to start on,
+or one that cannot verify a public upstream.
 
 **How to access:** at the pinned release tag, read
 `internal/transport/creds/options.go`

@@ -1,4 +1,4 @@
-// Command api exposes the hello Workflow over HTTP.
+// Command app exposes the hello Workflow over HTTP.
 //
 // POST /hello starts one Workflow Execution, waits for its result and writes the greeting
 // back. Like the Worker, it only knows a plaintext local Temporal endpoint.
@@ -30,7 +30,7 @@ func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
 
 	if err := run(); err != nil {
-		slog.Error("api stopped", "error", err)
+		slog.Error("app stopped", "error", err)
 		os.Exit(1)
 	}
 }
@@ -54,7 +54,7 @@ func run() error {
 
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.ListenAndServe() }()
-	slog.Info("api started", "address", srv.Addr)
+	slog.Info("app started", "address", srv.Addr)
 
 	select {
 	case err := <-serveErr:

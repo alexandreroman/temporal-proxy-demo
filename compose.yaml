@@ -40,11 +40,12 @@ services:
     volumes:
       - ${PROXY_CONFIG:-./proxy/local.yaml}:/etc/proxy/config.yaml:ro
       # The client certificate cloud.yaml presents to Temporal Cloud. Only
-      # the gateway ever receives this material; no other service mounts it.
+      # temporal-proxy ever receives this material; no other service
+      # mounts it.
       - ./proxy/certs:/etc/proxy/certs:ro
-    # Read by cloud.yaml only; local.yaml ignores them. The gateway is the
-    # single place that holds anything Cloud-specific, and it inherits these
-    # from the environment — Compose fills them in from .env.
+    # Read by cloud.yaml only; local.yaml ignores them. temporal-proxy is
+    # the single place that holds anything Cloud-specific, and it inherits
+    # these from the environment — Compose fills them in from .env.
     environment:
       - TEMPORAL_CLOUD_NAMESPACE
       - TEMPORAL_ACCOUNT
@@ -71,8 +72,8 @@ services:
       TEMPORAL_ADDRESS: temporal-proxy:7233
       # The Namespace name the application uses is the same in every
       # scenario. That is what makes switching upstreams a proxy-only
-      # change: the gateway rewrites the name when the upstream needs a
-      # different one.
+      # change: temporal-proxy rewrites the name when the upstream needs
+      # a different one.
       TEMPORAL_NAMESPACE: default
     # The proxy has no healthcheck to wait for, and this process exits as soon
     # as its first dial fails. Restarting on failure is what absorbs that
@@ -86,15 +87,15 @@ services:
     restart: on-failure
 
   # The HTTP API: POST /hello starts one Workflow Execution.
-  api:
+  app:
     build: .
-    command: ["/app/api"]
+    command: ["/app/app"]
     environment:
       TEMPORAL_ADDRESS: temporal-proxy:7233
       # The Namespace name the application uses is the same in every
       # scenario. That is what makes switching upstreams a proxy-only
-      # change: the gateway rewrites the name when the upstream needs a
-      # different one.
+      # change: temporal-proxy rewrites the name when the upstream needs
+      # a different one.
       TEMPORAL_NAMESPACE: default
     ports:
       - "8080:8080"   # http://localhost:8080/hello

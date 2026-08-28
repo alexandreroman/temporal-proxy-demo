@@ -10,7 +10,7 @@ See [README.md](README.md) for full documentation.
 ## Tech stack
 
 - Go — Temporal Go SDK (Worker) and net/http (API)
-- temporal-proxy — gRPC gateway in front of every upstream
+- temporal-proxy — one gRPC endpoint in front of every upstream
 - Docker Compose — Temporal dev server and proxy
 - Temporal Cloud — one of the demo upstreams (TLS + client certificate)
 
@@ -27,7 +27,7 @@ make check          # tests and static checks
 ## Modules
 
 - `cmd/worker` — Temporal Worker, polling through the proxy
-- `cmd/api` — HTTP API that starts one Workflow Execution
+- `cmd/app` — HTTP API that starts one Workflow Execution
 - `internal/hello` — the hello-workflow Workflow and its Activity
 - `internal/temporalclient` — the shared client: plaintext, no credentials
 - `proxy` — temporal-proxy configuration, one per scenario
