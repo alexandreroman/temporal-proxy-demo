@@ -22,8 +22,7 @@ gateway:
       namespacePolicy:
         from: All
 
-gatewayClass:
-  enabled: true
-
+# The demo makes no outbound calls of its own, so Traefik shouldn't either.
 global:
   sendAnonymousUsage: false
+  checkNewVersion: false
