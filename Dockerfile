@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # One image, both binaries: the Worker and the API are always the same build,
-# and each service picks the binary it runs with `command:` in compose.yaml.
+# and each Deployment picks the binary it runs with its own `command`.
 FROM golang:1.27-alpine AS build
 WORKDIR /src
 
@@ -21,4 +21,4 @@ FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /app/worker /app/app /app/
 USER nonroot:nonroot
 # No default command on purpose: an image carrying two binaries has no single
-# one to prefer, so every service names the binary it wants.
+# one to prefer, so every Deployment names the binary it wants.

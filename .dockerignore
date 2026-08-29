@@ -3,9 +3,8 @@
 .github
 .claude
 
-# Local environment and per-worktree Compose settings
+# Local environment — never in the build context
 .env*
-compose.override.yaml
 
 # Build and test output
 bin/
@@ -13,6 +12,14 @@ tmp/
 *.test
 coverage.out
 
-# Not part of the build
+# Not part of the build: deployment manifests — the client
+# certificate lives under k8s/ and the runtime image never copies it
+# in — and the demo's own documentation.
 docs/
+k8s/
+.superpowers/
+*.md
+Makefile
+LICENSE
+.casper.json
 .DS_Store

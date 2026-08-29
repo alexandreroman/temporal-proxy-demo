@@ -1,0 +1,70 @@
+# temporal-proxy: the only workload that knows where Temporal is.
+# Its configuration and its client certificate both arrive as
+# generated objects, so replacing either one changes this pod
+# template and Kubernetes rolls the Deployment on its own.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-proxy
+  namespace: temporal-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-proxy
+  template:
+    metadata:
+      labels:
+        app: temporal-proxy
+    spec:
+      # temporal-proxy never calls the Kubernetes API.
+      automountServiceAccountToken: false
+      containers:
+        - name: temporal-proxy
+          image: temporalio/temporal-proxy:v0.5.2
+          imagePullPolicy: IfNotPresent
+          args: ["serve"]
+          env:
+            # How the binary finds its configuration file.
+            - name: PROXY_CONFIG
+              value: /etc/temporal-proxy/config.yaml
+          # The Namespace and account identifiers, which the
+          # configuration references as ${VAR} and the binary
+          # expands from this environment at startup.
+          envFrom:
+            - secretRef:
+                name: temporal-cloud-config
+          ports:
+            - name: grpc
+              containerPort: 7233
+          # temporal-proxy registers the standard gRPC health
+          # service under the empty service name, which is what a
+          # bare grpc probe asks for.
+          livenessProbe:
+            grpc:
+              port: 7233
+          readinessProbe:
+            grpc:
+              port: 7233
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/temporal-proxy
+              readOnly: true
+            - name: client-certificate
+              mountPath: /etc/temporal-cloud
+              readOnly: true
+      volumes:
+        # Both names are rewritten by Kustomize to the hashed
+        # names its generators produce.
+        - name: config
+          configMap:
+            name: temporal-proxy
+        - name: client-certificate
+          secret:
+            secretName: temporal-cloud-client

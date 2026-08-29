@@ -3,6 +3,10 @@
 
 .DEFAULT_GOAL := help
 
+# deploy's correctness rests entirely on its prerequisites running in the
+# order they are listed, so a parallel make would race them.
+.NOTPARALLEL:
+
 # Environment for every target, read from .env.
 # A missing .env file is not an error.
 ifneq (,$(wildcard .env))
@@ -10,185 +14,70 @@ include .env
 export
 endif
 
-# Where `make demo` sends its request, and who it greets.
-PORT ?= 8080
+# Who `make demo` greets.
 NAME ?= Temporal
 
-# Default host ports: what `worktree-init` writes unless told otherwise, and
-# the fallback for a service that is not running. PORT above is part of the
-# same trio, unqualified because it is the variable the API itself reads from
-# its environment.
-TEMPORAL_PROXY_PORT ?= 7233
-TEMPORAL_WEB_UI_PORT ?= 8233
+# The Kind cluster name is this worktree's directory name, so two
+# worktrees never share a cluster.
+CLUSTER ?= $(notdir $(CURDIR))
 
-# What a running stack publishes is whatever Compose bound, so ask Compose
-# rather than guess — the answer already accounts for compose.override.yaml.
-# An empty answer means the service is down, and the default above is then the
-# right one: `make dev` runs the API on the host, on PORT.
-published-port = $$(docker compose port $(1) $(2) 2>/dev/null | cut -d: -f2)
+# The single host port this cluster publishes, into Traefik. Frozen into
+# k8s/kind-config.yaml by `worktree-init`, because Kind reads no
+# environment variable of its own.
+TRAEFIK_PORT ?= 8080
 
-##@ Infra
+# Gateway API CRDs are not shipped by the Traefik chart, so they are
+# applied from the pinned upstream release before it.
+GATEWAY_API_VERSION ?= v1.6.1
 
-.PHONY: infra-up
-infra-up: ## Start the Temporal dev server and the proxy
-	docker compose up -d temporal temporal-proxy
+# Which scenario to deploy to the cluster. Each one is a directory under
+# k8s/scenarios/: a Kustomize overlay and one temporal-proxy configuration
+# file. Switch with `make deploy SCENARIO=<name>`.
+SCENARIO ?= credentials
 
-.PHONY: infra-down
-infra-down: ## Stop the Temporal dev server and the proxy
-	docker compose stop temporal temporal-proxy
-	@$(clear-endpoints)
+# The CLI that builds the image and runs the cluster's nodes. A Podman user
+# overrides this one variable; everything else Podman needs (the
+# KIND_EXPERIMENTAL_PROVIDER kind reads, and a docker-compatible CLI on PATH)
+# lives outside this Makefile.
+CONTAINER_TOOL ?= docker
 
-##@ Scenarios
-
-# Which configuration Compose mounts into temporal-proxy, and the plain name
-# derived from it — ./proxy/cloud.yaml gives `cloud`. Every scenario is one
-# file in ./proxy named after it, so the name alone identifies it.
-#
-# The choice is stored in .env rather than in the environment because .env is
-# the only file `docker compose` reads on its own: a bare `docker compose up`
-# typed in this worktree then runs the same scenario as any `make` target.
-# Same rule as compose.override.yaml, which holds this worktree's ports.
-PROXY_CONFIG ?= ./proxy/local.yaml
-SCENARIO = $(basename $(notdir $(PROXY_CONFIG)))
-
-# The cloud scenario needs two values and a client certificate, all of which
-# temporal-proxy validates on startup: with any of them missing it recreates
-# and then crash-loops on a configuration error, far from the command that
-# caused it. Refuse before touching .env, and name everything that is missing
-# rather than only the first thing. A .env that does not exist yet leaves
-# these variables empty, which counts as missing here.
-define require-cloud-setup
-missing=''; \
-[ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
-[ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
-[ -f proxy/certs/client.pem ] || missing="$$missing proxy/certs/client.pem"; \
-[ -f proxy/certs/client.key ] || missing="$$missing proxy/certs/client.key"; \
-if [ -n "$$missing" ]; then \
-  echo "Cannot switch to the cloud scenario, these are missing:$$missing"; \
-  echo "The values go in .env (copy .env.example); the certificate goes in proxy/certs/"; \
-  echo "as client.pem and client.key. Then run make use-cloud again."; \
-  exit 1; \
-fi
-endef
-
-# Records the chosen scenario in .env, then applies it: temporal-proxy is
-# recreated on the new configuration and the application containers restart
-# behind it.
-#
-# awk rewrites the PROXY_CONFIG line where it stands, so the comment above it
-# keeps describing the line below it, and appends the line only when the file
-# has none. It writes through a temporary file rather than using `sed -i`,
-# whose syntax differs between BSD and GNU. Exporting the new value first
-# means the `docker compose` calls below see it: the value make exported at
-# startup is the previous one, and Compose lets the environment win over .env.
-#
-# The switch needs no guard on what is running: `up -d --force-recreate` starts
-# temporal-proxy when it is down as readily as it replaces a live one, and
-# `restart` is a silent no-op that exits 0 on a container that does not exist.
-define set-scenario
-export PROXY_CONFIG='./proxy/$(1).yaml'; \
-[ -f .env ] || cp .env.example .env; \
-tmp=$$(mktemp); \
-awk -v line="PROXY_CONFIG=$$PROXY_CONFIG" \
-  '/^PROXY_CONFIG=/ { print line; found = 1; next } { print } END { if (!found) print line }' \
-  .env > $$tmp; \
-mv $$tmp .env; \
-docker compose up -d --force-recreate temporal-proxy; \
-$(publish-endpoints); \
-docker compose restart worker app; \
-echo "Scenario '$(1)' is live: temporal-proxy serves it, and Workers and Clients connect through it."
-endef
-
-.PHONY: use-local
-use-local: ## Route temporal-proxy to the Temporal dev server in Compose
-	@$(call set-scenario,local)
-
-.PHONY: use-cloud
-use-cloud: ## Route temporal-proxy to Temporal Cloud
-	@$(require-cloud-setup)
-	@$(call set-scenario,cloud)
-
-.PHONY: scenario
-scenario: ## Print the scenario temporal-proxy is configured for
-	@echo $(SCENARIO)
+# Ask the runtime what it actually published rather than recomputing it, so a
+# command typed without TRAEFIK_PORT still reaches this worktree's cluster.
+# awk takes the last colon-separated field of the first line, which is right
+# for an IPv4 and an IPv6 binding alike. An empty answer means the cluster is
+# down, and the documented default is then the right one.
+published-traefik-port = $$($(CONTAINER_TOOL) port '$(CLUSTER)-worker' 30080 2>/dev/null | awk -F: 'NR==1 {print $$NF}')
 
 ##@ Develop
 
-.PHONY: dev
-dev: infra-up ## Start infra, then run the Worker and the HTTP API
-	@$(publish-endpoints)
-	# Trap reaps the whole process group (kill 0) on exit or signal, so no
-	# orphaned processes survive Ctrl-C. Each child calls kill 0 on exit so
-	# one crashing process tears the other down instead of leaving a half
-	# stack running.
-	@temporal_proxy=$(call published-port,temporal-proxy,7233); \
-		export TEMPORAL_ADDRESS="$${TEMPORAL_ADDRESS:-localhost:$${temporal_proxy:-$(TEMPORAL_PROXY_PORT)}}"; \
-		trap 'kill 0' EXIT INT TERM; \
-		( go run ./cmd/worker; kill 0 ) & \
-		( go run ./cmd/app; kill 0 ) & \
-		wait
-
-# Compose merges compose.override.yaml automatically, so freezing this
-# worktree's ports there — rather than in the environment — makes a bare
-# `docker compose up` publish exactly what `make app-up` does. The project
-# name is the directory name, unique per worktree, which is what stops two
-# worktrees from sharing containers.
+# Kind reads no environment variable of its own, so this worktree's host
+# port has to be frozen into a generated config file. CLUSTER, the
+# directory name, is what stops two worktrees from sharing a cluster.
 .PHONY: worktree-init
-worktree-init: ## Fetch dependencies and pin this worktree's ports (overwrites compose.override.yaml)
+worktree-init: ## Fetch dependencies and pin this worktree's port (overwrites k8s/kind-config.yaml)
 	go mod download
-	@printf '%s\n' \
-		'# Host ports and project name for this worktree, generated by' \
-		'# `make worktree-init`. Compose merges this file automatically.' \
-		'# Not committed.' \
-		'#' \
-		'# `!override` replaces the port list of a service instead of' \
-		'# appending to it, so only the port below is published.' \
-		'name: $(notdir $(CURDIR))' \
-		'' \
-		'services:' \
-		'  app:' \
-		'    ports: !override' \
-		'      - "$(PORT):8080"' \
-		'  temporal-proxy:' \
-		'    ports: !override' \
-		'      - "$(TEMPORAL_PROXY_PORT):7233"' \
-		'  temporal:' \
-		'    ports: !override' \
-		'      - "$(TEMPORAL_WEB_UI_PORT):8233"' \
-		> compose.override.yaml
+	sed 's/@TRAEFIK_PORT@/$(TRAEFIK_PORT)/' k8s/kind-config.yaml.in > k8s/kind-config.yaml
 
 .PHONY: demo
 demo: ## Trigger one Workflow through the HTTP API
-	@app=$(call published-port,app,8080); \
-		curl -fsS -X POST "http://localhost:$${app:-$(PORT)}/hello" \
+	@port=$(published-traefik-port); \
+		curl -fsS -X POST "http://hello.127-0-0-1.nip.io:$${port:-$(TRAEFIK_PORT)}/hello" \
 			-H 'Content-Type: application/json' \
 			-d '{"name": "$(NAME)"}'
-
-# Which Web UI is worth linking depends on the scenario: in `cloud` the local
-# dev server is still running, but every Workflow lands in Temporal Cloud, so
-# the local UI would only ever show an empty Namespace.
-cloud-namespace = $(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)
-ifeq ($(SCENARIO),cloud)
-web-ui-row = "| Temporal Web UI (Cloud) | <https://cloud.temporal.io/namespaces/$(cloud-namespace)> |"
-else
-web-ui-row = "| Temporal Web UI (local) | <http://localhost:$${web_ui:-$(TEMPORAL_WEB_UI_PORT)}> |"
-endif
 
 # Markdown on stdout, so the answer to "where is this worktree listening?" can
 # be read in a terminal or piped into whatever renders it.
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
-	@app=$(call published-port,app,8080); \
-	web_ui=$(call published-port,temporal,8233); \
-	temporal_proxy=$(call published-port,temporal-proxy,7233); \
+	@port=$(published-traefik-port); port=$${port:-$(TRAEFIK_PORT)}; \
 	printf '%s\n' \
 		'# Temporal Proxy Demo' \
 		'' \
 		'| Service | Address |' \
 		'| --- | --- |' \
-		"| Demo App | <http://localhost:$${app:-$(PORT)}> |" \
-		$(web-ui-row) \
-		"| Temporal gRPC Proxy | \`localhost:$${temporal_proxy:-$(TEMPORAL_PROXY_PORT)}\` |" \
+		"| Demo App | <http://hello.127-0-0-1.nip.io:$$port> |" \
+		"| Temporal Web UI (Cloud) | <https://cloud.temporal.io/namespaces/\
+$(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)> |" \
 		"| Scenario | \`$(SCENARIO)\` |" \
 		'' \
 		'Trigger a Workflow with `make demo`.'
@@ -206,18 +95,6 @@ endef
 define clear-endpoints
 $(in-casper-workspace) && casper info clear >/dev/null || true
 endef
-
-##@ Stack
-
-.PHONY: app-up
-app-up: ## Bring up the full stack in containers (build + start)
-	docker compose up -d --build
-	@$(publish-endpoints)
-
-.PHONY: app-down
-app-down: ## Tear down the full stack (removes containers and network)
-	docker compose down
-	@$(clear-endpoints)
 
 ##@ Quality
 
@@ -243,3 +120,92 @@ help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n"} \
 		/^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } \
 		/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(firstword $(MAKEFILE_LIST))
+
+##@ Kubernetes
+
+.PHONY: cluster-create
+cluster-create: ## Create the Kind cluster
+	@test -f k8s/kind-config.yaml || { echo "Run make worktree-init first"; exit 1; }
+	@kind get clusters | grep -qx '$(CLUSTER)' || \
+		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml
+	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
+
+.PHONY: cluster-up
+cluster-up: cluster-create ## Create the cluster and install its platform components
+	kubectl --context kind-$(CLUSTER) apply -f \
+		https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
+	helm --kube-context kind-$(CLUSTER) upgrade --install traefik traefik \
+		--repo https://traefik.github.io/charts --version 41.4.0 \
+		--namespace traefik --create-namespace \
+		-f k8s/charts/traefik.yaml --wait
+
+# Paired with cluster-up.
+.PHONY: cluster-down
+cluster-down: ## Delete the Kind cluster
+	kind delete cluster --name '$(CLUSTER)'
+	@$(clear-endpoints)
+
+# Tagged with the registry Kubernetes assumes for an unqualified name,
+# so the Deployments' plain `temporal-proxy-demo:dev` resolves to the
+# image this target built rather than triggering a pull. Building with
+# a container tool whose default namespace differs from that assumption
+# (podman tags an unqualified build `localhost/...`) would otherwise
+# load a name the cluster never looks up.
+IMAGE = docker.io/library/temporal-proxy-demo:dev
+
+.PHONY: image
+image: ## Build the image and load it into the cluster (after cluster-create)
+	$(CONTAINER_TOOL) build -t $(IMAGE) .
+	kind load docker-image $(IMAGE) --name '$(CLUSTER)'
+
+# The Temporal Cloud upstream needs two values and a client certificate, all
+# of which temporal-proxy validates on startup: with any of them missing it
+# crash-loops on a configuration error, far from the command that caused it.
+# Refuse before touching the cluster, and name everything that is missing
+# rather than only the first thing. A .env that does not exist yet leaves
+# these variables empty, which counts as missing here.
+define require-cloud-setup
+missing=''; \
+[ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
+[ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
+[ -f k8s/base/proxy/certs/client.pem ] || missing="$$missing k8s/base/proxy/certs/client.pem"; \
+[ -f k8s/base/proxy/certs/client.key ] || missing="$$missing k8s/base/proxy/certs/client.key"; \
+if [ -n "$$missing" ]; then \
+  echo "Cannot deploy, these are missing:$$missing"; \
+  echo "The values go in .env (copy .env.example); the certificate goes in"; \
+  echo "k8s/base/proxy/certs/ as client.pem and client.key. Then run the command again."; \
+  exit 1; \
+fi
+endef
+
+.PHONY: require-cloud
+require-cloud: ## Refuse to continue without Temporal Cloud credentials and a certificate
+	@$(require-cloud-setup)
+
+# The Namespace and account identifiers are not credentials, but they are
+# account-specific, so they stay out of the committed configuration and reach
+# temporal-proxy as a Secret built here from .env. Its envFrom expands them
+# into the ${VAR} references left literal in the generated ConfigMap. The
+# Namespaces are applied first, because that Secret has to land in one of
+# them before the Deployment that reads it exists.
+.PHONY: apply
+apply: require-cloud ## Deploy the scenario (after cluster-up)
+	kubectl --context kind-$(CLUSTER) apply -f k8s/base/namespaces.yaml
+	kubectl --context kind-$(CLUSTER) -n temporal-proxy \
+		create secret generic temporal-cloud-config \
+		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
+		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)' \
+		--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
+	kubectl --context kind-$(CLUSTER) apply -k k8s/scenarios/$(SCENARIO)
+
+# The image tag is fixed, so a rebuild is invisible to Kubernetes
+# until the pods are told to restart. temporal-proxy needs no such
+# nudge: its pod template changes whenever its configuration or its
+# certificate does.
+.PHONY: deploy
+deploy: require-cloud cluster-up image apply ## Bring up the whole demo
+	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
+	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
+	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
+	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
+	@$(publish-endpoints)

@@ -2,9 +2,9 @@
   "workspace": {
     "copyFiles": [".env", "client.pem", "client.key"],
     "scripts": {
-      "setup": "make worktree-init PORT=$CASPER_PORT TEMPORAL_PROXY_PORT=$((CASPER_PORT+1)) TEMPORAL_WEB_UI_PORT=$((CASPER_PORT+2))",
-      "run": "make app-up",
-      "teardown": "make app-down"
+      "setup": "make worktree-init TRAEFIK_PORT=$CASPER_PORT",
+      "run": "make deploy",
+      "teardown": "make cluster-down"
     }
   }
 }
