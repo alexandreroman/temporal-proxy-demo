@@ -50,6 +50,8 @@ func TestHelloWorkflow(t *testing.T) {
 }
 
 func TestHelloWorkflowActivityFails(t *testing.T) {
+	t.Parallel()
+
 	req := Request{Name: "Ada"}
 
 	var suite testsuite.WorkflowTestSuite

@@ -54,4 +54,4 @@ claim the demo exists to disprove.
 **How to apply:** review new Go code with
 `grep -rniE "proxy|gateway|upstream" --include='*.go' .`
 — only import paths carrying the repository name
-should match. See [[project-demo-scope]].
+should match. See [Demo scope](project_demo-scope.md).

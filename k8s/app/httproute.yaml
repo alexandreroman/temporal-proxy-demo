@@ -5,18 +5,19 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: app
-  namespace: hello
 spec:
   parentRefs:
+    # The name is pinned by `gateway.name` in `k8s/charts/traefik.yaml`, and
+    # the chart puts the Gateway in the namespace Traefik is installed into.
+    # Naming a Gateway that does not exist attaches this route to nothing, and
+    # requests then fail with a 404 and no error anywhere.
     - name: traefik-gateway
       namespace: traefik
   hostnames:
     - "hello.127-0-0-1.nip.io"
   rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
+    # A rule with no `matches` matches every path, exactly as an explicit
+    # PathPrefix `/` would.
+    - backendRefs:
         - name: app
           port: 80

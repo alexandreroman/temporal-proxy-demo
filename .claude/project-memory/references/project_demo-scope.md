@@ -44,4 +44,4 @@ written.
 **How to apply:** when adding material, ask whether it
 changes how temporal-proxy is configured. Anything that
 does not belongs in a different repository. See
-[[reference-proxy-encryption-constraints]].
+[encryption constraints](reference_proxy-encryption-constraints.md).

@@ -60,19 +60,14 @@ At the start of every conversation, read
 `.claude/project-memory/MEMORY.md` to load
 project context from previous conversations.
 
-Use the **project-memory** skill (from the
+Persist anything worth keeping with the
+**project-memory** skill (from the
 [skillbox](https://github.com/alexandreroman/skillbox)
-plugin) proactively — without being asked — whenever
-the conversation reveals project decisions, deadlines,
-team context, external references, workflow preferences,
-or corrective feedback worth persisting across
-conversations.
-
-**Important:** Always use the **project-memory**
-skill to persist information. Never use the built-in
-auto-memory system (`~/.claude/projects/.../memory/`)
-for project decisions or context — it is local and
-not shared with the team.
+plugin), which carries its own triggers. Never use the
+built-in auto-memory system
+(`~/.claude/projects/.../memory/`) for project
+decisions or context — it is local and not shared with
+the team.
 
 ## Conventions
 

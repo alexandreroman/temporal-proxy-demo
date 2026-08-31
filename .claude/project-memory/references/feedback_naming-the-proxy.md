@@ -13,7 +13,7 @@ name. A generic word for a network intermediary is vaguer
 than the name and describes any proxy equally well, so it
 earns no place in prose or in identifiers. The Go code is
 the one place that names nothing at all: see
-[[feedback-agnostic-app-code]].
+[Application code stays endpoint-agnostic](feedback_agnostic-app-code.md).
 
 `temporal-proxy` is a proper name and takes no article:
 "temporal-proxy validates its config on startup", never
@@ -37,5 +37,5 @@ address, and that no Make variable needs to mirror.
 Makefile, manifest and values comments, and in target
 descriptions. Qualify a Make variable that publishes a
 port by what it publishes. See
-[[feedback-casper-workspace-integration]] for the port
-variable `.casper.json` passes in.
+[Casper workspace integration](feedback_casper-workspace-integration.md)
+for the port variable `.casper.json` passes in.

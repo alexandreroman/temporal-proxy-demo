@@ -97,6 +97,10 @@ about two seconds — the Activity sleeps, so there is time to watch the
 Execution in the Cloud Web UI. `make endpoints` prints the addresses,
 and `make demo NAME=Alex` greets someone else.
 
+On a cluster that has just been created, Traefik loads a new route a
+moment after the rollout finishes, so the very first `make demo` can
+answer `503`. Run it again.
+
 Run `make` to list every target, and `make cluster-down` to delete the
 cluster.
 
@@ -156,30 +160,19 @@ and the rewrite from `demo` to the fully-qualified Cloud Namespace.
 which upstream serves it — picking an upstream is not something the
 application can do.
 
-The short name is this application's own, which is why it is not
-`default`: one temporal-proxy sits in front of several applications, so
-the name each one asks for has to identify it. temporal-proxy owns the
-mapping from that name to whatever the upstream calls the Namespace.
+The short name is `demo` rather than `default` because one
+temporal-proxy fronts several applications, so the name each one asks
+for has to identify it. Both variables also have fallbacks in the
+code — `localhost:7233` and `default`, what a `temporal server
+start-dev` serves — so the binaries run unchanged outside the cluster.
 
-The same two variables also have fallbacks in the code
-(`localhost:7233` and `default`) — the address and Namespace a
-`temporal server start-dev` serves — so the binaries run unchanged
-outside the cluster with nothing set. Those are local-development
-values; in the cluster the Deployments supply the real ones, and `demo`
-is the name that reaches temporal-proxy.
+## Limit of this demo
 
-## Limits of this demo
-
-- **The certificate comes from the working directory, not from a secret
-  manager.** temporal-proxy mounts a Kubernetes Secret and reads two
-  files from it; nothing in temporal-proxy can observe how that Secret
-  was filled. A real deployment would have a secret manager fill it.
-  Here `make` does, which is what makes the demo self-contained.
-- **Nothing on the cluster reacts to a content change.** The ConfigMap
-  and the Secrets keep fixed names, so a new configuration, a new
-  certificate or a new account id leaves every pod template untouched.
-  `make apply` therefore restarts temporal-proxy every time, rather
-  than working out whether it has to.
+The certificate comes from the working directory, not from a secret
+manager. temporal-proxy mounts a Kubernetes Secret and reads two files
+from it; nothing in temporal-proxy can observe how that Secret was
+filled. A real deployment would have a secret manager fill it. Here
+`make` does, which is what makes the demo self-contained.
 
 ## License
 

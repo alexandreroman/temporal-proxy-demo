@@ -60,18 +60,11 @@ func decodeRequest(r *http.Request) (hello.Request, error) {
 	return req, nil
 }
 
-// newWorkflowID returns the identifier of one Workflow Execution. The prefix makes the
-// Execution recognizable in the Temporal Web UI, and the random suffix lets the demo be
-// replayed without colliding with an earlier Execution.
-func newWorkflowID() string {
-	return "hello-" + uuid.NewString()
-}
-
 // startHelloWorkflow starts one Workflow Execution and waits for its result.
 func startHelloWorkflow(c client.Client) greeter {
 	return func(ctx context.Context, req hello.Request) (hello.Response, error) {
 		options := client.StartWorkflowOptions{
-			ID:        newWorkflowID(),
+			ID:        "hello-" + uuid.NewString(), // Recognizable in the Web UI, and unique across replays.
 			TaskQueue: hello.TaskQueue,
 		}
 

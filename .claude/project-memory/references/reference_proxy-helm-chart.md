@@ -54,5 +54,5 @@ temporal-proxy --repo https://go.temporal.io/helm-charts
 config-supply model — from `helm pull --untar`. Render with
 `helm template ... -f k8s/charts/temporal-proxy.yaml` and
 read the output before applying it. See
-[[reference-temporal-proxy-upstream]] and
-[[reference-proxy-outbound-tls]].
+[temporal-proxy upstream resources](reference_temporal-proxy-upstream.md) and
+[Outbound TLS rules](reference_proxy-outbound-tls.md).

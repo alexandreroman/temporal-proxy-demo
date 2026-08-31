@@ -1,25 +1,17 @@
 # Keep the build context down to what the image actually compiles.
 .git
-.github
 .claude
-
-# Local environment — never in the build context
 .env*
 
-# Build and test output
-bin/
-tmp/
-*.test
-coverage.out
-
-# Not part of the build: deployment manifests — the client
-# certificate lives under k8s/ and the runtime image never copies it
-# in — and the demo's own documentation.
-docs/
+# Not part of the build, and the one exclusion that is about more than
+# size: the Temporal Cloud client key lives in k8s/certs/, and the
+# runtime image never copies it in.
 k8s/
-.superpowers/
 *.md
 Makefile
 LICENSE
 .casper.json
 .DS_Store
+
+# Local write-ups — the project's documentation lives in README.md.
+docs/

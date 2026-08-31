@@ -20,7 +20,8 @@ behind the same proxy.
 `TEMPORAL_NAMESPACE` is unset. That fallback serves the
 local dev-server loop, which offers exactly that Namespace,
 and it never reaches temporal-proxy — the deployment always
-sets the variable. See [[project-local-development]].
+sets the variable. See
+[Local development needs no cluster](project_local-development.md).
 
 **Why:** a shared proxy can only route on a name that says
 which application is asking; `default` says "whatever this
@@ -34,5 +35,5 @@ component that knows both.
 Namespace name, and add one override per application under
 the upstream's `namespaces.rules`. The fully-qualified name
 stays out of the application in every case — see
-[[feedback-agnostic-app-code]] and
-[[reference-proxy-helm-chart]].
+[Application code stays endpoint-agnostic](feedback_agnostic-app-code.md) and
+[temporal-proxy's Helm chart](reference_proxy-helm-chart.md).

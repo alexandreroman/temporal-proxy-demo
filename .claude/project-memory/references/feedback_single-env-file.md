@@ -6,11 +6,8 @@ type: feedback
 
 # One environment file, loaded for every target
 
-The Makefile reads one environment file, `.env`,
-included at the top of the file and exported to
-every target. A missing `.env` is not an error.
-The project uses no second environment file and no
-per-target include tier: every target sees the
+The project uses one environment file, `.env`, and
+no per-target include tier: every target sees the
 same values.
 
 **Why:** the configuration behind a target is
@@ -26,8 +23,9 @@ has to be explainable on a slide.
 `.env`, documented in `.env.example`, and
 per-worktree settings in the generated
 `k8s/kind-config.yaml` — see
-[[feedback-worktree-config-on-disk]]. For a one-off
-value, pass it on the command line (`make demo
-NAME=Alex`, which wins over the Makefile's default)
-or set it in the calling environment, rather than
-introducing another environment file.
+[Per-worktree configuration](feedback_worktree-config-on-disk.md).
+For a one-off value, pass it on the command line
+(`make demo NAME=Alex`, which wins over the
+Makefile's default) or set it in the calling
+environment, rather than introducing another
+environment file.
