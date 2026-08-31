@@ -40,6 +40,4 @@ invisible until someone reads a history.
 **How to apply:** add anything the API reports
 about an Execution to the envelope in `cmd/app`.
 Add to `hello.Response` only what the Workflow
-itself computes. See [[feedback-target-label]] for
-the other value the API reports without the
-Workflow knowing it.
+itself computes.

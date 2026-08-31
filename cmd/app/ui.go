@@ -5,7 +5,8 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"os"
+
+	"github.com/alexandreroman/temporal-proxy-demo/internal/temporalclient"
 )
 
 //go:embed templates/*.html
@@ -15,18 +16,20 @@ var templateFiles embed.FS
 // request that reaches it. Embedding them means the binary carries its own page.
 var pages = template.Must(template.ParseFS(templateFiles, "templates/*.html"))
 
-// pageData is what the page needs to render. Target is a display label for where Workflow
-// Executions end up, supplied by the deployment: the application cannot work it out from its
-// own connection.
+// pageData is what the page needs to render: the address the application dials and the short
+// Namespace name it asks for. Those two are the whole of what it knows about where it connects,
+// so they are the whole of what the page can show.
 type pageData struct {
-	Target string
+	Address   string
+	Namespace string
 }
 
 func pageHandler() http.HandlerFunc {
-	// Read once: the label is deployment configuration, fixed for the lifetime of the process.
-	// An unset variable leaves it empty, which the page renders as "unknown" rather than
-	// guessing a value the application has no way to know.
-	data := pageData{Target: os.Getenv("TEMPORAL_TARGET")}
+	// Read once: the endpoint is deployment configuration, fixed for the lifetime of the process.
+	// Resolving it the same way the client does is what keeps the page honest — it shows the pair
+	// that was dialled, and cannot go stale against the deployment it is running in.
+	endpoint := temporalclient.ResolveEndpoint()
+	data := pageData{Address: endpoint.Address, Namespace: endpoint.Namespace}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

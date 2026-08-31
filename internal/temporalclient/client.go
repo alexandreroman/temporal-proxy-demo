@@ -23,13 +23,30 @@ const (
 	defaultNamespace = "default"
 )
 
+// Endpoint is everything the application knows about where it connects: an address to dial and
+// the short Namespace name to ask for.
+type Endpoint struct {
+	Address   string
+	Namespace string
+}
+
+// ResolveEndpoint reads the endpoint from the environment. Dial goes through it, so a caller that
+// reports where the application connects reports the very pair that was dialled.
+func ResolveEndpoint() Endpoint {
+	// cmp.Or returns the first non-empty value, so an unset variable falls back to the default.
+	return Endpoint{
+		Address:   cmp.Or(os.Getenv("TEMPORAL_ADDRESS"), defaultAddress),
+		Namespace: cmp.Or(os.Getenv("TEMPORAL_NAMESPACE"), defaultNamespace),
+	}
+}
+
 // Dial connects to the local Temporal endpoint in plaintext. The context covers the initial
 // connection only, and the caller is responsible for closing the client.
 func Dial(ctx context.Context) (client.Client, error) {
-	// cmp.Or returns the first non-empty value, so an unset variable falls back to the default.
+	endpoint := ResolveEndpoint()
 	options := client.Options{
-		HostPort:  cmp.Or(os.Getenv("TEMPORAL_ADDRESS"), defaultAddress),
-		Namespace: cmp.Or(os.Getenv("TEMPORAL_NAMESPACE"), defaultNamespace),
+		HostPort:  endpoint.Address,
+		Namespace: endpoint.Namespace,
 		Logger:    log.NewStructuredLogger(slog.Default()),
 	}
 

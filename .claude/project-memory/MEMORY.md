@@ -42,7 +42,7 @@
 - [A template placeholder appears exactly once](references/feedback_template-placeholder-appears-once.md) — on the `hostPort:` line, never in prose
 - [How an HTTPRoute binds to Traefik's Gateway](references/reference_traefik-gateway-binding.md) — no default Gateway is available
 - [A rollout overlaps only where traffic arrives](references/feedback_overlapping-rollout.md) — the API needs it, the Worker does not
-- [The deployment names the target](references/feedback_target-label.md) — `TEMPORAL_TARGET` is a display label the Go code never interprets
 - [The demo page is read from the back of a room](references/feedback_page-projection-legibility.md) — the 1440x950 budget, and the rail's three brightness levels
 - [The demo page borrows temporal.io's design system](references/feedback_page-design-system.md) — where the palette and typefaces come from
 - [The Workflow's contract and the API's response differ](references/feedback_api-response-envelope.md) — execution ids live in a `cmd/app` envelope, not in `hello.Response`
+- [The page names no upstream](references/project_page-names-no-upstream.md) — the destination station reads `Temporal`, and the page shows the endpoint it dials

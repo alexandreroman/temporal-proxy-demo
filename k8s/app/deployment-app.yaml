@@ -36,14 +36,6 @@ spec:
               value: temporal-proxy.temporal-proxy:7233
             - name: TEMPORAL_NAMESPACE
               value: demo
-            # A display label for the page, which draws where Workflow
-            # Executions land. The application cannot observe which
-            # upstream serves its endpoint, so the deployment names it:
-            # the Go code renders the string and interprets nothing.
-            # `cloud` and `local` are the two destinations the page can
-            # light up, and an empty value lights neither.
-            - name: TEMPORAL_TARGET
-              value: cloud
           ports:
             - name: http
               containerPort: 8080

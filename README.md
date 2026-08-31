@@ -150,14 +150,12 @@ at startup.
 ## What the application does not carry
 
 The Worker and the API each get the same two environment variables, and
-neither describes an upstream. The API gets a third, the display label
-for the page it serves:
+neither describes an upstream:
 
-| Variable             | Value                                | Workload       |
-| -------------------- | ------------------------------------ | -------------- |
-| `TEMPORAL_ADDRESS`   | `temporal-proxy.temporal-proxy:7233` | Worker and API |
-| `TEMPORAL_NAMESPACE` | `demo`                               | Worker and API |
-| `TEMPORAL_TARGET`    | `cloud`                              | API            |
+| Variable             | Value                                |
+| -------------------- | ------------------------------------ |
+| `TEMPORAL_ADDRESS`   | `temporal-proxy.temporal-proxy:7233` |
+| `TEMPORAL_NAMESPACE` | `demo`                               |
 
 Those two are a cluster-local address, dialled in plaintext, and a short
 Namespace name. Nothing else is needed because everything else lives in
@@ -167,19 +165,15 @@ and the rewrite from `demo` to the fully-qualified Cloud Namespace.
 which upstream serves it — picking an upstream is not something the
 application can do.
 
-`TEMPORAL_TARGET` is the one word the application carries about where it
-connects, and it holds to the same rule because it is a label rather
-than knowledge: the value arrives from the deployment, the page renders
-it, and nothing in the Go code compares it to anything. Leave it unset
-and the page reports that the destination is unnamed rather than
-guessing one.
+The page the API serves renders those same two values, read where the
+client itself reads them, and names no upstream at all — naming one is
+precisely what the application cannot do.
 
 The short name is `demo` rather than `default` because one
 temporal-proxy fronts several applications, so the name each one asks
-for has to identify it. `TEMPORAL_ADDRESS` and `TEMPORAL_NAMESPACE` also
-have fallbacks in the code — `localhost:7233` and `default`, what a
-`temporal server start-dev` serves — so the binaries run unchanged
-outside the cluster.
+for has to identify it. Both variables also have fallbacks in the code —
+`localhost:7233` and `default`, what a `temporal server start-dev`
+serves — so the binaries run unchanged outside the cluster.
 
 ## Limit of this demo
 
