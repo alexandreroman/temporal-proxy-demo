@@ -23,7 +23,7 @@ spec:
             - name: TEMPORAL_ADDRESS
               value: temporal-proxy.temporal-proxy:7233
             - name: TEMPORAL_NAMESPACE
-              value: default
+              value: demo
           resources:
             requests:
               cpu: 20m

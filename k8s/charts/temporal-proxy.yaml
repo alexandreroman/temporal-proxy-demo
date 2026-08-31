@@ -1,0 +1,87 @@
+# temporal-proxy is the only workload that knows where Temporal is.
+# These values feed its upstream chart; `config:` below is
+# temporal-proxy's own configuration file. The chart carries it into a
+# ConfigMap and points the binary at it, filling in the listen address
+# and the certificate paths on the way, but it never runs the block
+# through Helm's templating — which is why the ${VAR} references
+# survive into the rendered config and this file stays committable.
+
+# Every rendered object takes its name from the Helm release, so a
+# release named anything else would publish the Service as, say,
+# `proxy-temporal-proxy` and break both Deployments in k8s/app with no
+# error until the Worker fails to connect. They dial
+# `temporal-proxy.temporal-proxy:7233`, and this is what pins it.
+fullnameOverride: temporal-proxy
+
+# The chart would otherwise default to its own appVersion, which
+# trails the image releases.
+image:
+  tag: v0.5.2
+
+# Also becomes the gateway's listen address, since the chart derives
+# config.hostPort from this port.
+service:
+  port: 7233
+
+# temporal-proxy never calls the Kubernetes API.
+serviceAccount:
+  automount: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+# temporal-proxy registers the standard gRPC health service under the
+# empty service name, which is what a bare grpc probe asks for. Helm
+# merges maps, so `httpGet: null` is what deletes the chart's default
+# HTTP probe — left in place, the probe would carry two handlers and
+# the API server would reject it.
+livenessProbe:
+  httpGet: null
+  grpc:
+    port: 7233
+readinessProbe:
+  httpGet: null
+  grpc:
+    port: 7233
+
+# The Namespace and account identifiers, which the configuration
+# references as ${VAR} and the binary expands from this environment
+# at startup. `make apply` builds this Secret from .env.
+envFrom:
+  - secretRef:
+      name: temporal-cloud-config
+
+config:
+  routing:
+    default: cloud   # Namespaced requests
+    system: cloud    # Namespace-less requests, e.g. GetSystemInfo on connect
+  upstreams:
+    - name: cloud
+      # ${VAR} references stay literal here and in the ConfigMap built
+      # from this file: the chart never templates them, and
+      # temporal-proxy expands them from its own environment. That is
+      # what keeps this file committable and account-agnostic.
+      hostPort: ${TEMPORAL_CLOUD_NAMESPACE}.${TEMPORAL_ACCOUNT}.tmprl.cloud:7233
+      tls:
+        # The chart mounts this Secret and writes the cert and key
+        # paths into the rendered config.
+        secretName: temporal-cloud-client
+        # `ca` is set alongside the client pair on purpose: a client
+        # certificate obliges one, and it verifies the upstream's own
+        # certificate rather than the client's — so it is the public
+        # bundle the image carries, never the CA that signed the client.
+        ca: /etc/ssl/certs/ca-certificates.crt
+      namespaces:
+        rules:
+          # One temporal-proxy fronts several applications, so a short
+          # name has to say which one is asking: this demo owns `demo`,
+          # not `default`. Cloud knows that Namespace by its
+          # fully-qualified name, and the override rewrites it on the
+          # way out and restores the short name on the way back.
+          overrides:
+            - local: demo
+              remote: ${TEMPORAL_CLOUD_NAMESPACE}.${TEMPORAL_ACCOUNT}
