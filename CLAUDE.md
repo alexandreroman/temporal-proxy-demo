@@ -23,7 +23,7 @@ See [README.md](README.md) for full documentation.
 ```bash
 make worktree-init  # generate this worktree's cluster config
 make                # list every target
-make deploy         # cluster, temporal-proxy, Worker and API
+make app-up         # cluster, temporal-proxy, Worker and API
 make demo           # curl the API to start one Workflow
 make check          # tests and static checks
 make cluster-down   # delete the cluster

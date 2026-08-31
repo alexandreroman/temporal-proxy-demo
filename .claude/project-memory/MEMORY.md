@@ -46,3 +46,4 @@
 - [The demo page borrows temporal.io's design system](references/feedback_page-design-system.md) — where the palette and typefaces come from
 - [The Workflow's contract and the API's response differ](references/feedback_api-response-envelope.md) — execution ids live in a `cmd/app` envelope, not in `hello.Response`
 - [The page names no upstream](references/project_page-names-no-upstream.md) — the destination station reads `Temporal`, and the page shows the endpoint it dials
+- [Lifecycle targets come in up/down pairs](references/feedback_up-down-target-pairs.md) — symmetric pairs, one name per job, teardown never fails on absence

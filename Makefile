@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-# deploy's correctness rests entirely on its prerequisites running in the
+# app-up's correctness rests entirely on its prerequisites running in the
 # order they are listed, so a parallel make would race them.
 .NOTPARALLEL:
 
@@ -145,7 +145,7 @@ image: ## Build the image and load it into the cluster (after cluster-create)
 # crash-loops on a configuration error, far from the command that caused it.
 # Refuse before touching the cluster, and name everything that is missing
 # rather than only the first thing. A .env that does not exist yet leaves
-# these variables empty, which counts as missing here. `apply` and `deploy`
+# these variables empty, which counts as missing here. `apply` and `app-up`
 # depend on this guard rather than a reader invoking it, so it carries no help
 # description.
 define require-cloud-setup
@@ -214,9 +214,28 @@ apply: require-cloud ## Deploy temporal-proxy and the application (after cluster
 # until the pods are told to restart. `apply` has already restarted
 # temporal-proxy and waited for it, its pod template being just as
 # blind to a changed configuration or certificate.
-.PHONY: deploy
-deploy: require-cloud cluster-up image apply ## Bring up the whole demo
+.PHONY: app-up
+app-up: require-cloud cluster-up image apply ## Bring the demo up: the cluster, temporal-proxy and the application
 	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
 	@$(publish-endpoints)
+
+# Paired with app-up, and it removes only what k8s/app holds: the cluster,
+# Traefik and temporal-proxy stay standing, so app-up is quick to run again.
+# A teardown never fails over something already being gone, which takes two
+# guards: `--ignore-not-found` for a resource the kustomization names, and the
+# `kind get clusters` test, borrowed from cluster-create, for the cluster
+# itself, whose absence kubectl reports as an unknown context. No require-cloud
+# guard either: removing workloads needs neither the Cloud values nor the
+# certificate, and demanding them would fail the one command someone reaches
+# for when those are the problem. The published Demo App address stops
+# answering whichever way the application went, so the info panel goes with it.
+.PHONY: app-down
+app-down: ## Remove the application, leaving the cluster and temporal-proxy up
+	@if kind get clusters 2>/dev/null | grep -qx '$(CLUSTER)'; then \
+		kubectl --context kind-$(CLUSTER) delete -k k8s/app --ignore-not-found; \
+	else \
+		echo 'No cluster named $(CLUSTER), so the application is already gone'; \
+	fi
+	@$(clear-endpoints)

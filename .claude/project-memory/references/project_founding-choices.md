@@ -14,7 +14,7 @@ type: project
   a local cluster brings up Traefik and temporal-proxy from
   their upstream Helm charts, and the Worker and the API
   from manifests through Kustomize, all with one command,
-  `make deploy`.
+  `make app-up`.
 - **Apache-2.0** as the repository license, even though
   temporal-proxy upstream is MIT.
 
@@ -23,7 +23,7 @@ any machine with a container runtime and `kind`, and its
 code must read as ordinary Temporal Go SDK code.
 
 **How to apply:** keep the entry point a single `Makefile`
-with `make deploy` as the one command that brings up the
+with `make app-up` as the one command that brings up the
 whole demo. Propose a second runtime or a second SDK
 language as an addition to discuss, never as a silent
 replacement.

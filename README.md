@@ -82,7 +82,7 @@ Put the client certificate in `k8s/certs/` as `client.pem` and
 
 ```bash
 make worktree-init
-make deploy
+make app-up
 make demo
 ```
 
@@ -91,7 +91,7 @@ make demo
 ```
 
 `make worktree-init` writes `k8s/kind-config.yaml`, which pins the one
-host port this cluster publishes; `make deploy` creates the cluster,
+host port this cluster publishes; `make app-up` creates the cluster,
 installs everything in it and waits for the rollout. The answer takes
 about two seconds — the Activity sleeps, so there is time to watch the
 Execution in the Cloud Web UI. `make endpoints` prints the addresses,
@@ -106,8 +106,10 @@ On a cluster that has just been created, Traefik loads a new route a
 moment after the rollout finishes, so the very first `make demo` can
 answer `503`. Run it again.
 
-Run `make` to list every target, and `make cluster-down` to delete the
-cluster.
+Run `make` to list every target. `make app-down` removes the Worker and
+the API and leaves the cluster, Traefik and temporal-proxy standing, so
+`make app-up` puts the demo back without rebuilding any of that;
+`make cluster-down` deletes everything.
 
 ## What runs where
 
