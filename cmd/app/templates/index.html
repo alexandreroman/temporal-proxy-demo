@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <title>hello-workflow · temporal-proxy demo</title>
+    <title>Temporal Proxy Demo</title>
 
     <!-- Alpine reveals these once it has evaluated their state, so nothing flashes first. -->
     <style>
@@ -44,286 +44,668 @@
       }
 
       /* ------------------------------------------------------------------------------------
-         The rail: four stations sitting on one hairline. It runs top to bottom on narrow
-         screens and left to right from 1024px, in the same order either way.
+         The rail: the topology as it really is, always left to right. The application and the
+         worker are both clients of the same endpoint, on legs of their own that never join, and
+         only that endpoint reaches any further:
 
-         The 1rem node is the alignment reference: the line and the arrowheads carry small
-         offsets so they sit on its centre. Each station and each leg picks its own accent
-         through --rail-accent.
+             application ─────►
+                                temporal-proxy ─────► Temporal
+             worker ──────────►
+
+         The wires state one thing and only that thing: who dials whom. Both clients dial the
+         endpoint, the endpoint dials the upstream, and that is as true of the still diagram as of
+         every phase of a run — a leg carries traffic in both directions over one run, and the
+         drawing itself claims nothing about which way. Which way something is moving right now is
+         the travelling pulse's job alone.
+
+         Two rows of equal height carry the drawing. The clients take one each, and the endpoint
+         and the hop upstream are centred across both, so they sit between the two legs
+         converging on them.
+
+         The cards are fixed at 18.5rem each. The converging region is fixed at 4rem. The upstream
+         hop takes whatever is left, down to a floor of 3rem — so the drawing fills the content
+         width the rest of the page uses (max-w-6xl less px-6 on either side, 69rem) and its edges
+         sit flush with the result panel's on both sides. As the viewport narrows the hop gives way,
+         down to 62.5rem all told, and below that the band scrolls rather than the drawing
+         distorting.
+
+         The hop is the one region that can flex, and the reason is its geometry. It is stretched to
+         its column rather than scaled to fit (see .rail-connector), which scales x and leaves y
+         alone — and its wire is horizontal, so its 4px weight is a y measure and comes through
+         exact. The converging region's wires are diagonals: an x-only stretch would thin their
+         stroke, and correcting that with vector-effect: non-scaling-stroke costs the pulse, because
+         the dash is then measured in device space and stops honouring pathLength — one travelling
+         dash becomes several standing ones. So the diagonals keep the width they were drawn for,
+         and the room goes where it does no harm.
+
+         One accent, declared here on .rail, is inherited by every card and every leg;
+         --rail-accent is the hook the answer's journey home overrides.
          ------------------------------------------------------------------------------------ */
       .rail {
+        display: grid;
+        grid-template-areas:
+          "application converge endpoint upstream temporal"
+          "worker      converge endpoint upstream temporal";
+        grid-template-columns:
+          max-content 4rem max-content minmax(3rem, 1fr) max-content;
+        grid-template-rows: repeat(2, 1fr);
+        row-gap: 1rem;
+        align-items: center;
+        /* Fill the band, and never compress below the floor: 3 x 18.5rem of card plus 4rem and
+           3rem of connector. The floor is stated rather than derived from the content so that it
+           cannot drift with an intrinsic measurement. */
+        width: 100%;
+        min-width: 62.5rem;
+        --rail-accent: var(--color-violet);
+      }
+
+      .rail-at-application { grid-area: application; }
+      .rail-at-worker { grid-area: worker; }
+      .rail-at-converge { grid-area: converge; }
+      .rail-at-endpoint { grid-area: endpoint; }
+      .rail-at-upstream { grid-area: upstream; }
+      .rail-at-temporal { grid-area: temporal; }
+
+      /* The answer's journey home — the Worker reporting its result, and the API's own long poll
+         returning — is the one part of the run that leaves the violet. Mint is the colour the
+         greeting arrives in, so it is the colour the greeting travels in, and the colour the wire
+         it crossed and the card it reached hold from there on. One declaration serves the wire and
+         the card, so the two can never disagree about which phase a run is in.
+
+         Mint is by far the brighter of the two: at the token it measures 12.44:1 against the
+         page's ink where violet measures 5.49:1, and a border at that weight reads as an alarm
+         rather than as the same diagram in its other colour. Mixed 72% into the ink it lands on
+         violet's own perceptual lightness — OKLab L 0.664 against 0.666 — which is the parity
+         that matters at this size; WCAG still scores it higher, at 6.40:1, because that formula
+         weights green heavily. Every level derived from the accent comes down with it. */
+      .rail-leg-answer,
+      .rail-station-answer {
+        --rail-accent: color-mix(in oklab, var(--color-mint) 72%, var(--color-ink));
+      }
+
+      /* A component, in a card of one fixed size. Both of its dimensions come from the longest
+         caption the page can render rather than the shortest one on a developer's screen: in the
+         cluster the endpoint address reads temporal-proxy.temporal-proxy:7233, an atomic token
+         that cannot be broken anywhere, so that token's rendered width is the floor the card's
+         text column has to clear; and the endpoint captions carry three items, so three lines is
+         the floor for its height. A shorter caption simply leaves slack at the foot of its card,
+         and because the content is top-aligned every station name stays on one line across the
+         whole row.
+
+         The width is chosen, not derived. Because a caption item is truncated rather than wrapped
+         (see .rail-detail li), no item can force the card wider — so the width is whatever the
+         items that have to stay whole need, and the endpoint address is not one of them: it is the
+         one value that varies by deployment, and in the cluster it is cut with an ellipsis.
+
+         What has to stay whole is the prose. At the projected breakpoint this mono sets 7.2px to
+         the character, and a card spends 1rem of padding on each side, 1px of border on each side,
+         and the mark column its caption is indented by — so the two longest items need:
+
+             Namespace set by temporal-proxy   31 ch, 223.20 + 30.36 + 32 + 2 = 287.56px
+             authentication happens here       27 ch, 194.41 + 25.60 + 32 + 2 = 254.01px
+
+         The first is on the lockup card, whose mark column is the wider of the two, which is what
+         makes it the binding item. 18.5rem is 296px, so it clears by 8.44px. Count the border: the
+         cards are border-box, so the two 1px edges come off the text column like the padding does,
+         and leaving them out of this sum is what makes a card look like it fits when it does not.
+         Any longer wording for either item is a change to this number as well.
+
+         The border, the radius and the fill are the result panel's own, so the cards read as the
+         same design system rather than as decoration around the diagram. */
+      .rail-station {
+        /* The column the component's name is set back by: the mark's own box, plus the space
+           between the mark and the name. The mark fills it and the caption is indented by it, so a
+           name and the caption under it start at exactly the same x whatever the font's own space
+           measures.
+
+           Its width is the name row's own two measures — the mark's 1em box plus the one character
+           of this mono, at 0.6em, that stands between the mark and the name — taken in the name's
+           type size. Which is why it is a rem and not an em: the caption is set two steps smaller,
+           and an em would resolve to a different width there. Both consumers read it from here, so
+           a change to the icon or to the space moves the name and the caption together. */
+        --rail-mark-column: 1.4rem; /* 1.6em of text-sm, which the name row is set in */
+
+        @variant lg {
+          --rail-mark-column: 1.6rem; /* 1.6em of lg:text-base */
+        }
+
         display: flex;
         flex-direction: column;
         align-items: flex-start;
-        --rail-accent: var(--color-violet);
-      }
-
-      .rail-violet {
-        --rail-accent: var(--color-violet);
-      }
-
-      .rail-indigo {
-        --rail-accent: var(--color-indigo);
-      }
-
-      .rail-pink {
-        --rail-accent: var(--color-pink);
-      }
-
-      .rail-station {
-        display: flex;
-        gap: 0.875rem;
-      }
-
-      .rail-node {
-        flex: none;
-        width: 1rem;
-        height: 1rem;
-        border: 2px solid var(--color-hairline);
-        border-radius: 9999px;
-        background-color: var(--color-ink);
+        gap: 0.375rem;
+        width: 18.5rem;
+        height: 8rem;
+        padding: 1rem;
+        border: 1px solid var(--color-hairline);
+        border-radius: 0.75rem;
+        background-color: var(--color-surface);
         transition: background-color 200ms, border-color 200ms, box-shadow 200ms;
       }
 
-      .rail-station-lit .rail-node {
-        border-color: var(--rail-accent);
-        background-color: var(--rail-accent);
-        box-shadow: 0 0 0 5px color-mix(in oklab, var(--rail-accent) 16%, transparent);
+      /* The station whose name is a lockup rather than a mark and a word. Three cards set their
+         name as an icon in a 1em box followed by the component's name, so one shared mark column
+         aligns all three captions. This one's name is temporal.io's own lockup, a single SVG whose
+         star fills the left of the box and whose wordmark starts partway across it — so the shared
+         column lands the caption to the left of where the letters actually begin.
+
+         The column is overridden here, on this card alone. Widening the shared value instead would
+         take it to the same 1.8975em and open the other three cards' icon-to-name gap from 0.6em to
+         0.9em: three cards changed to fix one.
+
+         The value is the lockup's own geometry, not a nudge. In the official 0 0 172 44 viewBox the
+         wordmark's first path starts at x = 55.6612, and the lockup renders at height: 1.5em with
+         width auto, so its box is 172/44 x 1.5em wide and the wordmark begins 55.6612/172 of the
+         way across it: 55.6612 / 44 x 1.5 = 1.8975em of the name's own type size. It is a rem here
+         for the same reason the shared column is — the caption is set two steps smaller, so an em
+         would resolve against the wrong font size. Recompute both lines if the height changes. */
+      .rail-station-lockup {
+        --rail-mark-column: 1.6604rem; /* 1.8975em of text-sm */
+
+        @variant lg {
+          --rail-mark-column: 1.8975rem; /* 1.8975em of lg:text-base */
+        }
       }
 
-      .rail-station-lit .rail-name {
-        color: var(--color-fg);
+      /* The card is much the largest target on the diagram, so it is where the three brightness
+         levels do the most work: an audience at the back of a room reads a border and a fill long
+         before it reads a hairline. */
+      .rail-station-lit {
+        border-color: var(--rail-accent);
+        background-color: color-mix(in oklab, var(--rail-accent) 12%, var(--color-surface));
+        box-shadow: 0 0 0 4px color-mix(in oklab, var(--rail-accent) 14%, transparent);
       }
 
       /* The record of the run that just finished: quieter than the pulse that went through,
          still unmistakably brighter than a rail nothing has travelled. */
-      .rail-station-done .rail-node {
+      .rail-station-done {
         border-color: color-mix(in oklab, var(--rail-accent) 55%, var(--color-hairline));
-        background-color: color-mix(in oklab, var(--rail-accent) 30%, var(--color-ink));
-      }
-
-      .rail-station-done .rail-name {
-        color: color-mix(in oklab, var(--color-fg) 65%, var(--color-muted));
+        background-color: color-mix(in oklab, var(--rail-accent) 5%, var(--color-surface));
       }
 
       /* The dwell: the request is at the Worker and the Activity really is sleeping. */
-      .rail-station-waiting .rail-node {
+      .rail-station-waiting {
         animation: rail-dwell 1.4s ease-in-out infinite;
       }
 
       @keyframes rail-dwell {
         0%,
         100% {
-          box-shadow: 0 0 0 5px color-mix(in oklab, var(--rail-accent) 28%, transparent);
+          box-shadow: 0 0 0 4px color-mix(in oklab, var(--rail-accent) 24%, transparent);
         }
         50% {
-          box-shadow: 0 0 0 13px color-mix(in oklab, var(--rail-accent) 0%, transparent);
+          box-shadow: 0 0 0 14px color-mix(in oklab, var(--rail-accent) 0%, transparent);
         }
       }
 
-      .rail-leg {
-        position: relative; /* the caliper mark below is positioned against the leg */
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
+      /* The legs, drawn as SVG so that the two converging on the endpoint can slant. Each
+         connector region is a fixed size, because the cards are, so one SVG scaled 1:1 with its
+         region carries hard-coded coordinates: nothing here is measured at runtime, and nothing
+         moves when the band scrolls, when a webfont lands or when a resize happens.
+
+         Both regions are 17rem tall — two 8rem cards and the 1rem row gap between them. The
+         converging region is also exactly as wide as its viewBox, one unit to the px. The upstream
+         hop's column flexes, so its SVG is stretched to it with preserveAspectRatio="none" rather
+         than scaled to fit: its viewBox stays the width of its floor and the drawing widens
+         horizontally with the column, while every y stays exactly where it is. In a wire's own user
+         space, one unit to the px at the default root size:
+
+             y =  64        the top client's centre line
+             y =  72, 200   the endpoint card's top and bottom edges
+             y = 136        the endpoint's centre line, Temporal's, and the band's
+             y = 208        the bottom client's centre line
+             x = 0 ..  64   the converging region's own width
+             x = 0 ..  48   the upstream region at its floor, stretched above it
+
+         and the two diagonals land at y = 104 and y = 168, a quarter of the card's height inside
+         each of its corners: converging on the endpoint, and never on each other. Keep each
+         viewBox in the same ratio as its column, or the drawing will letterbox away from the
+         cards it points at — which means a change to the columns above is a change to these
+         viewBoxes and to the x each wire ends at, in the same edit.
+
+         The pulse needs nothing from the stretch: pathLength normalises every wire to 100, so its
+         dash and its offset are fractions of the wire and never learn how long it renders.
+
+         What sets the converging region's width is the slant. Each diagonal drops a fixed 40 over
+         the region's width, so the width is the angle: 64 gives 32.0°, and at 40 it would reach
+         45°, where the horizontal run stops being longer than the vertical drop. Past that a wire
+         reads as a corner between two cards rather than as a run from one to the other, which is
+         the opposite of what the drawing says — it always flows left to right. */
+      .rail-connector {
+        position: relative; /* the caliper mark below is positioned against the upstream leg */
+        align-self: stretch;
       }
 
-      .rail-line {
-        flex: 1;
-        width: 2px;
-        min-height: 2.75rem;
-        margin-left: 7px; /* centred under the 1rem node */
-        background-color: var(--color-hairline);
-        background-repeat: no-repeat;
-        transition: background-color 200ms;
+      /* Out of flow, and that is load-bearing rather than tidiness. An svg with a viewBox carries
+         that viewBox's aspect ratio, so in flow it would ask for a height derived from whatever
+         width its column resolved to — and the upstream column flexes, so on a wide screen it would
+         ask for 152 x 272/48 = 861px and the grid's rows would size to the wire instead of to the
+         cards. Absolute against the region pins it to the height the cards set, at any width. */
+      .rail-connector svg {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
       }
 
-      .rail-leg-lit .rail-line {
-        background-color: var(--rail-accent);
+      /* The stroke the rail is drawn with, at the same 4px weight in every region. */
+      .rail-path {
+        fill: none;
+        stroke: var(--color-hairline);
+        stroke-width: 4;
+        transition: stroke 200ms;
       }
 
-      .rail-leg-lit .rail-arrow {
-        color: var(--rail-accent);
+      .rail-leg-lit .rail-path {
+        stroke: var(--rail-accent);
       }
 
-      .rail-leg-done .rail-line {
-        background-color: color-mix(in oklab, var(--rail-accent) 45%, var(--color-hairline));
+      .rail-leg-done .rail-path {
+        stroke: color-mix(in oklab, var(--rail-accent) 45%, var(--color-hairline));
       }
 
-      .rail-leg-done .rail-arrow {
-        color: color-mix(in oklab, var(--rail-accent) 45%, var(--color-hairline));
+      /* The travelling pulse: one dash of 45% of whichever wire it is on, since pathLength
+         normalises all three to 100, running the wire's length and out the far end. Its two
+         durations have to stay in step with OUTBOUND_LEG_MS and RETURN_LEG_MS. */
+      .rail-pulse {
+        fill: none;
+        stroke: none;
+        stroke-width: 4;
       }
 
-      /* The travelling pulse. Its duration has to match OUTBOUND_LEG_MS / RETURN_LEG_MS. */
-      .rail-leg-out .rail-line,
-      .rail-leg-back .rail-line {
-        background-image: linear-gradient(180deg, transparent, var(--rail-accent), transparent);
-        background-size: 100% 45%;
-        animation: rail-travel-block 200ms linear;
+      /* The pulse is drawn only while a leg is carrying traffic: the dash takes the accent, lifted,
+         and runs the wire. At rest the diagram carries no directional mark at all, so it makes no
+         claim about direction that a later phase could contradict.
+
+         The lift is what makes the pulse visible at all. Only the first wire of a run is crossed
+         over a shaft nothing has lit; every later crossing runs over a shaft .rail-leg-lit has
+         already taken to the accent, so a pulse of the accent would be drawn in exactly the colour
+         it is travelling over — a wire uniformly one colour, carrying nothing the eye can follow.
+         Mixing the page's own foreground into it puts the pulse a step above its shaft in lightness
+         instead. Lightness is the axis that works: the two accents are matched there on purpose
+         (OKLab L 0.666 against 0.664), so one mix separates the pulse from the shaft by the same
+         amount in both phases, and the separation survives the 200ms the shaft spends transitioning
+         from one accent to the other. */
+      .rail-leg-moving .rail-pulse {
+        stroke: color-mix(in oklab, var(--color-fg) 40%, var(--rail-accent));
+        stroke-dasharray: 45 100; /* a gap the whole wire long, so only one dash is ever on it */
+        animation: rail-travel-out 200ms linear;
       }
 
-      .rail-leg-back .rail-line {
-        --rail-accent: var(--color-mint);
+      .rail-leg-answer.rail-leg-moving .rail-pulse {
         animation-duration: 170ms;
-        animation-direction: reverse;
       }
 
-      @keyframes rail-travel-block {
+      /* A movement running against the wire's own left-to-right direction gets a keyframe of its
+         own, rather than the outbound one played backwards.
+
+         Two hops in a row can cross the same wire: every hop has the endpoint at one end of it, so
+         a hop that arrives somewhere is followed by one that leaves it, and if that next hop is on
+         the same wire it necessarily runs the other way. A CSS animation restarts only when its
+         name changes, and between two hops the class comes off and goes back on inside a single
+         task — so one keyframe shared by both directions would leave the second hop holding the
+         first one's finished animation, standing still on a wire the diagram is claiming carries
+         traffic. Two names, and every hop starts from the beginning. */
+      .rail-leg-reverse .rail-pulse {
+        animation-name: rail-travel-back;
+      }
+
+      @keyframes rail-travel-out {
         from {
-          background-position: 0 -45%;
+          stroke-dashoffset: 45;
         }
         to {
-          background-position: 0 145%;
+          stroke-dashoffset: -100;
         }
       }
 
-      @keyframes rail-travel-inline {
+      @keyframes rail-travel-back {
         from {
-          background-position: -45% 0;
+          stroke-dashoffset: -100;
         }
         to {
-          background-position: 145% 0;
+          stroke-dashoffset: 45;
         }
       }
 
-      .rail-arrow {
-        flex: none;
-        width: 8px;
-        height: 8px;
-        margin-left: 4px; /* the arrowhead points down the vertical rail */
-        color: var(--color-hairline);
-        transform: rotate(90deg);
-        transition: color 200ms;
-      }
-
-      /* A caliper mark on the rail. Both the tick and its label are out of flow, so this leg's
-         line and arrowhead measure exactly like the legs on either side of it. On the vertical
-         rail the mark reads left to right, next to the line. */
+      /* A caliper mark on the rail. Both the tick and its label are out of flow, so they cost the
+         upstream leg's own region nothing. The leader drops from the wire like a dimension leader,
+         into the room under the endpoint's row, which is empty across these columns — so the note
+         costs the diagram no height at all. */
       .rail-marker {
         position: absolute;
-        top: 50%;
-        left: 8px; /* just off the 2px line, which starts at 7px */
-        width: 1.25rem;
-        border-top: 1px dashed var(--color-hairline);
+        top: 50%; /* the wire's own line, halfway down the region, which is the cards' centre */
+        left: 50%;
+        height: 5.5rem;
+        border-left: 1px dashed var(--color-hairline);
       }
 
+      /* The note hangs from the end of the leader, centred on it, so the dashed line points at
+         the middle of the text. The leader is long enough to carry it clear of the cards it
+         reaches across: a note that lands beside one is read as belonging to it. */
       .rail-marker-label {
         position: absolute;
-        top: 50%;
-        left: 2.25rem; /* clear of the tick */
-        transform: translateY(-50%);
+        top: calc(50% + 6.25rem);
+        left: 50%;
+        width: 17rem;
+        transform: translateX(-50%);
+        text-align: center;
+      }
+
+      /* A caption is a list of the component's attributes, one to a line, indented past the card's
+         mark column so that every line starts where the component's name starts. It stays a list
+         for anything reading the page aloud; it just shows no markers, so an item that wraps
+         continues in the same column as the rest. */
+      .rail-detail {
+        list-style: none;
+        padding-left: var(--rail-mark-column);
+        /* The card is a flex column that packs its children to the start, so the list would
+           otherwise be exactly as wide as its longest item and hang out of the card. Stretching it
+           to the card's own width is what gives each item a column to be truncated against. */
+        align-self: stretch;
+      }
+
+      /* One line per item, always: an item too long for the card's text column is cut with an
+         ellipsis rather than wrapped.
+
+         Wrapping is the thing being avoided, not the ellipsis. Every card is one fixed height,
+         shared by all four so the row's captions start at the same y, and a caption's height is
+         its item count — so an item that wraps on one deployment and not another makes the card's
+         height a function of the address a cluster happened to resolve. Truncating keeps the
+         drawing's geometry a constant.
+
+         The full text stays in the DOM, so anything reading the page aloud reads all of it; the
+         title the script attaches is what recovers a cut value for a pointer. */
+      .rail-detail li {
+        overflow: hidden;
+        text-overflow: ellipsis;
         white-space: nowrap;
       }
 
-      /* The two destinations the Temporal station forks into. The one the deployment named is
-         solid and lit; the other stays a dashed ghost. */
-      .rail-fork {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
+      /* The band the diagram lives in. The drawing always flows left to right: below the width
+         it needs, the band scrolls rather than stacking into a reading-order list, and it starts
+         at the left, so the application is the first thing an audience sees. The scrollbar is
+         drawn in the rail's own hairline grey, quiet enough that the edge of the band reads as
+         part of the diagram rather than as a browser artifact on a projected screen. */
+      .rail-scroll {
+        overflow-x: auto;
+        /* Clipped rather than scrolled: an axis next to overflow-x: auto cannot stay visible, and
+           a vertical scrollbar on a horizontal band would be nonsense. The padding is the room a
+           lit card's halo needs, and the dwell's outermost ring is 14px of it — without this the
+           clip would cut the one beat of the run the audience is watching. */
+        overflow-y: hidden;
+        padding-block: 1rem;
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-hairline) transparent;
       }
 
-      .rail-branch {
-        border: 1px dashed var(--color-hairline);
-        border-radius: 0.5rem;
-        padding: 0.5rem 0.75rem;
-        color: var(--color-muted);
-        transition: background-color 200ms, border-color 200ms, color 200ms;
+      /* A symbol sitting in a line of text: on a station name, or in a sentence naming a control.
+         Sized in em so it follows whatever type it sits in, dropped onto that text's baseline, and
+         drawn in currentColor so it takes the colour of its surroundings. */
+      .inline-mark {
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        vertical-align: -0.125em;
+        fill: currentColor;
       }
 
-      .rail-branch-active {
-        border-style: solid;
-        border-color: var(--rail-accent);
-        background-color: color-mix(in oklab, var(--rail-accent) 10%, transparent);
+      /* The names set the band the captions hang from, so each one needs room for the tallest
+         thing it can carry: the lockup drops 0.432em below the baseline (see .rail-logo), which
+         is more descent than the type's own line-height leaves. All four names take the same
+         value, so the caption below them starts at the same height at every station. */
+      .rail-name {
+        line-height: 1.625;
+      }
+
+      /* The mark fills the card's mark column, so the name's first glyph starts at that column's
+         far edge — the same x the caption's items start at. The markup carries no space after the
+         mark: this margin is the space. */
+      .rail-name .inline-mark {
+        margin-right: calc(var(--rail-mark-column) - 1em);
+      }
+
+      /* A lockup standing in for a station name. Its height is in em, so it follows the type at
+         both breakpoints and the name it belongs to stays exactly as tall as the other three,
+         and currentColor takes it to the same white as the names beside it.
+
+         The offset is derived, not tuned. In the official 172x44 viewBox the mark fills the whole
+         height while the wordmark's flat letters (T, m, r, l) end on y = 31.33, so the wordmark's
+         baseline sits (44 - 31.33) / 44 of the box above its bottom edge. An inline-block meets the
+         surrounding text on its bottom edge, so the box drops by exactly that fraction of its own
+         height: 12.67 / 44 x 1.5em = 0.432em. Redo the arithmetic if the height ever changes. */
+      .rail-logo {
+        display: inline-block;
+        width: auto;
+        height: 1.5em;
+        vertical-align: -0.432em;
+      }
+
+      /* ------------------------------------------------------------------------------------
+         The page's backdrop, in temporal.io's own vocabulary: two soft blooms behind the headline,
+         a scattered starfield, and a flat grid that fades out above the rail. The page draws all
+         three in CSS rather than carrying an image, so the binary stays self-contained.
+
+         Every layer is fixed, out of flow and painted at z-index 0, with main above it in the same
+         stacking level, so the page's geometry never depends on the backdrop. A negative index
+         would paint it behind the body's own background instead, which is to say nowhere.
+
+         The intensities sit far below temporal.io's hero, whose job is to impress. This page is a
+         diagram: the rail has to stay the only geometry on it, and the mono captions are the
+         smallest text an audience reads from the back of a room.
+         ------------------------------------------------------------------------------------ */
+      body {
+        /* bg-ink stays the base colour; these two only tint it. Indigo has no business under text
+           at 3.01:1, and every reason to be here, where contrast carries no meaning. */
+        --bloom-violet: color-mix(in oklab, var(--color-violet) 18%, transparent);
+        --bloom-indigo: color-mix(in oklab, var(--color-indigo) 17%, transparent);
+        background-image:
+          radial-gradient(1300px 900px at 72% -8%, var(--bloom-violet), transparent 60%),
+          radial-gradient(1000px 1000px at 8% 0%, var(--bloom-indigo), transparent 55%);
+        background-attachment: fixed;
+      }
+
+      /* One 1px dot per layer, at a fixed position, with three alphas between them so the field
+         reads as scattered depth rather than as a row of pixels. */
+      .stars {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image:
+          radial-gradient(1px 1px at 7% 13%, rgb(255 255 255 / 24%), transparent),
+          radial-gradient(1px 1px at 19% 38%, rgb(255 255 255 / 16%), transparent),
+          radial-gradient(1px 1px at 27% 8%, rgb(255 255 255 / 20%), transparent),
+          radial-gradient(1px 1px at 34% 61%, rgb(255 255 255 / 13%), transparent),
+          radial-gradient(1px 1px at 43% 24%, rgb(255 255 255 / 24%), transparent),
+          radial-gradient(1px 1px at 51% 47%, rgb(255 255 255 / 16%), transparent),
+          radial-gradient(1px 1px at 58% 78%, rgb(255 255 255 / 13%), transparent),
+          radial-gradient(1px 1px at 64% 17%, rgb(255 255 255 / 20%), transparent),
+          radial-gradient(1px 1px at 72% 55%, rgb(255 255 255 / 24%), transparent),
+          radial-gradient(1px 1px at 79% 31%, rgb(255 255 255 / 13%), transparent),
+          radial-gradient(1px 1px at 86% 69%, rgb(255 255 255 / 16%), transparent),
+          radial-gradient(1px 1px at 91% 9%, rgb(255 255 255 / 20%), transparent),
+          radial-gradient(1px 1px at 96% 44%, rgb(255 255 255 / 13%), transparent),
+          radial-gradient(1px 1px at 12% 88%, rgb(255 255 255 / 16%), transparent);
+      }
+
+      .grid-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-image:
+          linear-gradient(rgb(255 255 255 / 6%) 1px, transparent 1px),
+          linear-gradient(90deg, rgb(255 255 255 / 6%) 1px, transparent 1px);
+        background-size: 64px 64px;
+        /* The grid belongs to the page's header and stops there. The fade is measured on the
+           viewport, so at the 950px height the page is projected at it is spent by 228px, above
+           the rail's first node at 260px: nothing below it competes with the rail's own
+           hairlines. */
+        -webkit-mask-image: linear-gradient(180deg, #000, transparent 24%);
+        mask-image: linear-gradient(180deg, #000, transparent 24%);
+      }
+
+      /* ------------------------------------------------------------------------------------
+         The headline's sweep, over the page's own accents. The first and last stops are the same
+         colour so the loop closes without a seam. Indigo stays out of the sweep: at 3.0:1 against
+         the background it sits exactly on the floor large text needs, which is no margin at all
+         once a projector has washed it out.
+         ------------------------------------------------------------------------------------ */
+      .title-sweep {
+        background-image: linear-gradient(
+          90deg,
+          var(--color-violet),
+          var(--color-pink),
+          var(--color-mint),
+          var(--color-pink),
+          var(--color-violet)
+        );
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: title-shift 6s linear infinite;
+      }
+
+      @keyframes title-shift {
+        to {
+          background-position: -200% center;
+        }
+      }
+
+      /* ------------------------------------------------------------------------------------
+         The run button's busy face. The spin is declared here rather than as a utility class so
+         that the reduced-motion block below can stop it while the loader stays in place of the
+         arrow: the button still reads as busy, it just stops turning.
+         ------------------------------------------------------------------------------------ */
+      /* The button carries no label, so its pointer states do that work: a lighter violet under
+         the pointer, a darker one while it is held, both mixed from colours already on the page.
+         Binding them to :enabled is what keeps the busy button inert — a disabled button still
+         matches :hover, so leaving it to the order the utilities land in would be a coin toss. */
+      .btn-run {
+        transition: background-color 150ms;
+      }
+
+      .btn-run:enabled:hover {
+        background-color: color-mix(in oklab, var(--color-violet) 70%, var(--color-fg));
+      }
+
+      .btn-run:enabled:active {
+        background-color: color-mix(in oklab, var(--color-violet) 82%, var(--color-ink));
+      }
+
+      /* A field taken out of play dims its chrome, not its value: the audience is reading the name
+         the run is carrying while the run is in flight. Safari paints a disabled field's text with
+         -webkit-text-fill-color, which wins over color, so both are stated here. */
+      .field-name:disabled {
+        background-color: var(--color-ink);
         color: var(--color-fg);
+        -webkit-text-fill-color: var(--color-fg);
+        opacity: 1;
       }
 
-      .rail-detail {
-        max-width: 18rem;
+      .btn-spinner {
+        animation: btn-spin 900ms linear infinite;
       }
 
-      @media (min-width: 1024px) {
-        .rail {
-          flex-direction: row;
-          align-items: flex-start;
+      @keyframes btn-spin {
+        to {
+          transform: rotate(360deg);
         }
+      }
 
-        .rail-station {
-          flex-direction: column;
-          align-items: center;
-          width: 9.5rem;
-          text-align: center;
+      /* ------------------------------------------------------------------------------------
+         The result panel. Alpine fades one state into the next; these two rules are the parts of
+         it a stylesheet has to own.
+         ------------------------------------------------------------------------------------ */
+
+      /* The wait, told by three dots rather than by one ellipsis glyph, because a glyph is a
+         single character and cannot carry a wave. Only opacity animates and every dot keeps its
+         place in the line, so neither the label's width nor its line box moves while it runs. The
+         floor is 25% rather than 0: the ellipsis is always all three dots, and the wave reads as a
+         pass over it rather than as dots coming and going. The cycle starts and ends on that floor,
+         so it loops without a seam for as long as the Activity sleeps. */
+      .dots span {
+        animation: dot-wave 1.2s ease-in-out infinite;
+      }
+
+      .dots span:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+
+      .dots span:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+
+      @keyframes dot-wave {
+        0%,
+        55%,
+        100% {
+          opacity: 0.25;
         }
-
-        .rail-station-wide {
-          width: 15rem;
+        30% {
+          opacity: 1;
         }
+      }
 
-        .rail-leg {
-          flex: 1;
-          flex-direction: row;
-          align-items: flex-start;
-        }
+      /* The greeting is the run's payoff, so it is the one thing in the panel that arrives rather
+         than simply appearing. The keyframe states only what it starts from, so the rest comes off
+         the element's own styles, and the rise is a transform, which costs the fixed-height panel
+         no layout. Being display: none between runs is what makes it play again on the next one. */
+      .result-greeting {
+        animation: result-rise 350ms ease-out;
+      }
 
-        .rail-line {
-          width: auto;
-          min-width: 2rem;
-          height: 2px;
-          min-height: 0;
-          margin-top: 7px; /* on the centre line of the 1rem nodes */
-          margin-left: 0;
-        }
-
-        .rail-leg-out .rail-line,
-        .rail-leg-back .rail-line {
-          background-image: linear-gradient(90deg, transparent, var(--rail-accent), transparent);
-          background-size: 45% 100%;
-          animation-name: rail-travel-inline;
-        }
-
-        .rail-arrow {
-          margin-top: 4px;
-          margin-left: 0;
-          transform: none;
-        }
-
-        /* On the horizontal rail the mark drops from the line like a dimension leader, far
-           enough that its label clears every station caption on either side. */
-        .rail-marker {
-          top: 8px; /* the centre line of the 1rem nodes */
-          left: 50%;
-          width: 0;
-          height: 6.5rem;
-          border-top: 0;
-          border-left: 1px dashed var(--color-hairline);
-        }
-
-        .rail-marker-label {
-          top: 7.25rem;
-          right: 50%; /* the note hangs to the left of the leader line */
-          left: auto;
-          width: 9.5rem;
-          padding-right: 0.5rem;
-          transform: none;
-          white-space: normal;
-          text-align: right;
+      @keyframes result-rise {
+        from {
+          opacity: 0;
+          transform: translateY(0.5rem);
         }
       }
 
       /* Every state change survives; only the travel and the glow stop. */
       @media (prefers-reduced-motion: reduce) {
-        .rail-node,
-        .rail-line,
-        .rail-arrow,
-        .rail-branch {
+        .rail-station,
+        .rail-path {
           transition: none;
         }
 
-        .rail-station-waiting .rail-node,
-        .rail-leg-out .rail-line,
-        .rail-leg-back .rail-line {
+        .rail-station-waiting {
           animation: none;
-          background-image: none;
+        }
+
+        /* Nothing travels: the pulse holds still and covers its whole wire, so what marks a
+           movement is the leg taking the accent. */
+        .rail-leg-moving .rail-pulse {
+          animation: none;
+          stroke-dasharray: none;
+        }
+
+        /* The loader stays in the button; only its rotation stops. */
+        .btn-spinner {
+          animation: none;
+        }
+
+        /* The dots hold at full strength: three of them, still saying the page is waiting. */
+        .dots span {
+          animation: none;
+        }
+
+        /* The greeting arrives without the rise. */
+        .result-greeting {
+          animation: none;
+        }
+
+        /* Alpine writes the panel's fade as an inline style, which is the one thing a stylesheet
+           cannot out-rank on its own. The panel still changes state; it just changes at once. */
+        section[aria-live] > * {
+          transition-duration: 0s !important;
+        }
+
+        /* The sweep stops where it stands: the headline keeps the gradient, it just holds still. */
+        .title-sweep {
+          animation: none;
         }
       }
     </style>
@@ -332,195 +714,370 @@
   </head>
 
   <body class="min-h-dvh bg-ink font-sans text-fg antialiased">
-    <main
-      class="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10 lg:gap-12 lg:py-12"
-      x-data="demoConsole('{{ .Target }}')"
-    >
-      <!-- From lg the control row sits beside the header, which is where the page finds the
-           vertical room the rail and the result panel need on a projected screen. -->
-      <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
-        <header class="flex flex-col gap-4">
-          <h1 class="text-4xl font-bold tracking-tight lg:text-6xl">hello-workflow</h1>
-          <p class="max-w-2xl text-lg text-muted lg:text-xl">
-            The application dials one plaintext endpoint on localhost and knows nothing about what
-            serves it. temporal-proxy owns the upstream, the TLS, the credentials and the Namespace
-            rewrite.
-          </p>
-        </header>
+    <div class="stars" aria-hidden="true"></div>
+    <div class="grid-overlay" aria-hidden="true"></div>
 
-        <!-- A real form, so Enter in the input starts a run just like the button does. -->
-        <form class="flex flex-wrap items-end gap-4" @submit.prevent="run()">
-          <div class="flex flex-col gap-2">
-            <label class="font-mono text-xs tracking-widest text-muted uppercase" for="name">name</label>
-            <input
-              id="name"
-              name="name"
-              value="Temporal"
-              autocomplete="off"
-              x-model="name"
-              class="w-56 rounded-md border border-hairline bg-surface px-4 py-3 text-lg
-                     focus-visible:border-violet focus-visible:outline-2 focus-visible:outline-offset-2
-                     focus-visible:outline-violet lg:w-72 lg:text-xl"
-            />
-          </div>
-          <button
-            type="submit"
-            :disabled="status === 'running'"
-            x-text="status === 'running' ? 'Running…' : 'Run a Workflow'"
-            class="rounded-md bg-violet px-6 py-3 text-lg font-semibold text-ink
-                   focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet
-                   disabled:bg-hairline disabled:text-muted lg:text-xl"
+    <!-- The page's symbols, declared once and drawn with <use>: the Kubernetes mark on every
+         station that runs in the cluster, and the two faces of the run button. The sprite itself is
+         never rendered — the attribute hides it until Tailwind's stylesheet arrives, the class
+         after it. -->
+    <svg hidden class="hidden" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <symbol id="kubernetes-mark" viewBox="0 0 24 24">
+        <path d="M10.204 14.35l.007.01-.999 2.413a5.171 5.171 0 0 1-2.075-2.597l2.578-.437.004.005a.44.44 0 0 1 .484.606zm-.833-2.129a.44.44 0 0 0 .173-.756l.002-.011L7.585 9.7a5.143 5.143 0 0 0-.73 3.255l2.514-.725.002-.009zm1.145-1.98a.44.44 0 0 0 .699-.337l.01-.005.15-2.62a5.144 5.144 0 0 0-3.01 1.442l2.147 1.523.004-.002zm.76 2.75l.723.349.722-.347.18-.78-.5-.623h-.804l-.5.623.179.779zm1.5-3.095a.44.44 0 0 0 .7.336l.008.003 2.134-1.513a5.188 5.188 0 0 0-2.992-1.442l.148 2.615.002.001zm10.876 5.97l-5.773 7.181a1.6 1.6 0 0 1-1.248.594l-9.261.003a1.6 1.6 0 0 1-1.247-.596l-5.776-7.18a1.583 1.583 0 0 1-.307-1.34L2.1 5.573c.108-.47.425-.864.863-1.073L11.305.513a1.606 1.606 0 0 1 1.385 0l8.345 3.985c.438.209.755.604.863 1.073l2.062 8.955c.108.47-.005.963-.308 1.34zm-3.289-2.057c-.042-.01-.103-.026-.145-.034-.174-.033-.315-.025-.479-.038-.35-.037-.638-.067-.895-.148-.105-.04-.18-.165-.216-.216l-.201-.059a6.45 6.45 0 0 0-.105-2.332 6.465 6.465 0 0 0-.936-2.163c.052-.047.15-.133.177-.159.008-.09.001-.183.094-.282.197-.185.444-.338.743-.522.142-.084.273-.137.415-.242.032-.024.076-.062.11-.089.24-.191.295-.52.123-.736-.172-.216-.506-.236-.745-.045-.034.027-.08.062-.111.088-.134.116-.217.23-.33.35-.246.25-.45.458-.673.609-.097.056-.239.037-.303.033l-.19.135a6.545 6.545 0 0 0-4.146-2.003l-.012-.223c-.065-.062-.143-.115-.163-.25-.022-.268.015-.557.057-.905.023-.163.061-.298.068-.475.001-.04-.001-.099-.001-.142 0-.306-.224-.555-.5-.555-.275 0-.499.249-.499.555l.001.014c0 .041-.002.092 0 .128.006.177.044.312.067.475.042.348.078.637.056.906a.545.545 0 0 1-.162.258l-.012.211a6.424 6.424 0 0 0-4.166 2.003 8.373 8.373 0 0 1-.18-.128c-.09.012-.18.04-.297-.029-.223-.15-.427-.358-.673-.608-.113-.12-.195-.234-.329-.349-.03-.026-.077-.062-.111-.088a.594.594 0 0 0-.348-.132.481.481 0 0 0-.398.176c-.172.216-.117.546.123.737l.007.005.104.083c.142.105.272.159.414.242.299.185.546.338.743.522.076.082.09.226.1.288l.16.143a6.462 6.462 0 0 0-1.02 4.506l-.208.06c-.055.072-.133.184-.215.217-.257.081-.546.11-.895.147-.164.014-.305.006-.48.039-.037.007-.09.02-.133.03l-.004.002-.007.002c-.295.071-.484.342-.423.608.061.267.349.429.645.365l.007-.001.01-.003.129-.029c.17-.046.294-.113.448-.172.33-.118.604-.217.87-.256.112-.009.23.069.288.101l.217-.037a6.5 6.5 0 0 0 2.88 3.596l-.09.218c.033.084.069.199.044.282-.097.252-.263.517-.452.813-.091.136-.185.242-.268.399-.02.037-.045.095-.064.134-.128.275-.034.591.213.71.248.12.556-.007.69-.282v-.002c.02-.039.046-.09.062-.127.07-.162.094-.301.144-.458.132-.332.205-.68.387-.897.05-.06.13-.082.215-.105l.113-.205a6.453 6.453 0 0 0 4.609.012l.106.192c.086.028.18.042.256.155.136.232.229.507.342.84.05.156.074.295.145.457.016.037.043.09.062.129.133.276.442.402.69.282.247-.118.341-.435.213-.71-.02-.039-.045-.096-.065-.134-.083-.156-.177-.261-.268-.398-.19-.296-.346-.541-.443-.793-.04-.13.007-.21.038-.294-.018-.022-.059-.144-.083-.202a6.499 6.499 0 0 0 2.88-3.622c.064.01.176.03.213.038.075-.05.144-.114.28-.104.266.039.54.138.87.256.154.06.277.128.448.173.036.01.088.019.13.028l.009.003.007.001c.297.064.584-.098.645-.365.06-.266-.128-.537-.423-.608zM16.4 9.701l-1.95 1.746v.005a.44.44 0 0 0 .173.757l.003.01 2.526.728a5.199 5.199 0 0 0-.108-1.674A5.208 5.208 0 0 0 16.4 9.7zm-4.013 5.325a.437.437 0 0 0-.404-.232.44.44 0 0 0-.372.233h-.002l-1.268 2.292a5.164 5.164 0 0 0 3.326.003l-1.27-2.296h-.01zm1.888-1.293a.44.44 0 0 0-.27.036.44.44 0 0 0-.214.572l-.003.004 1.01 2.438a5.15 5.15 0 0 0 2.081-2.615l-2.6-.44-.004.005z" />
+      </symbol>
+      <!-- arrow-right and loader-circle from Lucide (ISC): lucide.dev/icons/arrow-right
+           and lucide.dev/icons/loader-circle -->
+      <symbol id="arrow-right-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h14" />
+        <path d="m12 5 7 7-7 7" />
+      </symbol>
+      <symbol id="loader-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+      </symbol>
+    </svg>
+
+    <main
+      class="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10 lg:gap-12 lg:py-12"
+      x-data="demoConsole()"
+    >
+      <!-- The headline takes the content width on its own line. From md the intro and the control
+           row sit side by side beneath it, which is where the page finds the vertical room the rail
+           and the result panel need — on a projected screen, and more so on a short one.
+
+           md and not sm: the form is a fixed width with shrink-0, so the intro column is whatever
+           is left of the content width. At md that leaves the intro 390px, which still sets as a
+           paragraph; at sm it would leave 262px, around 33 characters a line, which reads as a
+           column of fragments. Below md the two stack, which is the right answer on a screen that
+           narrow rather than a failure to fit. -->
+      <header class="flex flex-col gap-6 lg:gap-8">
+        <h1 class="title-sweep text-3xl font-bold tracking-tight lg:text-5xl">Temporal Proxy Demo</h1>
+
+        <!-- The row centres its two columns on each other rather than sitting them on a shared
+             baseline: the intro is three lines at the projected width and takes more as the
+             column narrows, so a centred form tracks whatever height the paragraph turns out
+             to be. The form's own items-end is a different alignment and stays — that is what
+             keeps the arrow level with the field. -->
+        <div class="flex flex-col gap-8 md:flex-row md:items-center md:justify-between md:gap-10">
+          <!-- min-w-0 is what lets the intro give way to the form beside it: a flex item's own
+               min-width: auto would hold it at its longest unbreakable content and push the row
+               wider than the page instead. -->
+          <p class="min-w-0 max-w-2xl text-base text-muted lg:text-lg">
+            The application dials one plaintext endpoint and knows nothing about what serves it.
+            <strong>temporal-proxy</strong> owns the upstream, the TLS, the credentials and the
+            Namespace rewrite.
+          </p>
+
+          <!-- A real form, so Enter in the input starts a run just like the button does. It never
+               shrinks, which is what keeps the button on the input's line beside the intro. -->
+          <form class="flex shrink-0 flex-wrap items-end gap-4" @submit.prevent="run()">
+            <div class="flex flex-col gap-2">
+              <label class="font-mono text-xs tracking-widest text-muted uppercase" for="name">name</label>
+              <!-- The field goes inert while a run is in flight, and it is required: the form's
+                   own submit event never fires while it is empty, which closes the Enter path and
+                   the click path at once. -->
+              <input
+                id="name"
+                name="name"
+                value="Temporal"
+                required
+                autocomplete="off"
+                x-model="name"
+                :disabled="status === 'running'"
+                class="field-name w-56 rounded-md border border-hairline bg-surface px-4 py-3
+                       text-base focus-visible:border-violet focus-visible:outline-2
+                       focus-visible:outline-offset-2 focus-visible:outline-violet lg:w-72
+                       lg:text-lg"
+              />
+            </div>
+            <!-- The symbol carries no text, so the button states its name for a screen reader. Its
+                 padding and border match the input's, and the symbol is sized to the input's own
+                 line height at each breakpoint, so the two are exactly as tall as each other. -->
+            <button
+              type="submit"
+              :disabled="status === 'running' || !hasName"
+              aria-label="Run a Workflow"
+              class="btn-run inline-flex cursor-pointer items-center justify-center rounded-md
+                     border border-transparent bg-violet p-3 text-ink focus-visible:outline-2
+                     focus-visible:outline-offset-2 focus-visible:outline-violet
+                     disabled:cursor-default disabled:bg-hairline disabled:text-muted"
+            >
+              <svg class="size-6 lg:size-7" x-show="status !== 'running'" aria-hidden="true">
+                <use href="#arrow-right-mark" />
+              </svg>
+              <svg class="btn-spinner size-6 lg:size-7" x-show="status === 'running'" x-cloak aria-hidden="true">
+                <use href="#loader-mark" />
+              </svg>
+            </button>
+          </form>
+        </div>
+      </header>
+
+      <!-- The diagram is a band of its own that scrolls when it is wider than the page, so it
+           is a region a keyboard can reach and scroll without a pointer. -->
+      <div
+        class="rail-scroll w-full focus-visible:outline-2 focus-visible:outline-offset-2
+               focus-visible:outline-violet"
+        tabindex="0"
+        role="region"
+        aria-label="The path a request takes through the stack"
+      >
+        <ol class="rail">
+          <li
+            class="rail-station rail-at-application"
+            :class="stationClass('application')"
           >
-            Run a Workflow
-          </button>
-        </form>
+            <p class="rail-name font-mono text-sm text-fg lg:text-base">
+              <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
+              >application
+            </p>
+            <!-- role="list" survives list-style: none, which Safari otherwise takes as a cue to
+                 stop announcing the list at all. -->
+            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+              <li>{{ .Address }}</li>
+              <li>plaintext</li>
+              <li>namespace "{{ .Namespace }}"</li>
+            </ul>
+          </li>
+
+          <li class="rail-station rail-at-worker" :class="stationClass('worker')">
+            <p class="rail-name font-mono text-sm text-fg lg:text-base">
+              <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
+              >worker
+            </p>
+            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+              <li>{{ .Address }}</li>
+              <li>plaintext</li>
+              <li>namespace "{{ .Namespace }}"</li>
+            </ul>
+          </li>
+
+          <!-- Both clients dial the same endpoint on wires of their own, slanting in on it from
+               above and below without ever meeting each other: so each phase of a run lights
+               exactly one path, and a lit wire always says whose traffic is on it. -->
+          <li class="rail-connector rail-at-converge">
+            <svg viewBox="0 0 64 272" aria-hidden="true">
+              <!-- The rail's three wires, declared once here and drawn twice each: the shaft that
+                   is always there, and the pulse that travels it. A wire's coordinates are read in
+                   the user space of whichever connector draws it, and pathLength normalises all
+                   three to 100 so one dash pattern fits every one of them. -->
+              <defs>
+                <path id="rail-wire-application" pathLength="100" d="M0 64 64 104" />
+                <path id="rail-wire-worker" pathLength="100" d="M0 208 64 168" />
+                <path id="rail-wire-upstream" pathLength="100" d="M0 136 48 136" />
+              </defs>
+              <g :class="legClass('application')">
+                <use class="rail-path" href="#rail-wire-application" />
+                <use class="rail-pulse" href="#rail-wire-application" />
+              </g>
+              <g :class="legClass('worker')">
+                <use class="rail-path" href="#rail-wire-worker" />
+                <use class="rail-pulse" href="#rail-wire-worker" />
+              </g>
+            </svg>
+          </li>
+
+          <li class="rail-station rail-at-endpoint" :class="stationClass('proxy')">
+            <p class="rail-name font-mono text-sm text-fg lg:text-base">
+              <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
+              >temporal-proxy
+            </p>
+            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+              <li>one endpoint</li>
+              <li>authentication happens here</li>
+              <li>the upstream stops here</li>
+            </ul>
+          </li>
+
+          <li class="rail-connector rail-at-upstream">
+            <svg viewBox="0 0 48 272" preserveAspectRatio="none" aria-hidden="true">
+              <g :class="legClass('temporal')">
+                <use class="rail-path" href="#rail-wire-upstream" />
+                <use class="rail-pulse" href="#rail-wire-upstream" />
+              </g>
+            </svg>
+            <span class="rail-marker" aria-hidden="true"></span>
+            <span class="rail-marker-label font-mono text-[0.7rem] leading-snug text-muted">
+              the application's knowledge ends here
+            </span>
+          </li>
+
+          <li
+            class="rail-station rail-station-lockup rail-at-temporal"
+            :class="stationClass('temporal')"
+          >
+            <!-- temporal.io's own lockup, taken from
+                 https://temporal.io/images/logos/logo-temporal-with-copy-white-text.svg -->
+            <p class="rail-name font-mono text-sm text-fg lg:text-base">
+              <svg
+                class="rail-logo"
+                viewBox="0 0 172 44"
+                fill="none"
+                role="img"
+                aria-label="Temporal"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                  <path d="M55.6612 13.0643V15.1644H61.7724V31.3341H64.0737V15.1644H70.1849V13.0643H55.6612Z" fill="currentColor" />
+                  <path d="M70.6607 24.746C70.6607 28.7353 73.3059 31.4916 77.353 31.4916C80.3676 31.4916 82.8029 29.6287 83.3319 26.9511H81.1364C80.6868 28.6836 78.9921 29.5753 77.1943 29.5753C74.6814 29.5753 73.0149 27.8428 72.9355 25.3498V25.166H83.4104C83.4369 24.851 83.4633 24.536 83.4633 24.2472C83.3575 20.2833 80.7644 17.8945 77.062 17.8945C73.2529 17.8945 70.6607 20.6246 70.6607 24.746ZM73.0678 23.3809C73.2794 21.2021 75.1046 19.7846 77.0885 19.7846C79.2302 19.7846 80.924 21.0709 81.1356 23.3809H73.0678Z" fill="currentColor" />
+                  <path d="M102.384 17.8945C99.977 17.8945 98.5221 18.997 97.7021 20.4408C96.935 18.7345 95.3214 17.8945 93.4434 17.8945C91.3537 17.8945 90.2163 18.9183 89.5021 19.8896L89.3177 18.052H87.333V31.3341H89.5021V24.3785C89.5021 21.7009 90.8511 19.8633 93.0731 19.8633C95.1363 19.8633 96.3266 21.2284 96.3266 23.8535V31.3341H98.4957V24.2735C98.4957 21.5434 99.8712 19.8633 102.12 19.8633C104.156 19.8633 105.32 21.2284 105.32 23.8535V31.3341H107.489V23.7222C107.489 19.4958 105.188 17.8945 102.384 17.8945Z" fill="currentColor" />
+                  <path d="M118.256 17.8945C115.981 17.8945 114.526 18.9708 113.627 20.2046L113.443 18.052H111.458V36.5843H113.627V29.2866C114.447 30.5729 115.981 31.4916 118.256 31.4916C121.879 31.4916 124.737 28.7353 124.737 24.746C124.737 20.3883 121.879 17.8945 118.256 17.8945ZM118.044 29.5753C115.399 29.5753 113.6 27.5277 113.6 24.6935C113.6 21.8321 115.399 19.8108 118.044 19.8108C120.609 19.8108 122.515 21.8321 122.515 24.746C122.515 27.554 120.609 29.5753 118.044 29.5753Z" fill="currentColor" />
+                  <path d="M134.504 31.4916C138.445 31.4916 141.196 28.709 141.196 24.746C141.196 20.6771 138.445 17.8945 134.504 17.8945C130.562 17.8945 127.811 20.6771 127.811 24.746C127.811 28.709 130.562 31.4916 134.504 31.4916ZM134.504 29.5753C131.832 29.5753 130.033 27.5015 130.033 24.746C130.033 21.8846 131.832 19.8108 134.504 19.8108C137.175 19.8108 138.974 21.8846 138.974 24.746C138.974 27.5015 137.175 29.5753 134.504 29.5753Z" fill="currentColor" />
+                  <path d="M150.998 18.052C148.591 18.052 147.346 19.0495 146.711 20.0733L146.527 18.052H144.542V31.3341H146.711V24.6147C146.711 22.4884 147.691 20.1521 150.522 20.1521H151.606V18.052H150.998Z" fill="currentColor" />
+                  <path d="M166.092 29.2595C165.537 29.2595 165.193 29.0503 165.193 28.394V22.7247C165.193 19.6008 163.316 17.8945 159.877 17.8945C156.623 17.8945 154.481 19.4433 154.163 22.0684H156.332C156.597 20.7034 157.867 19.8108 159.771 19.8108C161.887 19.8108 163.024 20.8609 163.024 22.5934V23.5122H159.163C155.618 23.5122 153.74 24.9027 153.74 27.5802C153.74 30.0216 155.75 31.4916 158.713 31.4916C161.041 31.4916 162.283 30.4679 163.13 29.2603C163.156 30.5729 163.765 31.3341 165.563 31.3341H166.754V29.2595H166.092ZM163.024 25.8739C163.024 28.1053 161.57 29.6541 158.872 29.6541C157.073 29.6541 155.936 28.7615 155.936 27.449C155.936 25.9264 157.02 25.3235 158.951 25.3235H163.024V25.8739Z" fill="currentColor" />
+                  <path d="M169.831 13.0643V31.3341H172V13.0643H169.831Z" fill="currentColor" />
+                  <path d="M29.261 14.4612C28.2363 6.85604 25.6521 0.5 21.6645 0.5C17.6881 0.5 15.0928 6.85604 14.068 14.4612C6.40468 15.4782 0 18.0427 0 22C0 25.9463 6.40468 28.5218 14.068 29.5388C15.0928 37.144 17.6769 43.5 21.6645 43.5C25.641 43.5 28.2363 37.144 29.261 29.5388C36.9244 28.5218 43.3291 25.9573 43.3291 22C43.3291 18.0427 36.9244 15.4671 29.261 14.4612ZM13.823 27.3059C6.48265 26.2558 2.19429 23.846 2.19429 21.9889C2.19429 20.1319 6.47151 17.7221 13.823 16.672C13.6559 18.4296 13.5779 20.2203 13.5779 21.9889C13.5779 23.7576 13.6559 25.5594 13.823 27.3059ZM21.6645 2.66658C23.5358 2.66658 25.964 6.91131 27.0222 14.2069C25.2511 14.0411 23.4467 13.9638 21.6645 13.9638C19.8824 13.9638 18.0779 14.0522 16.3069 14.2069C17.365 6.92237 19.7932 2.66658 21.6645 2.66658ZM29.5061 27.3059C29.1496 27.3612 27.6571 27.527 27.2895 27.5712C27.2561 27.947 27.0779 29.4172 27.0222 29.771C25.964 37.0555 23.5358 41.3113 21.6645 41.3113C19.7932 41.3113 17.365 37.0666 16.3069 29.771C16.2512 29.4172 16.0841 27.936 16.0395 27.5712C15.8725 25.8468 15.7611 23.9897 15.7611 21.9889C15.7611 19.9882 15.8613 18.1422 16.0395 16.4067C17.7772 16.2409 19.6484 16.1303 21.6645 16.1303C23.6806 16.1303 25.5408 16.2298 27.2895 16.4067C27.6682 16.4398 29.1496 16.6167 29.5061 16.672C36.8464 17.7221 41.1348 20.1319 41.1348 21.9889C41.1348 23.846 36.8464 26.2558 29.5061 27.3059Z" fill="currentColor" />
+              </svg>
+            </p>
+            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+              <li>namespace set by temporal-proxy</li>
+            </ul>
+          </li>
+        </ol>
       </div>
 
-      <ol class="rail w-full">
-        <li class="rail-station rail-violet" :class="stationClass(0)">
-          <span class="rail-node"></span>
-          <div class="flex flex-col gap-1.5">
-            <p class="rail-name font-mono text-base text-muted lg:text-lg">application</p>
-            <p class="rail-detail font-mono text-xs leading-relaxed text-muted">
-              localhost:7233 · plaintext · namespace "default"
-            </p>
-          </div>
-        </li>
+      <!-- One height for every state, so finishing a run does not resize the panel under the rail:
+           13rem clears the tallest of the four, which is the failure. The height is fixed only from
+           lg, where the page is projected; below it a floor lets the greeting and the error hint
+           wrap onto more lines rather than spill out of the box.
 
-        <li class="rail-leg rail-violet" :class="legClass(0)">
-          <span class="rail-line"></span>
-          <svg class="rail-arrow" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true">
-            <path d="M1 0 7 4 1 8Z" />
-          </svg>
-        </li>
-
-        <li class="rail-station rail-indigo" :class="stationClass(1)">
-          <span class="rail-node"></span>
-          <div class="flex flex-col gap-1.5">
-            <p class="rail-name font-mono text-base text-muted lg:text-lg">temporal-proxy</p>
-            <p class="rail-detail font-mono text-xs leading-relaxed text-muted">
-              one endpoint · the upstream stops here
-            </p>
-          </div>
-        </li>
-
-        <li class="rail-leg rail-indigo" :class="legClass(1)">
-          <span class="rail-line"></span>
-          <svg class="rail-arrow" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true">
-            <path d="M1 0 7 4 1 8Z" />
-          </svg>
-          <span class="rail-marker" aria-hidden="true"></span>
-          <span class="rail-marker-label font-mono text-[0.7rem] leading-snug text-muted">
-            the application's knowledge ends here
-          </span>
-        </li>
-
-        <li class="rail-station rail-station-wide rail-violet" :class="stationClass(2)">
-          <span class="rail-node"></span>
-          <div class="flex flex-col gap-2.5">
-            <p class="rail-name font-mono text-base text-muted lg:text-lg">Temporal</p>
-            <div class="rail-fork">
-              <div class="rail-branch rail-violet" :class="{ 'rail-branch-active': target === 'local' }">
-                <p class="font-mono text-xs lg:text-sm">Temporal dev server</p>
-              </div>
-              <div class="rail-branch rail-pink" :class="{ 'rail-branch-active': target === 'cloud' }">
-                <p class="font-mono text-xs lg:text-sm">Temporal Cloud</p>
-                <p class="mt-1 font-mono text-[0.7rem] leading-snug text-muted">
-                  temporal-proxy adds TLS, the client certificate and the Namespace rewrite
-                </p>
-              </div>
-            </div>
-            <p class="font-mono text-[0.7rem] leading-snug text-muted" x-show="!target" x-cloak>
-              the deployment did not name a destination
-            </p>
-          </div>
-        </li>
-
-        <li class="rail-leg rail-indigo" :class="legClass(2)">
-          <span class="rail-line"></span>
-          <svg class="rail-arrow" viewBox="0 0 8 8" fill="currentColor" aria-hidden="true">
-            <path d="M1 0 7 4 1 8Z" />
-          </svg>
-        </li>
-
-        <li class="rail-station rail-violet" :class="stationClass(3)">
-          <span class="rail-node"></span>
-          <div class="flex flex-col gap-1.5">
-            <p class="rail-name font-mono text-base text-muted lg:text-lg">worker</p>
-            <p class="rail-detail font-mono text-xs leading-relaxed text-muted">
-              localhost:7233 · plaintext · namespace "default"
-            </p>
-          </div>
-        </li>
-      </ol>
-
+           The four states share one grid cell rather than standing in a column, so the one leaving
+           and the one arriving cross over in the same place instead of both taking room for the
+           length of the fade. -->
       <section
-        class="min-h-44 rounded-xl border border-hairline bg-surface p-6 lg:p-10"
+        class="grid min-h-44 content-center rounded-xl border border-hairline bg-surface
+               p-6 lg:h-52 lg:p-10"
         aria-live="polite"
       >
-        <div class="flex flex-col gap-2" x-show="status === 'idle'">
-          <p class="text-2xl lg:text-3xl">Nothing has run yet.</p>
-          <p class="text-muted lg:text-lg">
-            Press Run a Workflow — the application starts one Workflow Execution and waits for its
-            result.
+        <!-- Every state is an x-show, the two that read a result included: only an element that
+             stays in the document can fade, and x-if takes its subtree away instead. Those two
+             bind to fields that are never absent, which is what lets their markup evaluate in the
+             states that do not show them. -->
+        <div
+          class="col-start-1 row-start-1 self-center flex flex-col gap-2"
+          x-show="status === 'idle'"
+          x-transition.opacity.duration.200ms
+        >
+          <p class="text-xl lg:text-2xl">Nothing has run yet.</p>
+          <p class="text-sm text-muted lg:text-base">
+            Press <strong>Run a Workflow&nbsp;<svg class="inline-mark" aria-hidden="true"><use
+              href="#arrow-right-mark" /></svg></strong> to start one Workflow Execution and wait
+            for its result.
           </p>
         </div>
 
-        <p class="font-mono text-muted lg:text-lg" x-show="status === 'running'" x-cloak>
-          waiting for the response…
+        <p
+          class="col-start-1 row-start-1 self-center font-mono text-sm text-muted lg:text-base"
+          x-show="status === 'running'"
+          x-cloak
+          x-transition.opacity.duration.200ms
+        >
+          waiting for the response<span class="dots" aria-hidden="true"
+            ><span>.</span><span>.</span><span>.</span></span>
         </p>
 
-        <template x-if="status === 'done'">
-          <div class="flex flex-col gap-6">
-            <p class="text-3xl font-bold text-mint lg:text-5xl" x-text="result.greeting"></p>
-            <dl class="grid gap-x-8 gap-y-2 font-mono text-sm sm:grid-cols-[auto_1fr] lg:text-base">
-              <dt class="text-muted">workflow id</dt>
-              <dd class="break-all" x-text="result.workflowId"></dd>
-              <dt class="text-muted">run id</dt>
-              <dd class="break-all" x-text="result.runId"></dd>
-              <dt class="text-muted">duration</dt>
-              <dd x-text="formatDuration(durationMs)"></dd>
-            </dl>
-          </div>
-        </template>
+        <!-- The payoff gets the longest fade of the four, and the greeting inside it rises. -->
+        <div
+          class="col-start-1 row-start-1 self-center flex flex-col gap-6"
+          x-show="status === 'done'"
+          x-cloak
+          x-transition.opacity.duration.300ms
+        >
+          <p class="result-greeting text-2xl font-bold text-mint lg:text-4xl" x-text="result.greeting"></p>
+          <dl class="grid gap-x-8 gap-y-2 font-mono text-xs sm:grid-cols-[auto_1fr] lg:text-sm">
+            <dt class="text-muted">workflow id</dt>
+            <dd class="break-all" x-text="result.workflowId"></dd>
+            <dt class="text-muted">duration</dt>
+            <dd x-text="formatDuration(durationMs)"></dd>
+          </dl>
+        </div>
 
-        <template x-if="status === 'error'">
-          <div class="flex flex-col gap-3 border-l-2 border-hairline pl-5">
-            <p class="font-mono text-xs tracking-widest text-muted uppercase">request failed</p>
-            <p class="text-2xl lg:text-3xl" x-text="error.title"></p>
-            <p class="max-w-3xl text-muted lg:text-lg" x-text="error.hint"></p>
-          </div>
-        </template>
+        <div
+          class="col-start-1 row-start-1 self-center flex flex-col gap-3 border-l-2 border-hairline pl-5"
+          x-show="status === 'error'"
+          x-cloak
+          x-transition.opacity.duration.200ms
+        >
+          <p class="font-mono text-xs tracking-widest text-muted uppercase">request failed</p>
+          <p class="text-xl lg:text-2xl" x-text="error.title"></p>
+          <p class="max-w-3xl text-sm text-muted lg:text-base" x-text="error.hint"></p>
+        </div>
       </section>
     </main>
 
     <script>
-      // The outbound legs are ordering, not progress: they say where the request goes, quickly.
-      // Both durations have to stay in step with the .rail-leg-out / .rail-leg-back animations.
+      // The pulse crosses one leg in this long. Both durations have to stay in step with the
+      // .rail-leg-moving animations in the stylesheet.
       const OUTBOUND_LEG_MS = 200;
       const RETURN_LEG_MS = 170;
 
-      // application, temporal-proxy, Temporal, worker — so three legs between four stations.
-      const LAST_STATION = 3;
+      // The application and the worker are both clients of the same endpoint, so the rail has
+      // three legs, each named for the station at its far end from that endpoint. LEG_TAIL is
+      // the station a leg is drawn from, on its left: a movement that ends there runs against
+      // the drawing, and has to travel in reverse.
+      const LEG_TAIL = { application: "application", worker: "worker", temporal: "proxy" };
+
+      // A run has five phases, and four of them are movements: the Execution being started, the
+      // Workflow Task reaching the Worker's long poll, the dwell on the Worker, the result being
+      // reported, and the API's own long poll returning. Each movement is a walk between
+      // neighbouring stations, and every hop of a walk has the endpoint at one end of it — so
+      // the leg a hop crosses, the direction it crosses it in, and the station it leaves the
+      // audience looking at all come off the walk itself. `answer` marks the result's journey
+      // home, the movements the rail paints in mint.
+      const WALKS = {
+        start: { path: ["application", "proxy", "temporal"] },
+        deliver: { path: ["temporal", "proxy", "worker"] },
+        report: { path: ["worker", "proxy", "temporal"], answer: true },
+        finish: { path: ["temporal", "proxy", "application"], answer: true },
+      };
+
+      // Between `deliver` and `report` the rail dwells here, for as long as the Activity sleeps.
+      const DWELL_STATION = "worker";
+
+      // Which phase a movement belongs to, and so which colour it paints the wire it crosses and
+      // the station it reaches: the request on its way out, or the answer on its way home.
+      const REQUEST = "request";
+      const ANSWER = "answer";
+
+      // The result panel keeps all four of its states in the document, so every binding in it has
+      // to evaluate in every state. These are what a result and an error read as before a run has
+      // produced either: present, and empty.
+      const NO_RESULT = { greeting: "", workflowId: "" };
+      const NO_ERROR = { title: "", hint: "" };
+
+      // The hop between two neighbouring stations, as the rail has to play it: the leg it
+      // crosses is whichever end of it is not the endpoint.
+      function hop(from, to, answer) {
+        const leg = from === "proxy" ? to : from;
+        return { leg, to, answer, reverse: to === LEG_TAIL[leg] };
+      }
 
       const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
       document.addEventListener("alpine:init", () => {
-        Alpine.data("demoConsole", (target = "") => ({
-          // Whatever the deployment called its destination: "local", "cloud", or empty when it
-          // named none. An empty value leaves both branches ghosted rather than guessing one.
-          target,
+        Alpine.data("demoConsole", () => ({
           name: "Temporal",
           status: "idle", // idle | running | done | error
-          reached: -1, // the last station the request has reached
-          activeLeg: -1, // the leg the pulse is travelling right now
-          phase: "", // out | dwell | back
-          result: null,
+          // The stations this run has touched, and the legs it has crossed. Both stay lit for the
+          // rest of the run, and both hold the phase that touched them last, which is the colour
+          // they light in: REQUEST until the answer reaches them, ANSWER from then on.
+          visited: {},
+          crossed: {},
+          moving: null, // the hop the pulse is crossing right now
+          dwellAt: null, // the station the rail is dwelling on
+          result: NO_RESULT,
           durationMs: 0, // the round trip, timed around the fetch
-          error: null,
+          error: NO_ERROR,
+
+          // A blank field is not a name: "" and "   " are refused alike. The button, the form's
+          // required field and run() all answer to this one rule, so the control can never look
+          // pressable while it would do nothing.
+          get hasName() {
+            return this.name.trim() !== "";
+          },
 
           async run() {
-            if (this.status === "running") return;
+            if (this.status === "running" || !this.hasName) return;
 
             this.reset();
             this.status = "running";
@@ -528,17 +1085,21 @@
             // The request leaving and its response arriving are the only real events. Everything
             // between them is the rail dwelling on the Worker for as long as the Workflow takes.
             const request = this.callApi();
-            await this.travelOut();
+            await this.play(WALKS.start);
+            await this.play(WALKS.deliver);
+
+            this.dwellAt = DWELL_STATION;
             const outcome = await request;
+            this.dwellAt = null;
 
             if (!outcome.ok) {
-              this.phase = "";
               this.error = outcome.error;
               this.status = "error";
               return;
             }
 
-            await this.travelBack();
+            await this.play(WALKS.report);
+            await this.play(WALKS.finish);
             this.result = outcome.body;
             this.durationMs = outcome.durationMs;
             this.status = "done";
@@ -546,49 +1107,39 @@
 
           // Clearing the rail is what makes a second run read like the first one.
           reset() {
-            this.reached = -1;
-            this.activeLeg = -1;
-            this.phase = "";
-            this.result = null;
+            this.visited = {};
+            this.crossed = {};
+            this.moving = null;
+            this.dwellAt = null;
+            this.result = NO_RESULT;
             this.durationMs = 0;
-            this.error = null;
+            this.error = NO_ERROR;
           },
 
-          async travelOut() {
-            this.phase = "out";
-            this.reached = 0;
+          // One movement of the rail: the pulse crosses the walk's hops in turn, leaving every
+          // station and leg it has touched lit behind it in the phase's own colour, so the rail
+          // builds up a record of the whole path and the answer's colour advances across it.
+          // Reduced motion plays the same sequence at the same pace; the stylesheet is where
+          // nothing travels, so every step still lands.
+          async play(walk) {
+            const phase = walk.answer ? ANSWER : REQUEST;
+            this.visited[walk.path[0]] = phase;
 
-            if (this.reducedMotion()) {
-              this.reached = LAST_STATION;
-            } else {
-              for (let leg = 0; leg < LAST_STATION; leg++) {
-                this.activeLeg = leg;
-                await sleep(OUTBOUND_LEG_MS);
-                this.reached = leg + 1;
-              }
+            for (let step = 0; step < walk.path.length - 1; step++) {
+              const crossing = hop(walk.path[step], walk.path[step + 1], walk.answer);
+
+              this.moving = crossing;
+              await sleep(walk.answer ? RETURN_LEG_MS : OUTBOUND_LEG_MS);
+              this.moving = null;
+
+              this.crossed[crossing.leg] = phase;
+              this.visited[crossing.to] = phase;
             }
-
-            this.activeLeg = -1;
-            this.phase = "dwell";
-          },
-
-          async travelBack() {
-            this.phase = "back";
-
-            if (!this.reducedMotion()) {
-              for (let leg = LAST_STATION - 1; leg >= 0; leg--) {
-                this.activeLeg = leg;
-                await sleep(RETURN_LEG_MS);
-              }
-            }
-
-            this.activeLeg = -1;
-            this.phase = "";
           },
 
           // Returns an outcome instead of throwing, so run() reads as one straight sequence.
           async callApi() {
-            const name = this.name.trim() || "Temporal";
+            const name = this.name.trim();
 
             // The browser is where the round trip can be timed end to end.
             const start = performance.now();
@@ -613,9 +1164,7 @@
                 ok: false,
                 error: {
                   title: "The API did not answer.",
-                  hint:
-                    "Nothing is serving this port any more. Start the demo again with " +
-                    "`make dev`, then reload this page.",
+                  hint: "Nothing is serving this port any more. Restart the demo, then reload this page.",
                 },
               };
             }
@@ -642,32 +1191,48 @@
           },
 
           // Two lit states: the bright one follows the request while it travels, the quiet one
-          // stays behind afterwards so the finished rail records the path. An error keeps
-          // neither — a half-done round trip must not read like a success.
-          stationClass(index) {
+          // stays behind afterwards so the finished rail records the path. Either takes the colour
+          // of the phase that reached this station last. An error keeps neither — a half-done
+          // round trip must not read like a success.
+          stationClass(station) {
+            const phase = this.visited[station];
+            if (!phase || this.status === "error") return [];
+
             const classes = [];
-            if (this.status === "running" && this.reached >= index) classes.push("rail-station-lit");
+            if (this.status === "running") classes.push("rail-station-lit");
             if (this.status === "done") classes.push("rail-station-done");
-            if (this.phase === "dwell" && index === LAST_STATION) classes.push("rail-station-waiting");
+            if (phase === ANSWER) classes.push("rail-station-answer");
+            if (this.dwellAt === station) classes.push("rail-station-waiting");
             return classes;
           },
 
-          legClass(index) {
+          // A leg speaks the same language as the cards on either side of it: the phase of the
+          // movement on it right now, or of the last one to cross it.
+          legClass(leg) {
+            const moving = this.moving?.leg === leg ? this.moving : null;
+            const phase = moving ? (moving.answer ? ANSWER : REQUEST) : this.crossed[leg];
+            if (!phase || this.status === "error") return [];
+
             const classes = [];
-            if (this.status === "running" && this.reached > index) classes.push("rail-leg-lit");
+            if (this.status === "running" && this.crossed[leg]) classes.push("rail-leg-lit");
             if (this.status === "done") classes.push("rail-leg-done");
-            if (this.activeLeg === index) {
-              classes.push(this.phase === "back" ? "rail-leg-back" : "rail-leg-out");
+            if (phase === ANSWER) classes.push("rail-leg-answer");
+            if (moving) {
+              classes.push("rail-leg-moving");
+              if (moving.reverse) classes.push("rail-leg-reverse");
             }
             return classes;
           },
-
-          // Reduced motion keeps every state change; it only stops them travelling.
-          reducedMotion() {
-            return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-          },
         }));
       });
+
+      // A caption item is cut with an ellipsis when it does not fit its card, so each one carries
+      // its own text as a title: a cut value stays recoverable with a pointer. Reading it off the
+      // element is what keeps a second copy of every caption string out of the markup, where the
+      // two could disagree. The script tag is the last thing in the body, so the items are here.
+      for (const item of document.querySelectorAll(".rail-detail li")) {
+        item.title = item.textContent.trim();
+      }
     </script>
   </body>
 </html>

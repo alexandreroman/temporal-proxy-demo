@@ -3,25 +3,53 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 )
 
-// No t.Parallel here: these cases set TEMPORAL_TARGET, which pageHandler reads when newMux
+var (
+	htmlTag    = regexp.MustCompile(`<[^>]*>`)
+	whitespace = regexp.MustCompile(`\s+`)
+)
+
+// What the page shows, as opposed to how it marks it up: the caption's address sits in an element
+// of its own, so the tags come out and the whitespace they leave behind is collapsed.
+func shownText(body string) string {
+	return whitespace.ReplaceAllString(htmlTag.ReplaceAllString(body, " "), " ")
+}
+
+// No t.Parallel here: these cases set the environment variables pageHandler reads when newMux
 // builds it.
 func TestPage(t *testing.T) {
 	tests := []struct {
-		name   string
-		target string
+		name      string
+		address   string
+		namespace string
+		// The caption both endpoint stations carry, which is the resolved pair as the page shows
+		// it. The caption is a list of three items, and the bullet in front of each one is
+		// supplied by the stylesheet, so what the markup holds is the three values in order.
+		// Matching the whole caption rather than each value keeps the case from passing on a
+		// coincidence: "demo" alone also occurs inside the page's own script.
+		wantCaption string
 	}{
-		{"target supplied", "cloud"},
-		// Unset means the deployment said nothing, and the page has to render anyway.
-		{"target unset", ""},
+		{
+			name:        "endpoint supplied",
+			address:     "temporal.example:7233",
+			namespace:   "demo",
+			wantCaption: `temporal.example:7233 plaintext namespace "demo"`,
+		},
+		{
+			// Both unset: the fallbacks in the code, which are what a Temporal dev server serves.
+			name:        "endpoint unset",
+			wantCaption: `localhost:7233 plaintext namespace "default"`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("TEMPORAL_TARGET", tt.target)
+			t.Setenv("TEMPORAL_ADDRESS", tt.address)
+			t.Setenv("TEMPORAL_NAMESPACE", tt.namespace)
 
 			var fake fakeGreeter
 			rec := httptest.NewRecorder()
@@ -33,8 +61,8 @@ func TestPage(t *testing.T) {
 			if got, want := rec.Header().Get("Content-Type"), "text/html; charset=utf-8"; got != want {
 				t.Errorf("content type = %q, want %q", got, want)
 			}
-			if tt.target != "" && !strings.Contains(rec.Body.String(), tt.target) {
-				t.Errorf("body does not mention the target %q", tt.target)
+			if !strings.Contains(shownText(rec.Body.String()), tt.wantCaption) {
+				t.Errorf("body does not show the endpoint caption %q", tt.wantCaption)
 			}
 		})
 	}
