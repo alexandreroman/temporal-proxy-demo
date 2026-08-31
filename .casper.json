@@ -3,7 +3,7 @@
     "copyFiles": [".env", "client.pem", "client.key"],
     "scripts": {
       "setup": "make worktree-init TRAEFIK_PORT=$CASPER_PORT",
-      "run": "make deploy",
+      "run": "make app-up",
       "teardown": "make cluster-down"
     }
   }

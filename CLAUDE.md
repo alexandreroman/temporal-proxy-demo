@@ -10,6 +10,7 @@ See [README.md](README.md) for full documentation.
 ## Tech stack
 
 - Go — Temporal Go SDK (Worker) and net/http (API)
+- Tailwind CSS and Alpine.js — the embedded page, both from a CDN
 - temporal-proxy — one gRPC endpoint in front of every upstream
 - Kubernetes on Kind — the local cluster the demo runs in
 - Kustomize — the Worker and the API
@@ -22,7 +23,7 @@ See [README.md](README.md) for full documentation.
 ```bash
 make worktree-init  # generate this worktree's cluster config
 make                # list every target
-make deploy         # cluster, temporal-proxy, Worker and API
+make app-up         # cluster, temporal-proxy, Worker and API
 make demo           # curl the API to start one Workflow
 make check          # tests and static checks
 make cluster-down   # delete the cluster
@@ -31,7 +32,8 @@ make cluster-down   # delete the cluster
 ## Modules
 
 - `cmd/worker` — Temporal Worker, polling a Task Queue
-- `cmd/app` — HTTP API that starts one Workflow Execution
+- `cmd/app` — HTTP API that starts one Workflow Execution,
+  and the embedded page that drives it
 - `internal/hello` — the hello-workflow Workflow and its Activity
 - `internal/temporalclient` — the shared client: plaintext, no credentials
 - `k8s` — the cluster configuration: the application's manifests in

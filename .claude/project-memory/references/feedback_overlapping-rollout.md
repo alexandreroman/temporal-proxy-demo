@@ -20,7 +20,7 @@ single replica needs.
 takes no inbound traffic, and a gap in its availability only
 delays a Workflow Task, which the demo waits for anyway.
 
-**Why:** `make deploy` ends by restarting `deploy/app` and
+**Why:** `make app-up` ends by restarting `deploy/app` and
 `make demo` curls it straight after. With one replica behind
 the cluster's only route, a pod that stops before Traefik's
 view of it catches up blackholes the request, so Traefik
@@ -29,8 +29,8 @@ times out with a 504 rather than failing fast.
 A cluster created from nothing keeps one window the overlap
 cannot close: Traefik loads a route only after its
 `providersThrottleDuration`, two seconds by default, so the
-first `make demo` after a cold `make deploy` can answer 503.
-`deploy` does not poll the published route to hide it — the
+first `make demo` after a cold `make app-up` can answer 503.
+`app-up` does not poll the published route to hide it — the
 README tells the reader to run the command again, which keeps
 the recipe on a slide.
 

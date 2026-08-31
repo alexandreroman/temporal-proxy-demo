@@ -82,27 +82,34 @@ Put the client certificate in `k8s/certs/` as `client.pem` and
 
 ```bash
 make worktree-init
-make deploy
+make app-up
 make demo
 ```
 
 ```json
-{"greeting":"Hello, Temporal!"}
+{"greeting":"Hello, Temporal!","workflowId":"hello-9f1c…","runId":"01a0…"}
 ```
 
 `make worktree-init` writes `k8s/kind-config.yaml`, which pins the one
-host port this cluster publishes; `make deploy` creates the cluster,
+host port this cluster publishes; `make app-up` creates the cluster,
 installs everything in it and waits for the rollout. The answer takes
 about two seconds — the Activity sleeps, so there is time to watch the
 Execution in the Cloud Web UI. `make endpoints` prints the addresses,
 and `make demo NAME=Alex` greets someone else.
 
+The API also serves a page at the published address, which
+`make endpoints` prints: one button starts an Execution, and the request
+is drawn travelling through the stack. The page and `make demo` are two
+ways into the same endpoint.
+
 On a cluster that has just been created, Traefik loads a new route a
 moment after the rollout finishes, so the very first `make demo` can
 answer `503`. Run it again.
 
-Run `make` to list every target, and `make cluster-down` to delete the
-cluster.
+Run `make` to list every target. `make app-down` removes the Worker and
+the API and leaves the cluster, Traefik and temporal-proxy standing, so
+`make app-up` puts the demo back without rebuilding any of that;
+`make cluster-down` deletes everything.
 
 ## What runs where
 
@@ -144,15 +151,15 @@ at startup.
 
 ## What the application does not carry
 
-The Worker and the API get two environment variables, and neither
-describes an upstream:
+The Worker and the API each get the same two environment variables, and
+neither describes an upstream:
 
 | Variable             | Value                                |
 | -------------------- | ------------------------------------ |
 | `TEMPORAL_ADDRESS`   | `temporal-proxy.temporal-proxy:7233` |
 | `TEMPORAL_NAMESPACE` | `demo`                               |
 
-That is a cluster-local address, dialled in plaintext, and a short
+Those two are a cluster-local address, dialled in plaintext, and a short
 Namespace name. Nothing else is needed because everything else lives in
 temporal-proxy's configuration: the Cloud host name, the TLS material,
 and the rewrite from `demo` to the fully-qualified Cloud Namespace.
@@ -160,11 +167,15 @@ and the rewrite from `demo` to the fully-qualified Cloud Namespace.
 which upstream serves it — picking an upstream is not something the
 application can do.
 
+The page the API serves renders those same two values, read where the
+client itself reads them, and names no upstream at all — naming one is
+precisely what the application cannot do.
+
 The short name is `demo` rather than `default` because one
 temporal-proxy fronts several applications, so the name each one asks
-for has to identify it. Both variables also have fallbacks in the
-code — `localhost:7233` and `default`, what a `temporal server
-start-dev` serves — so the binaries run unchanged outside the cluster.
+for has to identify it. Both variables also have fallbacks in the code —
+`localhost:7233` and `default`, what a `temporal server start-dev`
+serves — so the binaries run unchanged outside the cluster.
 
 ## Limit of this demo
 

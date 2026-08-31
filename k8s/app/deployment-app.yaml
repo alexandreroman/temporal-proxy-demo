@@ -1,4 +1,5 @@
-# The HTTP API: POST /hello starts one Workflow Execution.
+# The HTTP API: POST /hello starts one Workflow Execution, and the
+# demo page it serves drives that same endpoint.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
