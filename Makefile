@@ -70,9 +70,7 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 		'| --- | --- |' \
 		"| Demo App | <http://hello.127-0-0-1.nip.io:$$port> |" \
 		"| Temporal Web UI (Cloud) | <https://cloud.temporal.io/namespaces/\
-$(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)> |" \
-		'' \
-		'Trigger a Workflow with `make demo`.'
+$(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)> |"
 
 # The workspace info panel mirrors `make endpoints`, so whichever command
 # brought the stack up or down leaves it telling the truth. The CLI is on PATH
