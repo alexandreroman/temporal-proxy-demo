@@ -11,9 +11,9 @@ type: project
   can follow both sides of the wire without a language
   switch.
 - **Kubernetes on Kind** as the only runtime for the demo:
-  a local cluster brings up Traefik through Helm, and
-  everything else — temporal-proxy, the Worker and the
-  API — through Kustomize, all with one command,
+  a local cluster brings up Traefik and temporal-proxy from
+  their upstream Helm charts, and the Worker and the API
+  from manifests through Kustomize, all with one command,
   `make deploy`.
 - **Apache-2.0** as the repository license, even though
   temporal-proxy upstream is MIT.

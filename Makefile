@@ -26,15 +26,6 @@ CLUSTER ?= $(notdir $(CURDIR))
 # environment variable of its own.
 TRAEFIK_PORT ?= 8080
 
-# Gateway API CRDs are not shipped by the Traefik chart, so they are
-# applied from the pinned upstream release before it.
-GATEWAY_API_VERSION ?= v1.6.1
-
-# Which scenario to deploy to the cluster. Each one is a directory under
-# k8s/scenarios/: a Kustomize overlay and one temporal-proxy configuration
-# file. Switch with `make deploy SCENARIO=<name>`.
-SCENARIO ?= credentials
-
 # The CLI that builds the image and runs the cluster's nodes. A Podman user
 # overrides this one variable; everything else Podman needs (the
 # KIND_EXPERIMENTAL_PROVIDER kind reads, and a docker-compatible CLI on PATH)
@@ -78,7 +69,6 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 		"| Demo App | <http://hello.127-0-0-1.nip.io:$$port> |" \
 		"| Temporal Web UI (Cloud) | <https://cloud.temporal.io/namespaces/\
 $(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)> |" \
-		"| Scenario | \`$(SCENARIO)\` |" \
 		'' \
 		'Trigger a Workflow with `make demo`.'
 
@@ -130,10 +120,12 @@ cluster-create: ## Create the Kind cluster
 		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml
 	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
 
+# Gateway API CRDs are not shipped by the Traefik chart, so they come from
+# the pinned upstream release, applied before it.
 .PHONY: cluster-up
 cluster-up: cluster-create ## Create the cluster and install its platform components
 	kubectl --context kind-$(CLUSTER) apply -f \
-		https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/standard-install.yaml
+		https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/standard-install.yaml
 	helm --kube-context kind-$(CLUSTER) upgrade --install traefik traefik \
 		--repo https://traefik.github.io/charts --version 41.4.0 \
 		--namespace traefik --create-namespace \
@@ -168,12 +160,12 @@ define require-cloud-setup
 missing=''; \
 [ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
 [ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
-[ -f k8s/base/proxy/certs/client.pem ] || missing="$$missing k8s/base/proxy/certs/client.pem"; \
-[ -f k8s/base/proxy/certs/client.key ] || missing="$$missing k8s/base/proxy/certs/client.key"; \
+[ -f k8s/certs/client.pem ] || missing="$$missing k8s/certs/client.pem"; \
+[ -f k8s/certs/client.key ] || missing="$$missing k8s/certs/client.key"; \
 if [ -n "$$missing" ]; then \
   echo "Cannot deploy, these are missing:$$missing"; \
   echo "The values go in .env (copy .env.example); the certificate goes in"; \
-  echo "k8s/base/proxy/certs/ as client.pem and client.key. Then run the command again."; \
+  echo "k8s/certs/ as client.pem and client.key. Then run the command again."; \
   exit 1; \
 fi
 endef
@@ -182,29 +174,56 @@ endef
 require-cloud: ## Refuse to continue without Temporal Cloud credentials and a certificate
 	@$(require-cloud-setup)
 
+# `kubectl create secret` refuses to overwrite a Secret that already exists, so
+# every one of them is rendered client-side and piped into `apply` instead:
+# that is what makes `make apply` runnable a second time. Both Secrets belong
+# to temporal-proxy's namespace, so it is part of this shared shape; each call
+# supplies only the kind, the name and the sources.
+define apply-secret
+kubectl --context kind-$(CLUSTER) -n temporal-proxy create secret $(1) \
+	--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
+endef
+
 # The Namespace and account identifiers are not credentials, but they are
 # account-specific, so they stay out of the committed configuration and reach
 # temporal-proxy as a Secret built here from .env. Its envFrom expands them
-# into the ${VAR} references left literal in the generated ConfigMap. The
-# Namespaces are applied first, because that Secret has to land in one of
-# them before the Deployment that reads it exists.
+# into the ${VAR} references left literal in the rendered ConfigMap. The
+# client certificate reaches it the same way, as a Secret built from the two
+# files in k8s/certs/: `create secret tls` gives it exactly the tls.crt and
+# tls.key keys the chart expects. The Namespaces are applied first, because
+# both Secrets have to land in one of them before the chart's Deployment
+# reads them. temporal-proxy is pre-release, so its chart version and its
+# image tag in k8s/charts/temporal-proxy.yaml are both pinned: an unpinned
+# upgrade would pick up a configuration schema this repository has not been
+# checked against.
 .PHONY: apply
-apply: require-cloud ## Deploy the scenario (after cluster-up)
-	kubectl --context kind-$(CLUSTER) apply -f k8s/base/namespaces.yaml
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy \
-		create secret generic temporal-cloud-config \
+apply: require-cloud ## Deploy temporal-proxy and the application (after cluster-up)
+	kubectl --context kind-$(CLUSTER) apply -f k8s/namespaces.yaml
+	$(call apply-secret,generic temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
-		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)' \
-		--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
-	kubectl --context kind-$(CLUSTER) apply -k k8s/scenarios/$(SCENARIO)
+		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)')
+	$(call apply-secret,tls temporal-cloud-client \
+		--cert=k8s/certs/client.pem --key=k8s/certs/client.key)
+	helm --kube-context kind-$(CLUSTER) upgrade --install temporal-proxy temporal-proxy \
+		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
+		--namespace temporal-proxy \
+		-f k8s/charts/temporal-proxy.yaml
+# Unconditional, because nothing above changes the pod template: the chart's
+# ConfigMap and both Secrets keep fixed names, whatever their content, and
+# temporal-proxy reads its configuration and its certificate only at startup.
+# This restart is what makes `make apply` a working certificate rotation, and
+# the wait paired with it is what keeps a certificate or an account id the
+# proxy rejects from being reported as a success.
+	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout restart deploy/temporal-proxy
+	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
+	kubectl --context kind-$(CLUSTER) apply -k k8s/app
 
 # The image tag is fixed, so a rebuild is invisible to Kubernetes
-# until the pods are told to restart. temporal-proxy needs no such
-# nudge: its pod template changes whenever its configuration or its
-# certificate does.
+# until the pods are told to restart. `apply` has already restarted
+# temporal-proxy and waited for it, its pod template being just as
+# blind to a changed configuration or certificate.
 .PHONY: deploy
 deploy: require-cloud cluster-up image apply ## Bring up the whole demo
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s

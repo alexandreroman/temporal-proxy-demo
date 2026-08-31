@@ -27,8 +27,7 @@ has to be explainable on a slide.
 per-worktree settings in the generated
 `k8s/kind-config.yaml` — see
 [[feedback-worktree-config-on-disk]]. For a one-off
-value, pass it on the command line (`make deploy
-SCENARIO=encryption`, which wins over the
-Makefile's default) or set it in the calling
-environment, rather than introducing another
-environment file.
+value, pass it on the command line (`make demo
+NAME=Alex`, which wins over the Makefile's default)
+or set it in the calling environment, rather than
+introducing another environment file.

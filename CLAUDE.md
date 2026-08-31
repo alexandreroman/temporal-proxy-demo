@@ -12,8 +12,8 @@ See [README.md](README.md) for full documentation.
 - Go — Temporal Go SDK (Worker) and net/http (API)
 - temporal-proxy — one gRPC endpoint in front of every upstream
 - Kubernetes on Kind — the local cluster the demo runs in
-- Kustomize — every workload except Traefik, one overlay per scenario
-- Helm — Traefik, and nothing else
+- Kustomize — the Worker and the API
+- Helm — Traefik and temporal-proxy, from their upstream charts
 - Traefik — the cluster's only published entrypoint
 - Temporal Cloud — the demo's upstream (TLS + client certificate)
 
@@ -34,7 +34,10 @@ make cluster-down   # delete the cluster
 - `cmd/app` — HTTP API that starts one Workflow Execution
 - `internal/hello` — the hello-workflow Workflow and its Activity
 - `internal/temporalclient` — the shared client: plaintext, no credentials
-- `k8s` — the cluster configuration, one scenario per directory
+- `k8s` — the cluster configuration: the application's manifests in
+  `app`, the charts' values in `charts`, the client certificate in
+  `certs`, plus `namespaces.yaml`, applied on its own, and
+  `kind-config.yaml.in`, the template `worktree-init` renders
 
 ## Agents
 
@@ -95,7 +98,7 @@ not shared with the team.
   messages, errors, or identifiers. That neutrality is
   the whole point of the demo; anything that leaks
   into the code is a bug.
-- temporal-proxy is **pre-release**. Pin its version
-  explicitly and re-check its config schema against
-  the upstream repo before changing its configuration
-  files under `k8s/scenarios/`.
+- temporal-proxy is **pre-release**. Its chart version
+  and its image tag are both pinned explicitly;
+  re-check its config schema against the upstream repo
+  before changing `k8s/charts/temporal-proxy.yaml`.

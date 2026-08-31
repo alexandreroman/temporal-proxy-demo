@@ -22,13 +22,14 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["/app/app"]
           env:
-            # A local endpoint, in plaintext, with a short Namespace
-            # name. No TLS material, no credential, no fully-qualified
-            # Namespace: everything the upstream needs lives elsewhere.
+            # A local endpoint, in plaintext, with the application's
+            # own short Namespace name. No TLS material, no credential,
+            # no fully-qualified Namespace: everything the upstream
+            # needs lives elsewhere.
             - name: TEMPORAL_ADDRESS
               value: temporal-proxy.temporal-proxy:7233
             - name: TEMPORAL_NAMESPACE
-              value: default
+              value: demo
           ports:
             - name: http
               containerPort: 8080

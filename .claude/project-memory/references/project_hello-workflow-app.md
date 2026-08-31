@@ -32,5 +32,6 @@ of the wire.
 
 **How to apply:** keep the Activity's duration
 perceptible, keep the endpoint the only trigger,
-and add new scenarios by changing proxy
-configuration rather than the Go code.
+and change what the demo shows by changing
+temporal-proxy's configuration rather than the Go
+code.

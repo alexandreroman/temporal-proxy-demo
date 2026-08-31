@@ -7,7 +7,7 @@ type: feedback
 # Naming the proxy outside the Go code
 
 Everywhere the demo is free to name the component —
-README, Makefile, the Kustomize overlays under `k8s/`,
+README, Makefile, the manifests and chart values under `k8s/`,
 `.env.example` — it is called `temporal-proxy`, its own
 name. A generic word for a network intermediary is vaguer
 than the name and describes any proxy equally well, so it
@@ -34,7 +34,7 @@ contract that `cmd/app` reads directly for its listen
 address, and that no Make variable needs to mirror.
 
 **How to apply:** name the component in documentation, in
-Makefile and Kustomize comments, and in target
+Makefile, manifest and values comments, and in target
 descriptions. Qualify a Make variable that publishes a
 port by what it publishes. See
 [[feedback-casper-workspace-integration]] for the port
