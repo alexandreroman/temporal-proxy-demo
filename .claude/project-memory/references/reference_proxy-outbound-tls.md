@@ -43,5 +43,4 @@ or one that cannot verify a public upstream.
 (`loadCAPool`), and
 `internal/transport/creds/dialer.go`, where the
 pool becomes `tls.Config.RootCAs`. See
-[[reference-temporal-proxy-upstream]] and
-[[feedback-scenario-switch]].
+[[reference-temporal-proxy-upstream]].

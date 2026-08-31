@@ -16,7 +16,7 @@ is built from, so that variable name is a contract between
 the two files. `.casper.json` also copies `.env`,
 `client.pem` and `client.key` into a fresh workspace —
 matched by basename, so the certificate pair lands back
-under `k8s/base/proxy/certs/` — and a workspace deploys
+under `k8s/certs/` — and a workspace deploys
 the whole demo as soon as `.env` holds valid Temporal
 Cloud values and that certificate pair is present.
 

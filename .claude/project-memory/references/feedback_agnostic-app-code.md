@@ -46,7 +46,8 @@ to name the component; the Go source is the one
 place that stays silent about it.
 
 **Why:** the same binaries must run unchanged
-across every scenario. A comment naming a proxy is
+whatever temporal-proxy is configured to do. A
+comment naming a proxy is
 a claim about the deployment, and it is exactly the
 claim the demo exists to disprove.
 

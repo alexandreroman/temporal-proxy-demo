@@ -1,14 +1,14 @@
 ---
 name: "temporal-proxy encryption constraints"
-description: "What governs a temporal-proxy encryption scenario, verified against the temporal-proxy source"
+description: "What governs payload encryption through temporal-proxy, verified against the temporal-proxy source"
 type: reference
 ---
 
 # temporal-proxy encryption constraints
 
-Six facts govern an `encryption` scenario whose keys come
-from a KMS temporal-proxy does not implement natively,
-none of them visible from a configuration file alone:
+Six facts govern payload encryption whose keys come from a
+KMS temporal-proxy does not implement natively, none of
+them visible from a configuration file alone:
 
 - `crypto.DefaultSchemes()` returns `awskms`,
   `azurekeyvault`, `gcpkms` and `testing`. A KMS outside
@@ -36,8 +36,8 @@ none of them visible from a configuration file alone:
   `Access-Control-Allow-Methods: POST, GET, OPTIONS` and
   `Access-Control-Allow-Headers: X-Namespace, Content-Type`.
 
-**Why:** these constraints decide the shape of the
-`encryption` scenario before a line of it is built — one
+**Why:** these constraints decide the shape of an
+encryption setup before a line of it is built — one
 shared service rather than two, a plaintext extension
 server, and an HTTPS-only codec server with a fixed CORS
 policy. Deriving them from the Helm chart or from memory
