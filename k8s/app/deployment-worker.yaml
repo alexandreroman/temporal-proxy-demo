@@ -3,9 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: worker
-  namespace: hello
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: worker
@@ -17,7 +15,6 @@ spec:
       containers:
         - name: worker
           image: temporal-proxy-demo:dev
-          imagePullPolicy: IfNotPresent
           command: ["/app/worker"]
           env:
             - name: TEMPORAL_ADDRESS

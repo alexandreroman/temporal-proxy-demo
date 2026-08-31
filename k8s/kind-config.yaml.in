@@ -1,6 +1,6 @@
-# Template for this worktree's Kind cluster. `make worktree-init`
-# substitutes @TRAEFIK_PORT@ and writes k8s/kind-config.yaml, which is
-# not committed — see .gitignore.
+# This worktree's Kind cluster. `make worktree-init` renders
+# k8s/kind-config.yaml from k8s/kind-config.yaml.in with this
+# worktree's TRAEFIK_PORT; it is not committed — see .gitignore.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 networking:
@@ -14,4 +14,3 @@ nodes:
     extraPortMappings:
       - containerPort: 30080
         hostPort: @TRAEFIK_PORT@
-        protocol: TCP

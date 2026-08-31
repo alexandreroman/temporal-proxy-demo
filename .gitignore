@@ -1,7 +1,3 @@
-# Build output
-/bin/
-/tmp/
-
 # Local environment — never commit credentials
 .env
 
@@ -14,10 +10,9 @@
 
 # Go
 *.test
-/coverage.out
+
+# Local write-ups — the project's documentation lives in README.md
+/docs/
 
 # macOS
 .DS_Store
-
-# Local write-ups — the documentation lives in README.md
-/docs/

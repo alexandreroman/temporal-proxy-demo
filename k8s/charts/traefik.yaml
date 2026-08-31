@@ -8,6 +8,12 @@ service:
 ports:
   web:
     nodePort: 30080
+  # Only the web entrypoint is published, so websecure is kept off the
+  # Service: exposed, it would take a second, random node port that
+  # nothing reaches.
+  websecure:
+    expose:
+      default: false
 
 providers:
   kubernetesGateway:
@@ -17,6 +23,11 @@ providers:
 # every workload here lives in another one. Only HTTPRoute is needed, so
 # the chart's Gateway is kept rather than replaced.
 gateway:
+  # `k8s/app/httproute.yaml` names this Gateway in its `parentRefs`, so the
+  # name is pinned here rather than left to the chart's default: a chart
+  # default is not a contract, and it can change between chart versions
+  # with nothing in this repository noticing.
+  name: traefik-gateway
   listeners:
     web:
       namespacePolicy:

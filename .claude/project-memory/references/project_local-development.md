@@ -26,4 +26,4 @@ terminal, then `go run ./cmd/worker` and `go run
 ./cmd/app` in others, with no `.env` and no cluster
 required. Reach for `make deploy` only to demonstrate or
 verify the Kubernetes deployment itself. See
-[[project-hello-workflow-app]].
+[Shape of the hello-workflow demo app](project_hello-workflow-app.md).

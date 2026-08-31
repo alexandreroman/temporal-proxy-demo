@@ -3,12 +3,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: app
-  namespace: hello
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: app
+  # One replica behind the cluster's only route, so a rollout has to
+  # overlap: the replacement is Ready, and in the EndpointSlice,
+  # before the outgoing pod is touched, and the outgoing pod outlives
+  # Traefik's view of it (see preStop below). Without both, Traefik
+  # keeps sending to an address that has gone, and answers 504.
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -19,7 +25,6 @@ spec:
           # Built by `make image` and loaded straight into the cluster's
           # nodes, so there is no registry and nothing to pull.
           image: temporal-proxy-demo:dev
-          imagePullPolicy: IfNotPresent
           command: ["/app/app"]
           env:
             # A local endpoint, in plaintext, with the application's
@@ -33,6 +38,16 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          # The API connects to Temporal before it listens, so a bound
+          # listener is the real "can serve" signal.
+          readinessProbe:
+            tcpSocket:
+              port: http
+          # The second half of the overlap described above.
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5
           resources:
             requests:
               cpu: 20m

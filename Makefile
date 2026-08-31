@@ -7,11 +7,10 @@
 # order they are listed, so a parallel make would race them.
 .NOTPARALLEL:
 
-# Environment for every target, read from .env.
-# A missing .env file is not an error.
+# Configuration for every target, read from .env, so every target sees the
+# same values. A missing .env file is not an error.
 ifneq (,$(wildcard .env))
 include .env
-export
 endif
 
 # Who `make demo` greets.
@@ -36,7 +35,10 @@ CONTAINER_TOOL ?= docker
 # command typed without TRAEFIK_PORT still reaches this worktree's cluster.
 # awk takes the last colon-separated field of the first line, which is right
 # for an IPv4 and an IPv6 binding alike. An empty answer means the cluster is
-# down, and the documented default is then the right one.
+# down, and the documented default is then the right one. TRAEFIK_PORT is what
+# `worktree-init` freezes into the cluster config, and once the cluster is up it
+# is only this fallback: an explicit TRAEFIK_PORT= on a later command line does
+# not move the published port.
 published-traefik-port = $$($(CONTAINER_TOOL) port '$(CLUSTER)-worker' 30080 2>/dev/null | awk -F: 'NR==1 {print $$NF}')
 
 ##@ Develop
@@ -88,20 +90,10 @@ endef
 
 ##@ Quality
 
-.PHONY: test
-test: ## Run the test suite
-	go test ./...
-
 .PHONY: check
-check: test ## Run tests and static checks
+check: ## Run tests and static checks
+	go test ./...
 	go vet ./...
-
-##@ Build
-
-.PHONY: build
-build: ## Build the production artifact
-	go build -o bin/worker ./cmd/worker
-	go build -o bin/app ./cmd/app
 
 ##@ Helpers
 
@@ -155,7 +147,9 @@ image: ## Build the image and load it into the cluster (after cluster-create)
 # crash-loops on a configuration error, far from the command that caused it.
 # Refuse before touching the cluster, and name everything that is missing
 # rather than only the first thing. A .env that does not exist yet leaves
-# these variables empty, which counts as missing here.
+# these variables empty, which counts as missing here. `apply` and `deploy`
+# depend on this guard rather than a reader invoking it, so it carries no help
+# description.
 define require-cloud-setup
 missing=''; \
 [ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
@@ -171,7 +165,7 @@ fi
 endef
 
 .PHONY: require-cloud
-require-cloud: ## Refuse to continue without Temporal Cloud credentials and a certificate
+require-cloud:
 	@$(require-cloud-setup)
 
 # `kubectl create secret` refuses to overwrite a Secret that already exists, so

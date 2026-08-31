@@ -50,5 +50,5 @@ read `pkg/crypto/keys.go` and its test for
 interface, `pkg/crypto` for `crypto.KEK` and
 `crypto.KEKRegistry`, and `internal/config/extensions.go`
 for the TLS rule. See
-[[reference-temporal-proxy-upstream]] and
-[[project-demo-scope]].
+[temporal-proxy upstream resources](reference_temporal-proxy-upstream.md) and
+[Demo scope](project_demo-scope.md).

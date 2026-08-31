@@ -17,8 +17,8 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /app/ ./cmd/worker ./cmd/app
 
+# The :nonroot tag already runs as USER 65532:65532.
 FROM gcr.io/distroless/static-debian13:nonroot
 COPY --from=build /app/worker /app/app /app/
-USER nonroot:nonroot
 # No default command on purpose: an image carrying two binaries has no single
 # one to prefer, so every Deployment names the binary it wants.
