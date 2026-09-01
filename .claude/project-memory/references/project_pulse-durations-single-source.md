@@ -7,7 +7,7 @@ type: project
 # The pulse durations are declared once, in the parse-time stylesheet
 
 The diagram's two pulse durations are declared once, as
-`--rail-out-ms` (200ms) and `--rail-back-ms` (170ms) on
+`--rail-out-ms` (340ms) and `--rail-back-ms` (300ms) on
 `.rail` in `cmd/app/templates/index.html`. The CSS
 animations consume them through `var()`, and the script
 that paces a walk with `sleep()` reads them back off the

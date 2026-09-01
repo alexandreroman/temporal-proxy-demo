@@ -11,9 +11,13 @@ A run plays five phases: the Execution starts
 reaches the Worker's long poll (Temporal to proxy to
 worker), the Activity dwells, the result is reported
 (worker to proxy to Temporal), and the caller's long
-poll returns (Temporal to proxy to application). Every
-wire therefore carries traffic in both directions over
-one run.
+poll returns (Temporal to proxy to application). Each
+of the four movements detours through the key service
+on its way: every payload is sealed on its way out and
+unsealed on its way in, so the proxy calls there and
+comes back before the movement goes on. Every wire
+therefore carries traffic in both directions over one
+run.
 
 **The wires carry no arrowheads.** Direction is the
 travelling pulse's job alone, so the diagram never
@@ -60,16 +64,26 @@ lightness — raw mint is more than twice violet's
 contrast against the background, and at equal weight it
 reads as an alarm rather than as an answer.
 
+The dwell on the Worker carries a floor of its own, in
+the script rather than the stylesheet. Four hops a walk
+means the outbound animation can outrun a short round
+trip, and a phase that ends before anyone sees it
+teaches nothing, so the rail dwells for as long as the
+Workflow takes or for that floor, whichever is longer.
+What the page reports stays measured around the fetch:
+the floor delays when a result is shown, never what the
+result claims.
+
 Reduced motion plays the same sequence at the same
 pace; only the stylesheet stops things moving. What
 that mode conveys is narrower, and the limit is known.
 The *order* is inferable and the *active leg* is
 identifiable, because the still pulse sits a step above
-the wire it covers. **Direction is not**, on the
-upstream hop: it carries both phase colours in both
-directions, so its two violet steps and its two mint
-steps are pairwise indistinguishable, and only a card
-happening to flip colour separates them. The client
+the wire it covers. **Direction is not**, on either
+hop leaving the endpoint: each carries both phase
+colours in both directions, so its violet steps and its
+mint steps are pairwise indistinguishable, and only a
+card happening to flip colour separates them. The client
 wires do imply direction, each carrying one phase
 colour only.
 

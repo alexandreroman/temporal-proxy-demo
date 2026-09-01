@@ -14,8 +14,8 @@
 
       /* In the parse-time stylesheet, not beside the animations, so the script can read them back. */
       .rail {
-        --rail-out-ms: 200ms;
-        --rail-back-ms: 170ms;
+        --rail-out-ms: 340ms;
+        --rail-back-ms: 300ms;
       }
     </style>
 
@@ -52,22 +52,23 @@
       }
 
       /* The rail: the real topology, always left to right. Both clients dial the same endpoint,
-         and only that endpoint reaches further:
+         and only that endpoint reaches further — to the upstream, and to the service that holds the
+         key its payloads are sealed with:
 
-             application ─────►
-                                temporal-proxy ─────► Temporal
-             worker ──────────►
+             application ─────►\                     ┌─────► Temporal
+                                temporal-proxy ──────┤
+             worker ──────────►/                     └─────► kms
 
          A leg carries traffic both ways over one run, so the wires claim no direction — the pulse
-         says which way. Only the upstream hop flexes: it is stretched on x alone and its wire is
-         horizontal, so its 4px weight is a y measure and comes through exact. An x-only stretch
-         would thin the diagonals, and non-scaling-stroke would cost the pulse, because a
-         device-space dash stops honouring pathLength. */
+         says which way. Only the endpoint's two onward hops flex: they share a column stretched on
+         x alone and both wires are horizontal, so their 4px weight is a y measure and comes through
+         exact. An x-only stretch would thin the diagonals, and non-scaling-stroke would cost the
+         pulse, because a device-space dash stops honouring pathLength. */
       .rail {
         display: grid;
         grid-template-areas:
           "application converge endpoint upstream temporal"
-          "worker      converge endpoint upstream temporal";
+          "worker      converge endpoint upstream kms";
         grid-template-columns:
           max-content 4rem max-content minmax(3rem, 1fr) max-content;
         grid-template-rows: repeat(2, 1fr);
@@ -87,6 +88,7 @@
       .rail-at-endpoint { grid-area: endpoint; }
       .rail-at-upstream { grid-area: upstream; }
       .rail-at-temporal { grid-area: temporal; }
+      .rail-at-kms { grid-area: kms; }
 
       /* The answer's journey home leaves the violet: mint is the colour the greeting arrives in.
          One declaration serves the wire and the card, so the two cannot disagree about the phase.
@@ -96,11 +98,12 @@
         --rail-accent: color-mix(in oklab, var(--color-mint) 72%, var(--color-ink));
       }
 
-      /* One fixed size for every card, taken from the longest caption the page can render rather
-         than the shortest on a developer's screen: three caption items set the height, and the
-         width is set by the lockup card's 31-character "namespace set by temporal-proxy", the
-         longest item that has to stay whole. The endpoint address varies by deployment, and is cut.
-         Both connectors' viewBoxes are derived from the height, so the two move together. */
+      /* One fixed size for every card but the endpoint's, taken from the longest caption the page
+         can render rather than the shortest on a developer's screen: three caption items set the
+         height, and the width is set by the lockup card's 31-character "namespace set by
+         temporal-proxy", the longest item that has to stay whole. The endpoint address varies by
+         deployment, and is cut. Both connectors' viewBoxes are derived from the height, so the two
+         move together. */
       .rail-station {
         /* The mark's 1em box plus the mono character between the mark and the name, so a name and
            its caption start at the same x. A rem, not an em: the caption is set two steps smaller. */
@@ -123,10 +126,22 @@
         transition: background-color 200ms, border-color 200ms, box-shadow 200ms;
       }
 
+      /* The one card that grows: both onward wires leave this station, and the column they cross
+         flexes, which only a horizontal wire survives — so each has to meet its own row's centre,
+         y 64 and y 208, well outside the band an 8rem card centred in the grid would cover.
+         Stretching the card puts its right edge across both. Its two converging wires still land
+         on the left edge at y 104 and y 168, which the taller edge still covers. The name and the
+         caption are centred in what the stretch leaves, rather than pinned to its top. */
+      .rail-station-endpoint {
+        align-self: stretch;
+        height: auto;
+        justify-content: center;
+      }
+
       /* The lockup's star fills the left of its box, so the shared column would land this caption
          left of where the lettering starts. Overridden here alone, from the lockup's own geometry:
          the viewBox scales by height/44 and the lettering starts at x 55.66, so the column is
-         55.66/44 x 1.65em. Widening the shared value would open the other three cards' icon-to-name
+         55.66/44 x 1.65em. Widening the shared value would open the other four cards' icon-to-name
          gap instead. */
       .rail-station-lockup {
         --rail-mark-column: 1.8264rem; /* 2.0873em of text-sm */
@@ -171,7 +186,7 @@
          the stretch. The converging region's width is the slant: 64 gives 32°, and at 40 it would
          reach 45°, where a wire reads as a corner between two cards rather than as a run. */
       .rail-connector {
-        position: relative; /* the caliper mark below is positioned against the upstream leg */
+        position: relative; /* the boundary below is positioned against the upstream leg */
         align-self: stretch;
       }
 
@@ -206,7 +221,7 @@
       }
 
       /* The travelling pulse: one dash of 45% of whichever wire it is on, since pathLength
-         normalises all three to 100, running the wire's length and out the far end. */
+         normalises all four to 100, running the wire's length and out the far end. */
       .rail-pulse {
         stroke: none;
       }
@@ -250,20 +265,23 @@
         }
       }
 
-      /* A caliper mark. Tick and label are both out of flow, so the note costs the diagram no
-         height: the leader drops into the empty room under the endpoint's row. */
+      /* A boundary rather than a note about one wire: it runs the full height of the region, so it
+         crosses both of the endpoint's onward wires and reads as the line past which nothing is the
+         application's business — the upstream and the key service alike. Line and label are both
+         out of flow, so the boundary costs the diagram no height. */
       .rail-marker {
         position: absolute;
-        top: 50%; /* the wire's own line, halfway down the region, which is the cards' centre */
+        top: 0;
+        bottom: 0;
         left: 50%;
-        height: 5.5rem;
         border-left: 1px dashed var(--color-hairline);
       }
 
-      /* The leader carries the note clear of the cards: a note beside one is read as belonging to it. */
+      /* Both rows are occupied to the boundary's right, so the label hangs below them, in the room
+         the scroll band's bottom padding leaves: a note beside a card is read as belonging to it. */
       .rail-marker-label {
         position: absolute;
-        top: calc(50% + 6.25rem);
+        top: calc(100% + 2rem);
         left: 50%;
         width: 17rem;
         transform: translateX(-50%);
@@ -293,10 +311,14 @@
          than stacking into a reading-order list, and it starts at the left. */
       .rail-scroll {
         overflow-x: auto;
-        /* An axis beside overflow-x: auto cannot stay visible. The padding is the room a lit card's
-           halo needs — the dwell's ring reaches 14px — which the clip would otherwise cut. */
+        /* An axis beside overflow-x: auto cannot stay visible. The padding is the room the clip
+           would otherwise cut: at the top a lit card's halo, whose dwell ring reaches 14px, and at
+           the bottom that same halo plus the boundary's label hanging under the rows. The bottom
+           holds more than the label measures, because its line box is only measurable once the
+           webfont has loaded, and a fallback's metrics can make it taller: nothing scrolls back
+           what this axis clips. */
         overflow-y: hidden;
-        padding-block: 1rem;
+        padding-block: 1rem 3.5rem;
         scrollbar-width: thin;
         scrollbar-color: var(--color-hairline) transparent;
       }
@@ -310,7 +332,7 @@
       }
 
       /* The names set the band the captions hang from, so each needs room for the lockup's 0.475em
-         descent, which the type's own line-height does not leave. All four share the value. */
+         descent, which the type's own line-height does not leave. All five share the value. */
       .rail-name {
         line-height: 1.625;
       }
@@ -682,7 +704,10 @@
             </svg>
           </li>
 
-          <li class="rail-station rail-at-endpoint" :class="stationClass('proxy')">
+          <li
+            class="rail-station rail-station-endpoint rail-at-endpoint"
+            :class="stationClass('proxy')"
+          >
             <p class="rail-name font-mono text-sm text-fg lg:text-base">
               <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
               >temporal-proxy
@@ -696,14 +721,20 @@
 
           <li class="rail-connector rail-at-upstream">
             <svg viewBox="0 0 48 272" preserveAspectRatio="none" aria-hidden="true">
-              <!-- Declared in the box it is drawn against: this wire answers to this viewBox and to
-                   its x-only stretch, and its y is the box's own centre. -->
+              <!-- Both of the wires that leave the endpoint, declared in the box they are drawn
+                   against: each answers to this viewBox and to its x-only stretch, and each sits on
+                   its own row's centre rather than on the box's. -->
               <defs>
-                <path id="rail-wire-upstream" pathLength="100" d="M0 136 48 136" />
+                <path id="rail-wire-temporal" pathLength="100" d="M0 64 48 64" />
+                <path id="rail-wire-kms" pathLength="100" d="M0 208 48 208" />
               </defs>
               <g :class="legClass('temporal')">
-                <use class="rail-path" href="#rail-wire-upstream" />
-                <use class="rail-pulse" href="#rail-wire-upstream" />
+                <use class="rail-path" href="#rail-wire-temporal" />
+                <use class="rail-pulse" href="#rail-wire-temporal" />
+              </g>
+              <g :class="legClass('kms')">
+                <use class="rail-path" href="#rail-wire-kms" />
+                <use class="rail-pulse" href="#rail-wire-kms" />
               </g>
             </svg>
             <span class="rail-marker" aria-hidden="true"></span>
@@ -741,6 +772,17 @@
             <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
               <li>unknown to the app</li>
               <li>namespace set by temporal-proxy</li>
+            </ul>
+          </li>
+
+          <li class="rail-station rail-at-kms" :class="stationClass('kms')">
+            <p class="rail-name font-mono text-sm text-fg lg:text-base">
+              <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
+              >kms
+            </p>
+            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+              <li>temporal-proxy extension</li>
+              <li>derives one key per namespace</li>
             </ul>
           </li>
         </ol>
@@ -809,27 +851,40 @@
 
     <script>
       // The stylesheet owns the pulse's two durations, so the pacing here cannot drift from what
-      // the animations play. parseFloat turns "200ms" into 200.
+      // the animations play. parseFloat turns "340ms" into 340.
       const railStyle = getComputedStyle(document.querySelector(".rail"));
       const OUTBOUND_LEG_MS = parseFloat(railStyle.getPropertyValue("--rail-out-ms"));
       const RETURN_LEG_MS = parseFloat(railStyle.getPropertyValue("--rail-back-ms"));
 
-      // Three legs, each named for the station at its far end from the endpoint. LEG_TAIL is the
+      // Four legs, each named for the station at its far end from the endpoint. LEG_TAIL is the
       // station a leg is drawn from: a movement that ends there runs against the drawing, in reverse.
-      const LEG_TAIL = { application: "application", worker: "worker", temporal: "proxy" };
+      const LEG_TAIL = {
+        application: "application",
+        worker: "worker",
+        temporal: "proxy",
+        kms: "proxy",
+      };
 
-      // The four movements of a run. Every hop has the endpoint at one end, so the leg it crosses,
-      // the direction and the station it leaves lit all come off the walk itself. `answer` marks the
-      // result's journey home, the movements the rail paints in mint.
+      // The four movements of a run, four hops each. Every hop has the endpoint at one end, so the
+      // leg it crosses, the direction and the station it leaves lit all come off the walk itself.
+      // The key service sits in the middle of all four: every payload is sealed on its way out and
+      // unsealed on its way in, so each movement calls there and comes back before it goes on.
+      // `answer` marks the result's journey home, the movements the rail paints in mint.
       const WALKS = {
-        start: { path: ["application", "proxy", "temporal"] },
-        deliver: { path: ["temporal", "proxy", "worker"] },
-        report: { path: ["worker", "proxy", "temporal"], answer: true },
-        finish: { path: ["temporal", "proxy", "application"], answer: true },
+        start: { path: ["application", "proxy", "kms", "proxy", "temporal"] },
+        deliver: { path: ["temporal", "proxy", "kms", "proxy", "worker"] },
+        report: { path: ["worker", "proxy", "kms", "proxy", "temporal"], answer: true },
+        finish: { path: ["temporal", "proxy", "kms", "proxy", "application"], answer: true },
       };
 
       // Between `deliver` and `report` the rail dwells here, for as long as the Activity sleeps.
       const DWELL_STATION = "worker";
+
+      // The dwell lasts as long as the Workflow takes, but never less than this: the outbound
+      // animation can outrun a short round trip, and a phase the audience never sees teaches
+      // nothing. The duration reported stays measured around the fetch, so the floor delays when
+      // the result is shown, never what it claims.
+      const DWELL_FLOOR_MS = 900;
 
       // Which phase a movement belongs to, and so which colour it paints: "request" on the way out,
       // ANSWER on the way home. Only the answer is ever asked for by name.
@@ -875,14 +930,15 @@
             this.reset();
             this.status = "running";
 
-            // The request leaving and its response arriving are the only real events. Everything
-            // between them is the rail dwelling on the Worker for as long as the Workflow takes.
+            // The request leaving and its response arriving are the only real events. Between them
+            // the rail dwells on the Worker for as long as the Workflow takes, or for the floor,
+            // whichever is longer.
             const request = this.callApi();
             await this.play(WALKS.start);
             await this.play(WALKS.deliver);
 
             this.dwellAt = DWELL_STATION;
-            const outcome = await request;
+            const [outcome] = await Promise.all([request, sleep(DWELL_FLOOR_MS)]);
             this.dwellAt = null;
 
             if (!outcome.ok) {
