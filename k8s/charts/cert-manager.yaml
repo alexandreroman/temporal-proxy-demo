@@ -1,0 +1,5 @@
+# cert-manager issues the certificate the KMS server presents. Its CRDs are the
+# only thing this demo needs to say: the chart leaves them out by default, and
+# without them the Issuer and Certificate in k8s/kms have no API to land on.
+crds:
+  enabled: true

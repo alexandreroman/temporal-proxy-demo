@@ -136,8 +136,12 @@ cluster-create:
 			--image kindest/node:v1.37.0
 	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
 
-# Gateway API CRDs are not shipped by the Traefik chart, so they come from
-# the pinned upstream release, applied before it.
+# Gateway API CRDs are not shipped by the Traefik chart, so they come from the
+# pinned upstream release, applied before it: an HTTPRoute or a Gateway has no
+# API to land on otherwise. cert-manager issues the certificate the KMS server
+# presents, and secretgen-controller generates the bearer token that server
+# reads at runtime; its controller is waited for, because nothing answers a
+# request for a generated Secret until it is running.
 .PHONY: cluster-up
 cluster-up: cluster-create ## Create the cluster and install its platform components
 	kubectl --context kind-$(CLUSTER) apply -f \
@@ -146,6 +150,14 @@ cluster-up: cluster-create ## Create the cluster and install its platform compon
 		--repo https://traefik.github.io/charts --version 41.4.0 \
 		--namespace traefik --create-namespace \
 		-f k8s/charts/traefik.yaml --wait
+	helm --kube-context kind-$(CLUSTER) upgrade --install cert-manager cert-manager \
+		--repo https://charts.jetstack.io --version v1.21.1 \
+		--namespace cert-manager --create-namespace \
+		-f k8s/charts/cert-manager.yaml --wait
+	kubectl --context kind-$(CLUSTER) apply -f \
+		https://github.com/carvel-dev/secretgen-controller/releases/download/v0.21.2/release.yml
+	kubectl --context kind-$(CLUSTER) -n secretgen-controller rollout status \
+		deploy/secretgen-controller --timeout=120s
 
 # Paired with cluster-up.
 .PHONY: cluster-down
