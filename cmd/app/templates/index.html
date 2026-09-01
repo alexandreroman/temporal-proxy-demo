@@ -21,9 +21,11 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://api.fontshare.com" />
+    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;700&display=swap"
+      href="https://api.fontshare.com/v2/css?f[]=general-sans@400,600,700&display=swap"
     />
     <link
       rel="stylesheet"
@@ -45,7 +47,7 @@
         --color-fg: #F5F5F5;
         --color-muted: #8A8A8A;
 
-        --font-sans: "Schibsted Grotesk", ui-sans-serif, sans-serif;
+        --font-sans: "General Sans", ui-sans-serif, sans-serif;
         --font-mono: "Noto Sans Mono", ui-monospace, monospace;
       }
 
@@ -546,7 +548,9 @@
            row sit beside each other beneath it, which is where the vertical room the rail and the
            result panel need comes from. md and not sm: at sm the intro would set ~33 characters. -->
       <header class="flex flex-col gap-6 lg:gap-8">
-        <h1 class="title-sweep text-3xl font-bold tracking-tight lg:text-5xl">Temporal Proxy Demo</h1>
+        <h1 class="title-sweep text-3xl tracking-tight lg:text-5xl">
+          Temporal Proxy <span class="font-bold">Demo</span>
+        </h1>
 
         <!-- The two columns are centred on each other rather than on a shared baseline, so the form
              tracks whatever height the paragraph turns out to be. The form's own items-end stays —
