@@ -1,6 +1,6 @@
-# The extension server: it wraps and unwraps data encryption keys, and never sees
-# a payload. It reads its two secrets from the environment and its certificate
-# from the Secret cert-manager fills.
+# The extension server: it wraps and unwraps data encryption keys, and
+# never sees a payload. It reads its two secrets from the environment
+# and its certificate from the Secret cert-manager fills.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
