@@ -20,16 +20,19 @@ asks for to the fully-qualified name Cloud knows. The
 Worker and the API are byte-identical whatever that
 configuration says.
 
-Payload encryption is an intended direction and an open
-question: wrapping a data encryption key per payload so
-that Temporal Cloud stores ciphertext only, rendered
-readable again by a codec server in the Cloud Web UI.
-Which KMS backs it, and whether it needs an extension
-server at all, is undecided: `crypto.DefaultSchemes()`
-includes `testing`, which temporal-proxy resolves to
-gocloud's local `base64key://` keeper, so one shape of it
-needs no additional component — at the cost of a scheme
-that upstream marks as unfit for anything but local runs.
+Payload encryption wraps a data encryption key per
+payload so temporal-proxy seals every payload before it
+leaves the cluster. A KMS extension server this
+repository runs (`cmd/kms`, deriving one AES-256-GCM key
+per Namespace from a master secret via HKDF-SHA256) wraps
+that key, because temporal-proxy's built-in schemes
+(`awskms`, `azurekeyvault`, `gcpkms`, `testing`) cover
+only clouds this demo does not use, plus a scheme upstream
+marks unfit for anything but local runs. Per-request
+selectivity is not in temporal-proxy's model:
+`Encryption.Enabled` is one boolean for the whole proxy
+instance, so a payload is sealed or not for everything it
+forwards, never chosen call by call.
 
 Inbound authentication and authorization (static token,
 JWKS, authorizer extension server) are deliberately out of
