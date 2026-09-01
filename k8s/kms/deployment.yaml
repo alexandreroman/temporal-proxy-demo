@@ -1,0 +1,39 @@
+# The extension server: it wraps and unwraps data encryption keys, and never sees
+# a payload. It reads its two secrets from the environment and its certificate
+# from the Secret cert-manager fills.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kms
+spec:
+  selector:
+    matchLabels:
+      app: kms
+  template:
+    metadata:
+      labels:
+        app: kms
+    spec:
+      containers:
+        - name: kms
+          image: temporal-proxy-demo:dev
+          command: ["/app/kms"]
+          envFrom:
+            - secretRef:
+                name: kms-api-key
+            - secretRef:
+                name: kms-master-secret
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/kms
+              readOnly: true
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: tls
+          secret:
+            secretName: kms-tls
