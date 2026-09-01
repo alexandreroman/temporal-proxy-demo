@@ -17,7 +17,7 @@ import (
 
 const (
 	// defaultName is greeted when the request carries no name.
-	defaultName = "Temporal"
+	defaultName = "John Doe"
 
 	// maxRequestBody caps how much of a request body is read: a name needs a fraction of it.
 	maxRequestBody = 1 << 20

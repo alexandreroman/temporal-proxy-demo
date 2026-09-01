@@ -89,7 +89,7 @@ make demo
 ```
 
 ```json
-{"greeting":"Hello, Temporal!","workflowId":"hello-X4T7…","runId":"01a0…"}
+{"greeting":"Hello, John Doe!","workflowId":"hello-X4T7…","runId":"01a0…"}
 ```
 
 `make worktree-init` writes `k8s/kind-config.yaml`, which pins the one

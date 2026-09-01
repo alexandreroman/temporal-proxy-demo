@@ -607,7 +607,7 @@
           <!-- A real form, so Enter in the field starts a run; shrink-0 keeps the button on its line. -->
           <form class="flex shrink-0 flex-wrap items-end gap-4" @submit.prevent="run()">
             <div class="flex flex-col gap-2">
-              <label class="font-mono text-xs tracking-widest text-muted uppercase" for="name">name</label>
+              <label class="font-mono text-xs tracking-widest text-muted uppercase" for="name">What’s your name?</label>
               <!-- The field goes inert while a run is in flight, and it is required: the form's own
                    submit event never fires while it is empty. value repeats the component's default
                    because Alpine is deferred and this field is not cloaked — the attribute is what
@@ -615,7 +615,7 @@
               <input
                 id="name"
                 name="name"
-                value="Temporal"
+                value="John Doe"
                 required
                 autocomplete="off"
                 x-model="name"
@@ -910,7 +910,7 @@
 
       document.addEventListener("alpine:init", () => {
         Alpine.data("demoConsole", () => ({
-          name: "Temporal",
+          name: "John Doe",
           status: "idle", // idle | running | done | error
           // The stations this run has touched and the legs it has crossed, each holding the phase
           // that reached it last, which is the colour it lights in.
