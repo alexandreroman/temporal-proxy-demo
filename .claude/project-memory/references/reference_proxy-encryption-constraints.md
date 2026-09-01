@@ -65,12 +65,14 @@ none of them visible from a configuration file alone:
   cipher that seals the payload itself.
 
 **Why:** these constraints decide the shape of an
-encryption setup before a line of it is built — one
-shared service rather than two, a plaintext extension
-server, and an HTTPS-only codec server with a fixed CORS
-policy. Deriving them from the Helm chart or from memory
-risks a design that cannot start, or a Web UI that cannot
-call it.
+encryption setup before a line of it is built: whether
+one type can serve as both the extension server and a
+codec server's key rather than two, whether an
+in-cluster extension server can skip TLS, and what CORS
+policy a codec server owes a browser calling it from
+Cloud's Web UI. Deriving them from the Helm chart or
+from memory risks a design that cannot start, or a Web
+UI that cannot call it.
 
 **How to access:** at temporal-proxy's pinned release tag,
 read `pkg/crypto/keys.go` and its test for

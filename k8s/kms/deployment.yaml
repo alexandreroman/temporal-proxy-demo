@@ -14,6 +14,8 @@ spec:
       labels:
         app: kms
     spec:
+      # cmd/kms never calls the Kubernetes API.
+      automountServiceAccountToken: false
       containers:
         - name: kms
           image: temporal-proxy-demo:dev
@@ -27,6 +29,13 @@ spec:
             - name: tls
               mountPath: /etc/kms
               readOnly: true
+          # The TLS listener binds only once cert-manager's Secret is read,
+          # so a bound socket is the real "can serve" signal — not a grpc
+          # probe, since the kubelet's prober dials in plaintext and this
+          # port only speaks TLS.
+          readinessProbe:
+            tcpSocket:
+              port: 9443
           resources:
             requests:
               cpu: 20m

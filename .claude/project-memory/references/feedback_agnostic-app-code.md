@@ -55,16 +55,22 @@ claim the demo exists to disprove.
 this rule covers:
 
 ```sh
-grep -rniE "proxy|gateway|upstream" cmd/worker cmd/app internal/hello internal/temporalclient internal/kms
+grep -rniE "proxy|gateway|upstream" --include='*.go' \
+  cmd/worker cmd/app internal/hello \
+  internal/temporalclient internal/kms
 ```
 
-A zero-match result is enforced. `cmd/kms` sits
-outside that scope: it implements
+Checked by hand — `make check` runs `go test` and
+`go vet`, not this grep. Only an import path carrying
+the repository name is expected to match: the module
+path is `github.com/alexandreroman/temporal-proxy-demo`,
+so any file importing one of its own packages carries
+the substring "proxy", and nothing else should.
+`cmd/kms` sits outside that scope: it implements
 `api.kms.v1.EncryptionService`, an interface
 temporal-proxy defines, so the name there names the
 interface it implements, not the endpoint it serves.
 `internal/kms` stays inside the rule despite sharing
-a name with that neighbour — it is pure cryptography,
-it names nothing about its caller, and its
-zero-match grep is enforced like every other package
-here. See [Demo scope](project_demo-scope.md).
+a name with that neighbour — it is pure cryptography
+and names nothing about its caller. See
+[Demo scope](project_demo-scope.md).

@@ -235,8 +235,13 @@ apply: require-setup ## Deploy temporal-proxy and the application (after cluster
 		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)')
 	$(call apply-secret,tls temporal-cloud-client \
 		--cert=k8s/certs/client.pem --key=k8s/certs/client.key)
-	$(call apply-secret,generic kms-master-secret \
+# Silenced with @, unlike its two neighbours above: this recipe line expands
+# to the master secret itself, and make echoes a recipe line it does not run
+# quietly. The @echo replaces that echo with one that names the Secret
+# instead of the value poured into it.
+	@$(call apply-secret,generic kms-master-secret \
 		--from-literal=KMS_MASTER_SECRET='$(KMS_MASTER_SECRET)')
+	@echo 'Secret kms-master-secret updated'
 	kubectl --context kind-$(CLUSTER) apply -k k8s/kms
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy wait --for=condition=Ready \
 		certificate/kms-tls --timeout=120s
@@ -267,16 +272,17 @@ app-up: require-setup cluster-up image apply ## Bring the demo up: the cluster, 
 	@$(publish-endpoints)
 
 # Paired with app-up, and it removes only what k8s/app holds: the cluster,
-# Traefik and temporal-proxy stay standing, so app-up is quick to run again.
-# A teardown never fails over something already being gone, which takes two
-# guards: `--ignore-not-found` for a resource the kustomization names, and the
+# Traefik, temporal-proxy and the KMS server — its Deployment, Certificates
+# and Password — stay standing, so app-up is quick to run again. A teardown
+# never fails over something already being gone, which takes two guards:
+# `--ignore-not-found` for a resource the kustomization names, and the
 # `kind get clusters` test, borrowed from cluster-create, for the cluster
-# itself, whose absence kubectl reports as an unknown context. No require-setup
-# guard either: removing workloads needs neither the Cloud values, the
-# certificate, nor the master secret, and demanding them would fail the one
-# command someone reaches for when those are the problem. The published Demo
-# App address stops
-# answering whichever way the application went, so the info panel goes with it.
+# itself, whose absence kubectl reports as an unknown context. No
+# require-setup guard either: removing workloads needs neither the Cloud
+# values, the certificate, nor the master secret, and demanding them would
+# fail the one command someone reaches for when those are the problem. The
+# published Demo App address stops answering whichever way the application
+# went, so the info panel goes with it.
 .PHONY: app-down
 app-down: ## Remove the application, leaving the cluster and temporal-proxy up
 	@if kind get clusters 2>/dev/null | grep -qx '$(CLUSTER)'; then \

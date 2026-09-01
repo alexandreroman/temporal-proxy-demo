@@ -153,8 +153,8 @@ at startup.
 ## How the payload key travels
 
 Nothing seals a payload with a key from a file. temporal-proxy generates
-one data encryption key per Namespace, seals payloads with it, and asks
-the KMS server to wrap that key:
+a data encryption key, seals payloads with it, and asks the KMS server
+to wrap that key:
 
 ```text
 KMS_MASTER_SECRET in .env

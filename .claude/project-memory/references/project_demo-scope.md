@@ -28,9 +28,9 @@ temporal-proxy's built-in schemes (`awskms`,
 `azurekeyvault`, `gcpkms`, `testing`) cover only clouds
 this demo does not use, plus a scheme upstream marks
 unfit for anything but local runs. `internal/kms`, the
-package `cmd/kms` runs as a service, derives that key:
-one AES-256-GCM key per Namespace from a master secret
-via HKDF-SHA256. Per-request selectivity is not in
+package that `cmd/kms` serves, derives that key: one
+AES-256-GCM key per Namespace from a master secret via
+HKDF-SHA256. Per-request selectivity is not in
 temporal-proxy's model: `Encryption.Enabled` is one
 boolean for the whole proxy instance, so a payload is
 sealed or not for everything it forwards, never chosen
