@@ -124,12 +124,14 @@
 
       /* The lockup's star fills the left of its box, so the shared column would land this caption
          left of where the lettering starts. Overridden here alone, from the lockup's own geometry:
-         widening the shared value would open the other three cards' icon-to-name gap instead. */
+         the viewBox scales by height/44 and the lettering starts at x 55.66, so the column is
+         55.66/44 x 1.65em. Widening the shared value would open the other three cards' icon-to-name
+         gap instead. */
       .rail-station-lockup {
-        --rail-mark-column: 1.6604rem; /* 1.8975em of text-sm */
+        --rail-mark-column: 1.8264rem; /* 2.0873em of text-sm */
 
         @variant lg {
-          --rail-mark-column: 1.8975rem; /* 1.8975em of lg:text-base */
+          --rail-mark-column: 2.0873rem; /* 2.0873em of lg:text-base */
         }
       }
 
@@ -303,7 +305,7 @@
         fill: currentColor;
       }
 
-      /* The names set the band the captions hang from, so each needs room for the lockup's 0.432em
+      /* The names set the band the captions hang from, so each needs room for the lockup's 0.475em
          descent, which the type's own line-height does not leave. All four share the value. */
       .rail-name {
         line-height: 1.625;
@@ -314,14 +316,21 @@
         margin-right: calc(var(--rail-mark-column) - 1em);
       }
 
-      /* Its height is in em, so the name stays as tall as the other three. The offset is derived
-         from the wordmark's own baseline: an inline-block meets the text on its bottom edge, so the
-         box drops 12.67/44 x 1.5em. */
+      /* Its height is in em, so the name stays as tall as the other three. Two offsets, each doing
+         one job. The first seats the lettering on the text baseline: an inline-block meets the text
+         on its bottom edge, so the box drops the wordmark's own descent, 12.67/44 x 1.65em. The
+         second corrects for the wordmark's cap height, shorter than the mono name's beside it, which
+         leaves baseline-aligned lettering reading low; 0.069em lifts it until the two cap bands sit
+         concentric. It has to be a relative offset: the box is taller than the row's strut, so it is
+         what sets the line box, and any vertical-align the box gains at the top the baseline gives
+         straight back. Painting the box off its position moves the wordmark and nothing else. */
       .rail-logo {
         display: inline-block;
+        position: relative;
+        top: -0.069em;
         width: auto;
-        height: 1.5em;
-        vertical-align: -0.432em;
+        height: 1.65em;
+        vertical-align: -0.475em;
       }
 
       /* The backdrop, in temporal.io's own vocabulary, drawn in CSS so the binary carries no image.
@@ -720,8 +729,8 @@
               </svg>
             </p>
             <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
-              <li>namespace set by temporal-proxy</li>
               <li>unknown to the app</li>
+              <li>namespace set by temporal-proxy</li>
             </ul>
           </li>
         </ol>
