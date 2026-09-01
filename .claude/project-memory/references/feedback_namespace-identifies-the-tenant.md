@@ -6,21 +6,20 @@ type: feedback
 
 # A shared temporal-proxy means no tenant is called default
 
-temporal-proxy is a multi-tenant deployment: one instance
-fronts several applications, so the short Namespace name an
-application asks for is what identifies that application.
-This demo's application asks for `demo`, and an override
-under the upstream's `namespaces.rules` in
-`k8s/charts/temporal-proxy.yaml` maps it to the
-fully-qualified Temporal Cloud Namespace. `default` names no
-tenant, and would collide with every other application
-behind the same proxy.
+The short Namespace name an application asks for is what
+identifies it behind a multi-tenant temporal-proxy. An
+override under the upstream's `namespaces.rules` in
+`k8s/charts/temporal-proxy.yaml` maps the `demo` this
+application asks for onto the fully-qualified Temporal
+Cloud Namespace. `default` names no tenant, and would
+collide with every other application behind the same
+proxy.
 
 `internal/temporalclient` falls back to `default` when
-`TEMPORAL_NAMESPACE` is unset. That fallback serves the
-local dev-server loop, which offers exactly that Namespace,
-and it never reaches temporal-proxy — the deployment always
-sets the variable. See
+`TEMPORAL_NAMESPACE` is unset. That fallback matches what
+the local dev-server loop serves and never reaches
+temporal-proxy — the deployment always sets the variable.
+See
 [Local development needs no cluster](project_local-development.md).
 
 **Why:** a shared proxy can only route on a name that says

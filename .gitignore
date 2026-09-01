@@ -11,8 +11,5 @@
 # Go
 *.test
 
-# Local write-ups — the project's documentation lives in README.md
-/docs/
-
 # macOS
 .DS_Store

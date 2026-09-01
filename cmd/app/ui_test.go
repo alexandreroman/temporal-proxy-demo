@@ -26,11 +26,7 @@ func TestPage(t *testing.T) {
 		name      string
 		address   string
 		namespace string
-		// The caption both endpoint stations carry, which is the resolved pair as the page shows
-		// it. The caption is a list of three items, and the bullet in front of each one is
-		// supplied by the stylesheet, so what the markup holds is the three values in order.
-		// Matching the whole caption rather than each value keeps the case from passing on a
-		// coincidence: "demo" alone also occurs inside the page's own script.
+		// The whole caption, not each value: "demo" alone also occurs in the page's own script.
 		wantCaption string
 	}{
 		{

@@ -12,7 +12,7 @@ the headline, for instance — is wrapped in a
 `<span>` carrying the utility that styles it.
 `<strong>` and `<b>` are reserved for text that
 genuinely carries more meaning than its
-neighbours, such as the component names in the
+neighbours, such as the component name in the
 intro paragraph.
 
 An inline child inside a `.title-sweep` heading

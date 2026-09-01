@@ -30,8 +30,7 @@ type Endpoint struct {
 	Namespace string
 }
 
-// ResolveEndpoint reads the endpoint from the environment. Dial goes through it, so a caller that
-// reports where the application connects reports the very pair that was dialled.
+// ResolveEndpoint reads the endpoint from the environment. Dial goes through it.
 func ResolveEndpoint() Endpoint {
 	// cmp.Or returns the first non-empty value, so an unset variable falls back to the default.
 	return Endpoint{

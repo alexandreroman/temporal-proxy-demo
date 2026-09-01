@@ -17,11 +17,7 @@ var templateFiles embed.FS
 var pages = template.Must(template.ParseFS(templateFiles, "templates/*.html"))
 
 func pageHandler() http.HandlerFunc {
-	// The endpoint is the address the application dials and the short Namespace name it asks for:
-	// the whole of what it knows about where it connects, so the whole of what the page can show.
-	// Read once, because it is deployment configuration, fixed for the lifetime of the process.
-	// Resolving it the same way the client does is what keeps the page honest — it shows the pair
-	// that was dialled, and cannot go stale against the deployment it is running in.
+	// Read once, and resolved the same way the client does, so the page cannot go stale.
 	endpoint := temporalclient.ResolveEndpoint()
 
 	return func(w http.ResponseWriter, r *http.Request) {

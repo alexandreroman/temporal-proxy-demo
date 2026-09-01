@@ -14,11 +14,8 @@ demo's one upstream, reached with a client certificate
 mounted from a Kubernetes Secret.
 
 Everything the demo teaches sits in temporal-proxy's
-configuration: the Cloud host name, the TLS material, and
-the rewrite from the short Namespace name the application
-asks for to the fully-qualified name Cloud knows. The
-Worker and the API are byte-identical whatever that
-configuration says.
+configuration, so the Worker and the API are
+byte-identical whatever that configuration says.
 
 Payload encryption wraps a data encryption key per
 payload so temporal-proxy seals every payload before it

@@ -73,9 +73,9 @@
         grid-template-rows: repeat(2, 1fr);
         row-gap: 1rem;
         align-items: center;
+        width: 100%;
         /* The floor is 3 x 18.5rem of card plus 4rem and 3rem of connector, stated rather than
            derived so that it cannot drift with an intrinsic measurement. */
-        width: 100%;
         min-width: 62.5rem;
         /* Inherited by every card and every leg; the hook the answer's journey home overrides. */
         --rail-accent: var(--color-violet);
@@ -99,7 +99,8 @@
       /* One fixed size for every card, taken from the longest caption the page can render rather
          than the shortest on a developer's screen: three caption items set the height, and the
          width is set by the lockup card's 31-character "namespace set by temporal-proxy", the
-         longest item that has to stay whole. The endpoint address varies by deployment, and is cut. */
+         longest item that has to stay whole. The endpoint address varies by deployment, and is cut.
+         Both connectors' viewBoxes are derived from the height, so the two move together. */
       .rail-station {
         /* The mark's 1em box plus the mono character between the mark and the name, so a name and
            its caption start at the same x. A rem, not an em: the caption is set two steps smaller. */
@@ -184,10 +185,15 @@
         height: 100%;
       }
 
-      .rail-path {
+      /* The shaft and the pulse are one wire drawn twice, so they carry one weight between them. */
+      .rail-path,
+      .rail-pulse {
         fill: none;
-        stroke: var(--color-hairline);
         stroke-width: 4;
+      }
+
+      .rail-path {
+        stroke: var(--color-hairline);
         transition: stroke 200ms;
       }
 
@@ -202,9 +208,7 @@
       /* The travelling pulse: one dash of 45% of whichever wire it is on, since pathLength
          normalises all three to 100, running the wire's length and out the far end. */
       .rail-pulse {
-        fill: none;
         stroke: none;
-        stroke-width: 4;
       }
 
       /* Drawn only while a leg carries traffic, so the diagram never claims a direction a later
@@ -408,9 +412,8 @@
         }
       }
 
-      /* The spin is declared here rather than as a utility class so the reduced-motion block below
-         can stop it while the loader stays in place of the arrow. The button carries no label, so
-         its pointer states do that work; :enabled is what keeps the busy button inert. */
+      /* The button carries no label, so its pointer states do that work; :enabled is what keeps
+         the busy button inert. */
       .btn-run {
         transition: background-color 150ms;
       }
@@ -432,6 +435,8 @@
         opacity: 1;
       }
 
+      /* The spin is declared here rather than as a utility class so the reduced-motion block below
+         can stop it while the loader stays in place of the arrow. */
       .btn-spinner {
         animation: btn-spin 900ms linear infinite;
       }
@@ -523,7 +528,7 @@
       }
     </style>
 
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.16.3/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.1/dist/cdn.min.js"></script>
   </head>
 
   <body class="min-h-dvh bg-ink font-sans text-fg antialiased">
@@ -660,11 +665,11 @@
           <li class="rail-connector rail-at-converge">
             <svg viewBox="0 0 64 272" aria-hidden="true">
               <!-- Each wire declared once and drawn twice: the shaft that is always there, and the
-                   pulse that travels it. pathLength normalises all three to 100. -->
+                   pulse that travels it. pathLength normalises every wire to 100. The box is the two
+                   card rows and the gap between them, so the ends sit on the cards' own centres. -->
               <defs>
                 <path id="rail-wire-application" pathLength="100" d="M0 64 64 104" />
                 <path id="rail-wire-worker" pathLength="100" d="M0 208 64 168" />
-                <path id="rail-wire-upstream" pathLength="100" d="M0 136 48 136" />
               </defs>
               <g :class="legClass('application')">
                 <use class="rail-path" href="#rail-wire-application" />
@@ -691,6 +696,11 @@
 
           <li class="rail-connector rail-at-upstream">
             <svg viewBox="0 0 48 272" preserveAspectRatio="none" aria-hidden="true">
+              <!-- Declared in the box it is drawn against: this wire answers to this viewBox and to
+                   its x-only stretch, and its y is the box's own centre. -->
+              <defs>
+                <path id="rail-wire-upstream" pathLength="100" d="M0 136 48 136" />
+              </defs>
               <g :class="legClass('temporal')">
                 <use class="rail-path" href="#rail-wire-upstream" />
                 <use class="rail-pulse" href="#rail-wire-upstream" />
@@ -821,8 +831,8 @@
       // Between `deliver` and `report` the rail dwells here, for as long as the Activity sleeps.
       const DWELL_STATION = "worker";
 
-      // Which phase a movement belongs to, and so which colour it paints: request out, answer home.
-      const REQUEST = "request";
+      // Which phase a movement belongs to, and so which colour it paints: "request" on the way out,
+      // ANSWER on the way home. Only the answer is ever asked for by name.
       const ANSWER = "answer";
 
       // The panel keeps all four states in the document, so every binding evaluates in every state.
@@ -831,10 +841,10 @@
       const NO_ERROR = { title: "", hint: "" };
 
       // The hop between two neighbouring stations: the leg it crosses is whichever end is not the
-      // endpoint.
-      function hop(from, to, answer) {
+      // endpoint. It carries the phase it belongs to, so the rail reads a colour off the hop itself.
+      function hop(from, to, phase) {
         const leg = from === "proxy" ? to : from;
-        return { leg, to, answer, reverse: to === LEG_TAIL[leg] };
+        return { leg, to, phase, reverse: to === LEG_TAIL[leg] };
       }
 
       const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -901,11 +911,11 @@
           // One movement: the pulse crosses the walk's hops in turn, leaving every station and leg
           // it touched lit behind it. Reduced motion plays the same sequence at the same pace.
           async play(walk) {
-            const phase = walk.answer ? ANSWER : REQUEST;
+            const phase = walk.answer ? ANSWER : "request";
             this.visited[walk.path[0]] = phase;
 
             for (let step = 0; step < walk.path.length - 1; step++) {
-              const crossing = hop(walk.path[step], walk.path[step + 1], walk.answer);
+              const crossing = hop(walk.path[step], walk.path[step + 1], phase);
 
               this.moving = crossing;
               await sleep(walk.answer ? RETURN_LEG_MS : OUTBOUND_LEG_MS);
@@ -986,7 +996,7 @@
           // A leg speaks the same language as the cards beside it: the phase on it, or the last one.
           legClass(leg) {
             const moving = this.moving?.leg === leg ? this.moving : null;
-            const phase = moving ? (moving.answer ? ANSWER : REQUEST) : this.crossed[leg];
+            const phase = moving ? moving.phase : this.crossed[leg];
             if (!phase || this.status === "error") return [];
 
             const classes = [];

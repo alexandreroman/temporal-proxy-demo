@@ -11,7 +11,6 @@ import (
 	"context"
 	"crypto/subtle"
 	"crypto/tls"
-	"flag"
 	"os"
 
 	"google.golang.org/grpc"
@@ -24,13 +23,14 @@ import (
 	"github.com/alexandreroman/temporal-proxy-demo/internal/kms"
 )
 
-func main() {
-	// Every address, so the Deployment needs no arguments of its own.
-	listen := flag.String("listen", ":9443", "address to serve on")
-	certFile := flag.String("cert", "/etc/kms/tls.crt", "PEM server certificate")
-	keyFile := flag.String("key", "/etc/kms/tls.key", "PEM private key matching -cert")
-	flag.Parse()
+// Fixed here rather than configurable: the Deployment runs the binary with no arguments.
+const (
+	listenAddr = ":9443"
+	certFile   = "/etc/kms/tls.crt"
+	keyFile    = "/etc/kms/tls.key"
+)
 
+func main() {
 	log := logger.Default().With(tag.Component("kms"))
 	secret := requireEnv("KMS_MASTER_SECRET", log)
 	expected := []byte("Bearer " + requireEnv("KMS_API_KEY", log))
@@ -40,7 +40,7 @@ func main() {
 		log.Fatal("Failed to build the keyring", tag.Error(err))
 	}
 
-	cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		log.Fatal("Failed to load the key pair", tag.Error(err))
 	}
@@ -53,7 +53,7 @@ func main() {
 
 	if err := ext.Serve(
 		context.Background(),
-		ext.WithAddr(*listen),
+		ext.WithAddr(listenAddr),
 		ext.WithServerAuth("authorization", func(token string) bool {
 			return subtle.ConstantTimeCompare([]byte(token), expected) == 1
 		}),

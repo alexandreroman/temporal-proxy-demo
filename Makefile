@@ -25,6 +25,10 @@ CLUSTER ?= $(notdir $(CURDIR))
 # environment variable of its own.
 TRAEFIK_PORT ?= 8080
 
+# The host name the demo answers on, matched by k8s/app/httproute.yaml. A
+# manifest cannot read a make variable, so that file spells it out too.
+DEMO_HOST = hello.127-0-0-1.nip.io
+
 # The CLI that builds the image and runs the cluster's nodes. A Podman user
 # overrides this one variable; everything else Podman needs (the
 # KIND_EXPERIMENTAL_PROVIDER kind reads, and a docker-compatible CLI on PATH)
@@ -32,20 +36,19 @@ TRAEFIK_PORT ?= 8080
 CONTAINER_TOOL ?= docker
 
 # Ask the runtime what it actually published rather than recomputing it, so a
-# command typed without TRAEFIK_PORT still reaches this worktree's cluster.
-# awk takes the last colon-separated field of the first line, which is right
-# for an IPv4 and an IPv6 binding alike. An empty answer means the cluster is
-# down, and the documented default is then the right one. TRAEFIK_PORT is what
-# `worktree-init` freezes into the cluster config, and once the cluster is up it
-# is only this fallback: an explicit TRAEFIK_PORT= on a later command line does
-# not move the published port.
-published-traefik-port = $$($(CONTAINER_TOOL) port '$(CLUSTER)-worker' 30080 2>/dev/null | awk -F: 'NR==1 {print $$NF}')
+# command typed without TRAEFIK_PORT still reaches this worktree's cluster. An
+# empty answer means the cluster is down, and TRAEFIK_PORT is then the right
+# default. Once the cluster is up that is all it is: an explicit TRAEFIK_PORT=
+# on a later command line does not move an already-published port.
+traefik-port = $$(p=$$($(CONTAINER_TOOL) port '$(CLUSTER)-worker' 30080 2>/dev/null | \
+    awk -F: 'NR==1 {print $$NF}'); echo $${p:-$(TRAEFIK_PORT)})
 
 ##@ Develop
 
 # Kind reads no environment variable of its own, so this worktree's host
 # port has to be frozen into a generated config file. CLUSTER, the
-# directory name, is what stops two worktrees from sharing a cluster.
+# directory name, is what stops two worktrees from sharing a cluster. The
+# module download rides along as a convenience, to warm the build cache.
 .PHONY: worktree-init
 worktree-init: ## Fetch dependencies and pin this worktree's port (overwrites k8s/kind-config.yaml)
 	go mod download
@@ -53,43 +56,27 @@ worktree-init: ## Fetch dependencies and pin this worktree's port (overwrites k8
 
 .PHONY: demo
 demo: ## Trigger one Workflow through the HTTP API
-	@port=$(published-traefik-port); \
-		curl -fsS -X POST "http://hello.127-0-0-1.nip.io:$${port:-$(TRAEFIK_PORT)}/hello" \
+	@port=$(traefik-port); \
+		curl -fsS -X POST "http://$(DEMO_HOST):$$port/hello" \
 			-H 'Content-Type: application/json' \
 			-d '{"name": "$(NAME)"}'
 
 # Markdown on stdout, so the answer to "where is this worktree listening?" can
-# be read in a terminal or piped into whatever renders it. Both readers are
-# served by padding every cell to its column's width, dashes included: the pipes
-# line up and the rule reads as a rule in a terminal, while a renderer collapses
-# that whitespace and sees the same table either way. The Service column is 23,
-# the width of `Temporal Web UI (Cloud)`, its widest cell; the Address column is
-# measured from the two values it is about to print, because the port comes from
-# the running cluster and the Cloud row is either a link or a longer sentence.
-# That link is built from the two Cloud values, so without them the row names
-# what to set instead of linking to a Namespace nothing can name. This target
-# reports what is there, whatever state the setup is in, so it carries no
-# require-setup guard.
+# be read in a terminal or piped into `casper info set`. The Cloud link is built
+# from the two Cloud values, so without them that row names what to set instead
+# of linking to a Namespace nothing can name.
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
-	@port=$(published-traefik-port); port=$${port:-$(TRAEFIK_PORT)}; \
-	demo_app="<http://hello.127-0-0-1.nip.io:$$port>"; \
+	@port=$(traefik-port); \
 	if [ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] && [ -n '$(TEMPORAL_ACCOUNT)' ]; then \
 		web_ui="<https://cloud.temporal.io/namespaces/$(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)>"; \
 	else \
 		web_ui='Set TEMPORAL_CLOUD_NAMESPACE and TEMPORAL_ACCOUNT in .env'; \
 	fi; \
-	service_width=23; \
-	address_width=$${#demo_app}; \
-	[ $${#web_ui} -le $$address_width ] || address_width=$${#web_ui}; \
-	service_rule=$$(printf '%*s' "$$service_width" '' | tr ' ' '-'); \
-	address_rule=$$(printf '%*s' "$$address_width" '' | tr ' ' '-'); \
-	printf '%s\n' '# Temporal Proxy Demo' ''; \
-	printf '| %-*s | %-*s |\n' \
-		"$$service_width" 'Service' "$$address_width" 'Address' \
-		"$$service_width" "$$service_rule" "$$address_width" "$$address_rule" \
-		"$$service_width" 'Demo App' "$$address_width" "$$demo_app" \
-		"$$service_width" 'Temporal Web UI (Cloud)' "$$address_width" "$$web_ui"
+	printf '%s\n' '# Temporal Proxy Demo' '' \
+		'| Service | Address |' '| --- | --- |' \
+		"| Demo App | <http://$(DEMO_HOST):$$port> |" \
+		"| Temporal Web UI (Cloud) | $$web_ui |"
 
 # The workspace info panel mirrors `make endpoints`, so whichever command
 # brought the stack up or down leaves it telling the truth. The CLI is on PATH
@@ -111,14 +98,6 @@ endef
 check: ## Run tests and static checks
 	go test ./...
 	go vet ./...
-
-##@ Helpers
-
-.PHONY: help
-help: ## Show this help
-	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n"} \
-		/^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } \
-		/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(firstword $(MAKEFILE_LIST))
 
 ##@ Kubernetes
 
@@ -178,13 +157,10 @@ image: ## Build the image and load it into the cluster (after cluster-up)
 	$(CONTAINER_TOOL) build -t $(IMAGE) .
 	kind load docker-image $(IMAGE) --name '$(CLUSTER)'
 
-# The Temporal Cloud upstream needs two values and a client certificate, and
-# the KMS server needs a master secret, all of which temporal-proxy or the
-# KMS server validates on startup: with any of them missing it crash-loops on
-# a configuration error, far from the command that caused it. Refuse before
-# touching the cluster, and name everything that is missing rather than only
-# the first thing. A .env that does not exist yet leaves these variables
-# empty, which counts as missing here. `apply` and `app-up` depend on this
+# temporal-proxy and the KMS server both validate their configuration on
+# startup, so anything missing here crash-loops far from the command that
+# caused it: refuse before touching the cluster, and name everything that is
+# missing rather than only the first thing. `apply` and `app-up` depend on this
 # guard rather than a reader invoking it, so it carries no help description.
 define require-setup-check
 missing=''; \
@@ -215,30 +191,21 @@ kubectl --context kind-$(CLUSTER) -n temporal-proxy create secret $(1) \
 	--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
 endef
 
-# The Namespace and account identifiers are not credentials, but they are
-# account-specific, so they stay out of the committed configuration and reach
-# temporal-proxy as a Secret built here from .env. Its envFrom expands them
-# into the ${VAR} references left literal in the rendered ConfigMap. The
-# client certificate reaches it the same way, as a Secret built from the two
-# files in k8s/certs/: `create secret tls` gives it exactly the tls.crt and
-# tls.key keys the chart expects. The Namespaces are applied first, because
-# both Secrets have to land in one of them before the chart's Deployment
-# reads them. temporal-proxy is pre-release, so its chart version and its
-# image tag in k8s/charts/temporal-proxy.yaml are both pinned: an unpinned
-# upgrade would pick up a configuration schema this repository has not been
-# checked against.
+# The Namespaces are applied first, because both Secrets have to land in one of
+# them before the chart's Deployment reads them. temporal-proxy is pre-release,
+# so the chart version pinned below is deliberate: an unpinned upgrade would
+# pick up a configuration schema this repository has not been checked against.
 .PHONY: apply
-apply: require-setup ## Deploy temporal-proxy and the application (after cluster-up)
+apply: require-setup ## Deploy the KMS server, temporal-proxy and the application (after cluster-up)
 	kubectl --context kind-$(CLUSTER) apply -f k8s/namespaces.yaml
 	$(call apply-secret,generic temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
 		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)')
 	$(call apply-secret,tls temporal-cloud-client \
 		--cert=k8s/certs/client.pem --key=k8s/certs/client.key)
-# Silenced with @, unlike its two neighbours above: this recipe line expands
-# to the master secret itself, and make echoes a recipe line it does not run
-# quietly. The @echo replaces that echo with one that names the Secret
-# instead of the value poured into it.
+# Silenced with @, unlike its two neighbours above: this recipe line expands to
+# the master secret itself, and make echoes a recipe line it does not run
+# quietly. The @echo below names the Secret instead of the value.
 	@$(call apply-secret,generic kms-master-secret \
 		--from-literal=KMS_MASTER_SECRET='$(KMS_MASTER_SECRET)')
 	@echo 'Secret kms-master-secret updated'
@@ -250,12 +217,10 @@ apply: require-setup ## Deploy temporal-proxy and the application (after cluster
 		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
 		--namespace temporal-proxy \
 		-f k8s/charts/temporal-proxy.yaml
-# Unconditional, because nothing above changes the pod template: the chart's
-# ConfigMap and both Secrets keep fixed names, whatever their content, and
-# temporal-proxy reads its configuration and its certificate only at startup.
-# This restart is what makes `make apply` a working certificate rotation, and
-# the wait paired with it is what keeps a certificate or an account id the
-# proxy rejects from being reported as a success.
+# Unconditional, because nothing above changes the pod template: temporal-proxy
+# reads its configuration and its certificate only at startup, so this restart
+# is what makes `make apply` a working certificate rotation. The wait paired
+# with it keeps a rejected certificate from being reported as a success.
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout restart deploy/temporal-proxy
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
 	kubectl --context kind-$(CLUSTER) apply -k k8s/app
@@ -265,29 +230,32 @@ apply: require-setup ## Deploy temporal-proxy and the application (after cluster
 # temporal-proxy and waited for it, its pod template being just as
 # blind to a changed configuration or certificate.
 .PHONY: app-up
-app-up: require-setup cluster-up image apply ## Bring the demo up: the cluster, temporal-proxy and the application
+app-up: require-setup cluster-up image apply ## Bring up the cluster, the KMS server, temporal-proxy and the application
 	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
 	@$(publish-endpoints)
 
-# Paired with app-up, and it removes only what k8s/app holds: the cluster,
-# Traefik, temporal-proxy and the KMS server — its Deployment, Certificates
-# and Password — stay standing, so app-up is quick to run again. A teardown
-# never fails over something already being gone, which takes two guards:
-# `--ignore-not-found` for a resource the kustomization names, and the
-# `kind get clusters` test, borrowed from cluster-create, for the cluster
-# itself, whose absence kubectl reports as an unknown context. No
-# require-setup guard either: removing workloads needs neither the Cloud
-# values, the certificate, nor the master secret, and demanding them would
-# fail the one command someone reaches for when those are the problem. The
-# published Demo App address stops answering whichever way the application
-# went, so the info panel goes with it.
+# A teardown never fails over something already being gone, which takes two
+# guards: `--ignore-not-found` for a resource the kustomization names, and the
+# `kind get clusters` test for the cluster itself, whose absence kubectl
+# reports as an unknown context. No require-setup guard either: a teardown
+# needs none of those values.
 .PHONY: app-down
-app-down: ## Remove the application, leaving the cluster and temporal-proxy up
+app-down: ## Remove the application, leaving the cluster, temporal-proxy and the KMS server up
 	@if kind get clusters 2>/dev/null | grep -qx '$(CLUSTER)'; then \
 		kubectl --context kind-$(CLUSTER) delete -k k8s/app --ignore-not-found; \
 	else \
 		echo 'No cluster named $(CLUSTER), so the application is already gone'; \
 	fi
 	@$(clear-endpoints)
+
+# Listed last, because the help listing follows this file's own order and the
+# demo's commands should reach a reader before its plumbing does.
+##@ Helpers
+
+.PHONY: help
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make \033[36m<target>\033[0m\n"} \
+		/^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } \
+		/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) }' $(firstword $(MAKEFILE_LIST))

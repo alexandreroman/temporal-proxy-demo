@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -27,6 +28,9 @@ func HelloWorkflow(ctx workflow.Context, req Request) (Response, error) {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		// Comfortably above the Activity's own delay, so a slow Activity is not a timeout.
 		StartToCloseTimeout: 10 * time.Second,
+		// Temporal retries forever by default. A demo bounds it: after three attempts the
+		// failure surfaces instead of leaving the caller waiting.
+		RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 3},
 	})
 
 	workflow.GetLogger(ctx).Info("Starting hello workflow", "name", req.Name)

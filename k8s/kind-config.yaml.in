@@ -3,8 +3,6 @@
 # worktree's TRAEFIK_PORT; it is not committed — see .gitignore.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-networking:
-  apiServerAddress: "127.0.0.1"
 nodes:
   # Workloads run on the worker, never on the control-plane.
   - role: control-plane

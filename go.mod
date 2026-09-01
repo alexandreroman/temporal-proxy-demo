@@ -1,9 +1,10 @@
 module github.com/alexandreroman/temporal-proxy-demo
 
-go 1.27.0
+go 1.27
+
+toolchain go1.27.0
 
 require (
-	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.12.1
 	github.com/temporalio/temporal-proxy v0.5.2
 	go.temporal.io/sdk v1.48.0
@@ -14,6 +15,7 @@ require (
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect

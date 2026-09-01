@@ -19,8 +19,9 @@ is.
   and either put a `docker` shim on `PATH` or run `make` with
   `CONTAINER_TOOL=podman`
 - [kind][kind] — the local Kubernetes cluster
-- `kubectl` and [Helm][helm] 3 — Traefik and temporal-proxy both come
-  from their upstream charts, each pinned to an explicit version
+- `kubectl` and [Helm][helm] 3 — Traefik, cert-manager and
+  temporal-proxy all come from their upstream charts, each pinned to an
+  explicit version
 - Go 1.27 or later — for `make worktree-init` and `make check`
 - A Temporal Cloud Namespace whose accepted client CA signed the
   certificate in `k8s/certs/`
@@ -88,7 +89,7 @@ make demo
 ```
 
 ```json
-{"greeting":"Hello, Temporal!","workflowId":"hello-9f1c…","runId":"01a0…"}
+{"greeting":"Hello, Temporal!","workflowId":"hello-X4T7…","runId":"01a0…"}
 ```
 
 `make worktree-init` writes `k8s/kind-config.yaml`, which pins the one
@@ -108,26 +109,30 @@ moment after the rollout finishes, so the very first `make demo` can
 answer `503`. Run it again.
 
 Run `make` to list every target. `make app-down` removes the Worker and
-the API and leaves the cluster, Traefik and temporal-proxy standing, so
-`make app-up` puts the demo back without rebuilding any of that;
-`make cluster-down` deletes everything.
+the API and leaves the cluster, Traefik, temporal-proxy and the KMS
+server standing, so `make app-up` puts the demo back without rebuilding
+any of that; `make cluster-down` deletes everything.
 
 ## What runs where
 
-| Namespace        | What it holds                                         |
-| ---------------- | ----------------------------------------------------- |
-| `traefik`        | Traefik and its Gateway, the cluster's only port      |
-| `temporal-proxy` | temporal-proxy and the ConfigMap and Secrets it reads |
-| `hello`          | The Worker and the API, with Service and route        |
+| Namespace        | What it holds                                          |
+| ---------------- | ------------------------------------------------------ |
+| `traefik`        | Traefik and its Gateway, the cluster's only port       |
+| `temporal-proxy` | temporal-proxy and the KMS server, plus what they read |
+| `hello`          | The Worker and the API, with Service and route         |
+
+`make cluster-up` also creates a `cert-manager` and a
+`secretgen-controller` namespace, for the two controllers that issue the
+KMS server's certificate and generate its bearer token.
 
 Traefik's web entrypoint is the single published port, and the API is
 the only route behind it. Everything else is reachable only from inside
 the cluster, temporal-proxy included.
 
-Traefik and temporal-proxy come from their upstream Helm charts, each
-pinned to an explicit version, with the values this demo needs in
-`k8s/charts/`. The Worker and the API come from the manifests under
-`k8s/app`, applied with Kustomize.
+Traefik, cert-manager and temporal-proxy come from their upstream Helm
+charts, each pinned to an explicit version, with the values this demo
+needs in `k8s/charts/`. The Worker and the API come from the manifests
+under `k8s/app`, applied with Kustomize.
 
 ## How the certificate travels
 
@@ -144,11 +149,8 @@ k8s/certs/client.pem + client.key
 
 Rotation is two steps: replace the two files and run `make apply`, the
 narrower target that deploys temporal-proxy and the application without
-rebuilding the image. The Secret keeps its name, so nothing in the pod
-template changes and Kubernetes has no reason to roll the Deployment on
-its own — which is why `apply` ends with a `kubectl rollout restart`.
-That restart matters because temporal-proxy reads its certificate once,
-at startup.
+rebuilding the image. It ends by restarting temporal-proxy, which reads
+its certificate only at startup.
 
 ## How the payload key travels
 
@@ -171,10 +173,8 @@ presents to it comes from secretgen-controller — both generated inside
 the cluster, so neither one appears in any file.
 
 Turning encryption off is one flag, `encryption.enabled`, plus
-`make apply`. Payloads sealed earlier stay readable: the configured key
-is what builds the vault, and inbound decryption is never gated on the
-flag. Removing the whole block instead would take the vault with it and
-leave that history unreadable.
+`make apply`. Payloads sealed earlier stay readable, which is why the
+flag rather than the whole block is what turns encryption off.
 
 ## What the application does not carry
 
@@ -194,9 +194,8 @@ and the rewrite from `demo` to the fully-qualified Cloud Namespace.
 which upstream serves it — picking an upstream is not something the
 application can do.
 
-The page the API serves renders those same two values, read where the
-client itself reads them, and names no upstream at all — naming one is
-precisely what the application cannot do.
+The page renders those same two values and names no upstream at all —
+naming one is precisely what the application cannot do.
 
 The short name is `demo` rather than `default` because one
 temporal-proxy fronts several applications, so the name each one asks
@@ -206,16 +205,14 @@ serves — so the binaries run unchanged outside the cluster.
 
 ## Limit of this demo
 
-The certificate comes from the working directory, not from a secret
-manager. temporal-proxy mounts a Kubernetes Secret and reads two files
-from it; nothing in temporal-proxy can observe how that Secret was
-filled. A real deployment would have a secret manager fill it. Here
-`make` does, which is what makes the demo self-contained.
-
-The master secret is a value in `.env` that `make` copies into a Secret.
-Nothing rotates it, and losing it loses every payload ever sealed under
-it. The KMS server derives its keys rather than fronting an HSM or a key
-service — it shows the shape of the contract, not a key manager.
+Both secrets come from the working directory rather than from a secret
+manager — the client certificate from `k8s/certs/`, the master secret
+from `.env` — and nothing rotates either one. Losing the master secret
+loses every payload ever sealed under it. `make` filling those Secrets
+is what makes the demo self-contained; a real deployment would have a
+secret manager fill them. The KMS server derives its keys rather than
+fronting an HSM or a key service: it shows the shape of the contract,
+not a key manager.
 
 Payloads reach Temporal Cloud sealed, so the Cloud Web UI shows workflow
 inputs and results as `binary/encrypted`. Making them readable there

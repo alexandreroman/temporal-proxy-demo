@@ -12,6 +12,8 @@ spec:
       labels:
         app: worker
     spec:
+      # cmd/worker never calls the Kubernetes API.
+      automountServiceAccountToken: false
       containers:
         - name: worker
           image: temporal-proxy-demo:dev

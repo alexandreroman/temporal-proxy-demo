@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/alexandreroman/temporal-proxy-demo/internal/hello"
 	"github.com/alexandreroman/temporal-proxy-demo/internal/temporalclient"
@@ -26,7 +28,10 @@ func main() {
 }
 
 func run() error {
-	c, err := temporalclient.Dial(context.Background())
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	c, err := temporalclient.Dial(ctx)
 	if err != nil {
 		return err
 	}

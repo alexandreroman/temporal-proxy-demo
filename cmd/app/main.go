@@ -9,10 +9,8 @@ package main
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -48,9 +46,8 @@ func run() error {
 	defer c.Close()
 
 	srv := &http.Server{
-		// An empty host binds every interface, IPv4 and IPv6 alike, so the API is reachable
-		// from outside its container and on the local loop under either family.
-		Addr:              net.JoinHostPort("", cmp.Or(os.Getenv("PORT"), defaultPort)),
+		// No host in front of the port: net/http then listens on every interface, IPv4 and IPv6.
+		Addr:              ":" + cmp.Or(os.Getenv("PORT"), defaultPort),
 		Handler:           newMux(startHelloWorkflow(c)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
@@ -61,10 +58,7 @@ func run() error {
 
 	select {
 	case err := <-serveErr:
-		if !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("serve http: %w", err)
-		}
-		return nil
+		return fmt.Errorf("serve http: %w", err)
 	case <-ctx.Done():
 		return shutdown(srv)
 	}

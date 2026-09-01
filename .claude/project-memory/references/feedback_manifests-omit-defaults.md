@@ -27,7 +27,7 @@ pinned rather than inherited.
 A field that does earn its place because the demo
 depends on it — the app Deployment's readiness
 probe, since the API connects to Temporal before it
-listens — is kept with the reason next to it.
+listens — carries the reason next to it.
 
 **Why:** a restated default is a line a reader has
 to check against the API before trusting it, and it
