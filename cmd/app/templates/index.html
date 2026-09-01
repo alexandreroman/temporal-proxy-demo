@@ -576,8 +576,11 @@
       </symbol>
     </svg>
 
+    <!-- The trailing padding is the short one: the page is presented at a fixed viewport with the result
+         panel as its last element, so the room below the panel is the page's own give, spent before the
+         type scale or the gaps between sections. -->
     <main
-      class="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10 lg:gap-12 lg:py-12"
+      class="relative mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10 lg:gap-12 lg:pt-12 lg:pb-6"
       x-data="demoConsole()"
     >
       <!-- The headline takes the content width on its own line; from md the intro and the control
@@ -596,8 +599,9 @@
                hold it at its longest unbreakable content. -->
           <p class="min-w-0 max-w-2xl text-base text-muted lg:text-lg">
             The application dials one plaintext endpoint and knows nothing about what serves it.
-            <strong>temporal-proxy</strong> owns the upstream, the TLS, the credentials and the
-            Namespace rewrite.
+            <strong>temporal-proxy</strong> owns the upstream, the TLS, the credentials, the Namespace rewrite and the
+            payload encryption. Its <strong>kms</strong> extension keeps that key material where you already
+            keep keys — an on-prem HSM, an internal key service — rather than a built-in cloud backend.
           </p>
 
           <!-- A real form, so Enter in the field starts a run; shrink-0 keeps the button on its line. -->

@@ -69,6 +69,14 @@ three lit levels plus the unlit failure are four states
 to check, not three: a half-done round trip must not
 read like a success.
 
+The room below the result panel is the page's first
+give. At the projected viewport the panel is the last
+thing on the page, so the container's trailing padding
+is read by nobody and is shorter than its top for that
+reason. The display end of the scale and the gaps
+between sections come after it, and the floor never
+gives.
+
 Room reserved against a clip is sized for a webfont's
 unloaded metrics, not for the line box a measurement
 returns. The boundary's label hangs below the rail's
