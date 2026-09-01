@@ -14,7 +14,7 @@ include .env
 endif
 
 # Who `make demo` greets.
-NAME ?= Temporal
+NAME ?= John Doe
 
 # The Kind cluster name is this worktree's directory name, so two
 # worktrees never share a cluster.

@@ -31,8 +31,9 @@ stacks into a reading-order list. Narrower than its
 content, it scrolls horizontally from the left, by
 hand — a run does not move it. Below the width where
 all the components fit, the parts that leave the
-viewport first are the upstream hop and the component
-beyond it, which is where the return journey happens.
+viewport first are the endpoint's two onward hops and
+the pair of components beyond them, which is where the
+return journey happens.
 
 The type scale is compressed at the top and floored
 at the bottom. Display sizes carry legibility
@@ -67,6 +68,23 @@ border and stroke back to the idle hairline. Those
 three lit levels plus the unlit failure are four states
 to check, not three: a half-done round trip must not
 read like a success.
+
+The room below the result panel is the page's first
+give. At the projected viewport the panel is the last
+thing on the page, so the container's trailing padding
+is read by nobody and is shorter than its top for that
+reason. The display end of the scale and the gaps
+between sections come after it, and the floor never
+gives.
+
+Room reserved against a clip is sized for a webfont's
+unloaded metrics, not for the line box a measurement
+returns. The boundary's label hangs below the rail's
+rows in the scroll band's own bottom padding, and that
+axis is `hidden` rather than scrollable, so a line box
+that a fallback's metrics set taller than the measured
+one is cut with nothing to scroll back. A few pixels of
+slack cost nothing; the clip is not recoverable.
 
 **Why:** every accessory on the page competes with
 the one thing the audience is meant to watch. A
