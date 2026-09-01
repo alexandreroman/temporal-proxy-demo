@@ -23,16 +23,18 @@ configuration says.
 Payload encryption wraps a data encryption key per
 payload so temporal-proxy seals every payload before it
 leaves the cluster. A KMS extension server this
-repository runs (`cmd/kms`, deriving one AES-256-GCM key
-per Namespace from a master secret via HKDF-SHA256) wraps
-that key, because temporal-proxy's built-in schemes
-(`awskms`, `azurekeyvault`, `gcpkms`, `testing`) cover
-only clouds this demo does not use, plus a scheme upstream
-marks unfit for anything but local runs. Per-request
-selectivity is not in temporal-proxy's model:
-`Encryption.Enabled` is one boolean for the whole proxy
-instance, so a payload is sealed or not for everything it
-forwards, never chosen call by call.
+repository runs (`cmd/kms`) wraps that key, because
+temporal-proxy's built-in schemes (`awskms`,
+`azurekeyvault`, `gcpkms`, `testing`) cover only clouds
+this demo does not use, plus a scheme upstream marks
+unfit for anything but local runs. `internal/kms`, the
+package `cmd/kms` runs as a service, derives that key:
+one AES-256-GCM key per Namespace from a master secret
+via HKDF-SHA256. Per-request selectivity is not in
+temporal-proxy's model: `Encryption.Enabled` is one
+boolean for the whole proxy instance, so a payload is
+sealed or not for everything it forwards, never chosen
+call by call.
 
 Inbound authentication and authorization (static token,
 JWKS, authorizer extension server) are deliberately out of
