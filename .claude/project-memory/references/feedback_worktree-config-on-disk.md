@@ -11,9 +11,10 @@ A worktree's published host port is frozen in a generated
 worktree-init` from the template `k8s/kind-config.yaml.in`.
 Kind reads no environment variable of its own, so the port
 has no other way to reach cluster creation. Commands that
-need the port ask the running cluster for it with `docker
-port '<cluster>-worker' 30080` and fall back to the
-documented default, `8080`, when the cluster is down.
+need the port ask the running cluster's node for it,
+through whichever container CLI `CONTAINER_TOOL` names, and
+fall back to the documented default, `8080`, when the
+cluster is down.
 
 **Why:** the cluster name is the worktree's own directory
 name, so two worktrees never share a cluster, and one

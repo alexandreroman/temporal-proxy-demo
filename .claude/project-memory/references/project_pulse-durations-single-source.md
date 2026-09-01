@@ -40,4 +40,5 @@ consumers and the script alone. Keep custom properties
 the script reads out of the Tailwind-compiled block. See
 [What the diagram's motion means](project_diagram-motion-language.md)
 and
-[The diagram is cards joined by static SVG wires](project_diagram-is-cards-and-wires.md).
+[The diagram is cards joined by static SVG
+wires](project_diagram-is-cards-and-wires.md).

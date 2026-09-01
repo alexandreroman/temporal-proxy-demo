@@ -61,21 +61,42 @@ func TestWrapUnwrapRoundTrip(t *testing.T) {
 	}
 }
 
-func TestUnwrapRejectsAnotherNamespace(t *testing.T) {
-	k := newTestKeyring(t)
-
-	ct, err := k.Wrap(context.Background(), nsDemo, testDEK())
-	if err != nil {
-		t.Fatalf("Wrap: %v", err)
+// Each case damages one part of a frame Wrap produced. Every case owns its own
+// ciphertext, so a corruption that writes in place disturbs nothing else.
+func TestUnwrapRejectsACorruptedFrame(t *testing.T) {
+	tests := []struct {
+		name    string
+		corrupt func(ct []byte) []byte
+	}{
+		// Splice the other name over the framed one. The namespace is the GCM
+		// additional data as well as the key selector, so this has to fail twice over.
+		{"another namespace", func(ct []byte) []byte {
+			copy(ct[headerSize:headerSize+len(nsDemo)], nsProd)
+			return ct
+		}},
+		{"an unknown format version", func(ct []byte) []byte {
+			ct[0] = formatVersion + 1
+			return ct
+		}},
+		{"too short for a header", func(ct []byte) []byte { return ct[:headerSize-1] }},
+		{"truncated inside its namespace", func(ct []byte) []byte { return ct[:headerSize] }},
+		{"truncated inside its nonce", func(ct []byte) []byte { return ct[:headerSize+len(nsDemo)] }},
+		{"missing its last byte", func(ct []byte) []byte { return ct[:len(ct)-1] }},
 	}
 
-	// Splice the other name over the framed one. The namespace is the GCM
-	// additional data as well as the key selector, so this has to fail twice over.
-	relabelled := bytes.Clone(ct)
-	copy(relabelled[headerSize:headerSize+len(nsDemo)], nsProd)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k := newTestKeyring(t)
 
-	if _, err := k.Unwrap(context.Background(), relabelled); err == nil {
-		t.Fatal("Unwrap opened a ciphertext relabelled under another namespace")
+			ct, err := k.Wrap(context.Background(), nsDemo, testDEK())
+			if err != nil {
+				t.Fatalf("Wrap: %v", err)
+			}
+
+			if _, err := k.Unwrap(context.Background(), tt.corrupt(ct)); err == nil {
+				t.Fatal("Unwrap opened a corrupted ciphertext")
+			}
+		})
 	}
 }
 
@@ -94,36 +115,5 @@ func TestUnwrapRejectsAnotherMasterSecret(t *testing.T) {
 
 	if _, err := other.Unwrap(context.Background(), ct); err == nil {
 		t.Fatal("a keyring opened a ciphertext sealed under another master secret")
-	}
-}
-
-func TestUnwrapRejectsAnUnknownVersion(t *testing.T) {
-	k := newTestKeyring(t)
-
-	ct, err := k.Wrap(context.Background(), nsDemo, testDEK())
-	if err != nil {
-		t.Fatalf("Wrap: %v", err)
-	}
-
-	bumped := bytes.Clone(ct)
-	bumped[0] = formatVersion + 1
-
-	if _, err := k.Unwrap(context.Background(), bumped); err == nil {
-		t.Fatal("Unwrap accepted an unknown format version")
-	}
-}
-
-func TestUnwrapRejectsTruncatedCiphertext(t *testing.T) {
-	k := newTestKeyring(t)
-
-	ct, err := k.Wrap(context.Background(), nsDemo, testDEK())
-	if err != nil {
-		t.Fatalf("Wrap: %v", err)
-	}
-
-	for _, n := range []int{0, headerSize - 1, headerSize, headerSize + len(nsDemo), len(ct) - 1} {
-		if _, err := k.Unwrap(context.Background(), ct[:n]); err == nil {
-			t.Fatalf("Unwrap accepted a ciphertext truncated to %d bytes", n)
-		}
 	}
 }

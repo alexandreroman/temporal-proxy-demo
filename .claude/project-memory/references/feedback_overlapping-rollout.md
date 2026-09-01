@@ -26,13 +26,12 @@ the cluster's only route, a pod that stops before Traefik's
 view of it catches up blackholes the request, so Traefik
 times out with a 504 rather than failing fast.
 
-A cluster created from nothing keeps one window the overlap
-cannot close: Traefik loads a route only after its
-`providersThrottleDuration`, two seconds by default, so the
-first `make demo` after a cold `make app-up` can answer 503.
+On a freshly created cluster one window stays open that the
+overlap cannot close: Traefik loads a route only after its
+`providersThrottleDuration`, two seconds by default.
 `app-up` does not poll the published route to hide it — the
-README tells the reader to run the command again, which keeps
-the recipe on a slide.
+README tells the reader to retry instead, which keeps the
+recipe on a slide.
 
 **How to apply:** give a workload an overlapping rollout when
 it serves inbound traffic through the Gateway, and leave it

@@ -25,16 +25,15 @@ error, and guards on the cluster existing at all
 before addressing a kubeconfig context, because
 `kubectl --context` fails on a context that is not
 there. Teardown also carries no setup guard: it
-needs neither the Cloud Namespace, nor the account
-id, nor the certificate, and demanding them would
+needs no Cloud Namespace, no account id, no master
+secret and no certificate, and demanding them would
 fail in exactly the situation where someone wants to
 tear down.
 
-The asymmetry between the pairs is deliberate.
-`app-down` removes the application and leaves the
-cluster, Traefik and temporal-proxy standing, so
-`app-up` returns quickly; `cluster-down` is the way
-to remove everything.
+The asymmetry between the pairs is deliberate:
+`app-down` stops short of the platform layer so that
+`app-up` returns quickly, which leaves `cluster-down`
+as the only way to remove everything.
 
 **Why:** the commands are the demo's interface, and
 a reader typing them under time pressure should not

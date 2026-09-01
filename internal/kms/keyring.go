@@ -57,9 +57,7 @@ func NewKeyring(secret []byte) (*Keyring, error) {
 // The Namespace is framed in the clear because Unwrap is handed nothing else and
 // has to derive the same key again. It is the GCM additional data as well, so a
 // ciphertext relabelled under another Namespace fails to open. A Namespace is not
-// a secret — it already travels in request metadata — but an implementation that
-// would rather not expose one would carry an opaque identifier here and resolve
-// it internally.
+// a secret — it already travels in request metadata.
 func (k *Keyring) Wrap(_ context.Context, namespace string, dek []byte) ([]byte, error) {
 	if len(namespace) > math.MaxUint16 {
 		return nil, fmt.Errorf("kms: namespace is too long to frame: %d bytes", len(namespace))

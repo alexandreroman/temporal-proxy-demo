@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,12 +12,16 @@ import (
 	"net/http"
 
 	"github.com/alexandreroman/temporal-proxy-demo/internal/hello"
-	"github.com/google/uuid"
 	"go.temporal.io/sdk/client"
 )
 
-// defaultName is greeted when the request carries no name.
-const defaultName = "Temporal"
+const (
+	// defaultName is greeted when the request carries no name.
+	defaultName = "Temporal"
+
+	// maxRequestBody caps how much of a request body is read: a name needs a fraction of it.
+	maxRequestBody = 1 << 20
+)
 
 // execution names the Workflow Execution that produced a greeting, and carries the JSON names
 // those identifiers go out under. The Workflow itself does not report them — they belong to the
@@ -41,6 +46,8 @@ type helloResponse struct {
 
 func helloHandler(greet greeter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+
 		req, err := decodeRequest(r)
 		if err != nil {
 			slog.Warn("rejecting request", "error", err)
@@ -83,7 +90,7 @@ func decodeRequest(r *http.Request) (hello.Request, error) {
 func startHelloWorkflow(c client.Client) greeter {
 	return func(ctx context.Context, req hello.Request) (hello.Response, execution, error) {
 		options := client.StartWorkflowOptions{
-			ID:        "hello-" + uuid.NewString(), // Recognizable in the Web UI, and unique across replays.
+			ID:        "hello-" + rand.Text(), // Recognizable in the Web UI, and unique across replays.
 			TaskQueue: hello.TaskQueue,
 		}
 

@@ -19,10 +19,12 @@ on which state is showing.
 Vertical room comes from spacing and from the
 horizontal room the layout leaves unused: the
 headline spans the full content width on its own
-line, and from `lg` the intro and the control row
-sit side by side beneath it. The panel keeps a
-minimum height below `lg` rather than a fixed one,
-so text that wraps further has somewhere to go.
+line, and from `md` the intro and the control row
+sit side by side beneath it — `md` and not `sm`,
+because at `sm` the intro would set about 33
+characters. The panel keeps a minimum height below
+`lg` rather than a fixed one, so text that wraps
+further has somewhere to go.
 
 The diagram always flows left to right and never
 stacks into a reading-order list. Narrower than its

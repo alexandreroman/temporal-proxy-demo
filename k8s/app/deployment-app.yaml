@@ -21,6 +21,8 @@ spec:
       labels:
         app: app
     spec:
+      # cmd/app never calls the Kubernetes API.
+      automountServiceAccountToken: false
       containers:
         - name: app
           # Built by `make image` and loaded straight into the cluster's

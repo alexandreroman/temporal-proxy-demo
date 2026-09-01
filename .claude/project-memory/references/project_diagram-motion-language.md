@@ -1,6 +1,6 @@
 ---
 name: "What the diagram's motion means"
-description: "Arrowheads appear only while traffic moves, violet is the request going out, mint is the result coming home"
+description: "The wires carry no arrowheads and direction is the travelling pulse's job, violet is the request going out, mint is the result coming home"
 type: project
 ---
 
@@ -19,8 +19,8 @@ one run.
 travelling pulse's job alone, so the diagram never
 draws a claim about which way a wire flows. A static
 head would be a false claim on a wire that carries
-both directions, and a head that appeared only during
-travel duplicated what the pulse already said.
+both directions, and a head shown only during travel
+would duplicate what the pulse already says.
 
 **The pulse is a step of lightness above the accent,
 never the accent itself.** A wire lights in the accent

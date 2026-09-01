@@ -14,16 +14,16 @@ no tool.
 
 The same binary serves this page in two places. In the
 Kind cluster `make app-up` brings it back; on a
-developer's machine it runs against a plain `temporal
-server start-dev` alongside `go run ./cmd/worker` and
-`go run ./cmd/app` — see
+developer's machine it runs in the local dev-server
+loop — see
 [Local development needs no cluster](project_local-development.md).
 The running page cannot tell which of the two it is in,
 and it has no variable that would tell it.
 
 Each hint is one or two short sentences at the page's
 body size, read from the back of a room — see
-[The demo page is read from the back of a room](feedback_page-projection-legibility.md).
+[The demo page is read from the back of a
+room](feedback_page-projection-legibility.md).
 
 **Why:** a hint that names one of the two ways to start
 the demo is wrong half the time it is read, and a wrong

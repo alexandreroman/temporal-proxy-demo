@@ -6,6 +6,5 @@ spec:
   selector:
     app: app
   ports:
-    - name: http
-      port: 80
+    - port: 80
       targetPort: http
