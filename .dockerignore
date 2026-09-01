@@ -12,6 +12,3 @@ Makefile
 LICENSE
 .casper.json
 .DS_Store
-
-# Local write-ups — the project's documentation lives in README.md.
-docs/

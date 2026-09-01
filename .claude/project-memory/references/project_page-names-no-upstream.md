@@ -39,4 +39,4 @@ A deep link into a specific upstream's web UI would
 require the application to carry that upstream's
 fully-qualified Namespace, which is a change to the
 demo's central claim and not a page detail — see
-[[feedback-agnostic-app-code]].
+[Application code stays endpoint-agnostic](feedback_agnostic-app-code.md).

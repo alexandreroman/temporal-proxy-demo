@@ -48,8 +48,9 @@ func run() error {
 	defer c.Close()
 
 	srv := &http.Server{
-		// Bind every interface so the API is reachable from outside its container.
-		Addr:              net.JoinHostPort("0.0.0.0", cmp.Or(os.Getenv("PORT"), defaultPort)),
+		// An empty host binds every interface, IPv4 and IPv6 alike, so the API is reachable
+		// from outside its container and on the local loop under either family.
+		Addr:              net.JoinHostPort("", cmp.Or(os.Getenv("PORT"), defaultPort)),
 		Handler:           newMux(startHelloWorkflow(c)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

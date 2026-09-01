@@ -85,8 +85,9 @@ func TestHelloEndpoint(t *testing.T) {
 	}
 }
 
-// The page reads three field names off the body, so the embedded hello.Response has to
-// contribute a flat "greeting" and not a nested object.
+// The page reads two field names off the body, "greeting" and "workflowId", and "runId"
+// completes the Execution's identity on the wire. All three sit flat, so the embedded
+// hello.Response has to contribute a "greeting" and not a nested object.
 func TestHelloEndpointBodyFields(t *testing.T) {
 	t.Parallel()
 

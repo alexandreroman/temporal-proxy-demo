@@ -76,6 +76,10 @@ the team.
 - Line length limits for readability:
   - Text / Markdown: 80 columns max
   - Code: 120 columns max
+  - Exempt, single lines by format: the
+    `.claude/project-memory` index's entries and each note's
+    frontmatter `description:`; the notes' prose bodies keep
+    the 80-column limit
 - Follow standard Markdown conventions: blank line
   before and after headings, blank line before and
   after lists, fenced code blocks with a language tag

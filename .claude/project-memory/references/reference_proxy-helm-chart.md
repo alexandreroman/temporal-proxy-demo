@@ -11,7 +11,11 @@ temporal-proxy is deployed from the upstream
 <https://go.temporal.io/helm-charts>, with this demo's
 values in `k8s/charts/temporal-proxy.yaml`. Both the chart
 version and `image.tag` are pinned explicitly, because the
-chart's `appVersion` trails the published image.
+chart's `appVersion` trails the published image. With
+`image.tag: v0.5.2` against an `appVersion` of `v0.5.0`, every
+rendered object carries `app.kubernetes.io/version: "v0.5.0"`:
+the label reports the chart's version, not the running image's,
+and it is cosmetic.
 
 Five of the chart's behaviours decide what a values file has
 to say:

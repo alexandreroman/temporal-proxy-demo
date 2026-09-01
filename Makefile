@@ -59,18 +59,26 @@ demo: ## Trigger one Workflow through the HTTP API
 			-d '{"name": "$(NAME)"}'
 
 # Markdown on stdout, so the answer to "where is this worktree listening?" can
-# be read in a terminal or piped into whatever renders it.
+# be read in a terminal or piped into whatever renders it. The Web UI link is
+# built from the two Cloud values, so without them the row names what to set
+# instead of linking to a Namespace nothing can name. This target reports what
+# is there, whatever state the setup is in, so it carries no require-cloud
+# guard.
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
 	@port=$(published-traefik-port); port=$${port:-$(TRAEFIK_PORT)}; \
+	if [ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] && [ -n '$(TEMPORAL_ACCOUNT)' ]; then \
+		web_ui="<https://cloud.temporal.io/namespaces/$(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)>"; \
+	else \
+		web_ui='Set TEMPORAL_CLOUD_NAMESPACE and TEMPORAL_ACCOUNT in .env'; \
+	fi; \
 	printf '%s\n' \
 		'# Temporal Proxy Demo' \
 		'' \
 		'| Service | Address |' \
 		'| --- | --- |' \
 		"| Demo App | <http://hello.127-0-0-1.nip.io:$$port> |" \
-		"| Temporal Web UI (Cloud) | <https://cloud.temporal.io/namespaces/\
-$(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)> |"
+		"| Temporal Web UI (Cloud) | $$web_ui |"
 
 # The workspace info panel mirrors `make endpoints`, so whichever command
 # brought the stack up or down leaves it telling the truth. The CLI is on PATH
@@ -103,11 +111,18 @@ help: ## Show this help
 
 ##@ Kubernetes
 
+# The node image is pinned like every other version here, because the
+# application's preStop lifecycle sleep needs a recent Kubernetes: an older node
+# drops that field silently and takes the overlapping rollout with it. The
+# cluster this target creates carries no ingress until cluster-up has finished
+# with it, so cluster-up is the name a reader types and this one exists only as
+# its prerequisite, without a help description.
 .PHONY: cluster-create
-cluster-create: ## Create the Kind cluster
+cluster-create:
 	@test -f k8s/kind-config.yaml || { echo "Run make worktree-init first"; exit 1; }
 	@kind get clusters | grep -qx '$(CLUSTER)' || \
-		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml
+		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml \
+			--image kindest/node:v1.37.0
 	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
 
 # Gateway API CRDs are not shipped by the Traefik chart, so they come from
@@ -136,7 +151,7 @@ cluster-down: ## Delete the Kind cluster
 IMAGE = docker.io/library/temporal-proxy-demo:dev
 
 .PHONY: image
-image: ## Build the image and load it into the cluster (after cluster-create)
+image: ## Build the image and load it into the cluster (after cluster-up)
 	$(CONTAINER_TOOL) build -t $(IMAGE) .
 	kind load docker-image $(IMAGE) --name '$(CLUSTER)'
 
