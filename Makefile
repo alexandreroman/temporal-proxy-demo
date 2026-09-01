@@ -59,26 +59,37 @@ demo: ## Trigger one Workflow through the HTTP API
 			-d '{"name": "$(NAME)"}'
 
 # Markdown on stdout, so the answer to "where is this worktree listening?" can
-# be read in a terminal or piped into whatever renders it. The Web UI link is
-# built from the two Cloud values, so without them the row names what to set
-# instead of linking to a Namespace nothing can name. This target reports what
-# is there, whatever state the setup is in, so it carries no require-cloud
-# guard.
+# be read in a terminal or piped into whatever renders it. Both readers are
+# served by padding every cell to its column's width, dashes included: the pipes
+# line up and the rule reads as a rule in a terminal, while a renderer collapses
+# that whitespace and sees the same table either way. The Service column is 23,
+# the width of `Temporal Web UI (Cloud)`, its widest cell; the Address column is
+# measured from the two values it is about to print, because the port comes from
+# the running cluster and the Cloud row is either a link or a longer sentence.
+# That link is built from the two Cloud values, so without them the row names
+# what to set instead of linking to a Namespace nothing can name. This target
+# reports what is there, whatever state the setup is in, so it carries no
+# require-cloud guard.
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
 	@port=$(published-traefik-port); port=$${port:-$(TRAEFIK_PORT)}; \
+	demo_app="<http://hello.127-0-0-1.nip.io:$$port>"; \
 	if [ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] && [ -n '$(TEMPORAL_ACCOUNT)' ]; then \
 		web_ui="<https://cloud.temporal.io/namespaces/$(TEMPORAL_CLOUD_NAMESPACE).$(TEMPORAL_ACCOUNT)>"; \
 	else \
 		web_ui='Set TEMPORAL_CLOUD_NAMESPACE and TEMPORAL_ACCOUNT in .env'; \
 	fi; \
-	printf '%s\n' \
-		'# Temporal Proxy Demo' \
-		'' \
-		'| Service | Address |' \
-		'| --- | --- |' \
-		"| Demo App | <http://hello.127-0-0-1.nip.io:$$port> |" \
-		"| Temporal Web UI (Cloud) | $$web_ui |"
+	service_width=23; \
+	address_width=$${#demo_app}; \
+	[ $${#web_ui} -le $$address_width ] || address_width=$${#web_ui}; \
+	service_rule=$$(printf '%*s' "$$service_width" '' | tr ' ' '-'); \
+	address_rule=$$(printf '%*s' "$$address_width" '' | tr ' ' '-'); \
+	printf '%s\n' '# Temporal Proxy Demo' ''; \
+	printf '| %-*s | %-*s |\n' \
+		"$$service_width" 'Service' "$$address_width" 'Address' \
+		"$$service_width" "$$service_rule" "$$address_width" "$$address_rule" \
+		"$$service_width" 'Demo App' "$$address_width" "$$demo_app" \
+		"$$service_width" 'Temporal Web UI (Cloud)' "$$address_width" "$$web_ui"
 
 # The workspace info panel mirrors `make endpoints`, so whichever command
 # brought the stack up or down leaves it telling the truth. The CLI is on PATH
