@@ -51,3 +51,4 @@
 - [The diagram is cards joined by static SVG wires](references/project_diagram-is-cards-and-wires.md) — fixed cards, hard-coded wires, sized for the cluster caption
 - [What the diagram's motion means](references/project_diagram-motion-language.md) — heads only while traffic moves, violet out, mint home
 - [The pulse durations are declared once, in the parse-time stylesheet](references/project_pulse-durations-single-source.md) — the CSS and the script that paces it read one declaration
+- [A typographic accent is presentational](references/feedback_typographic-accent-is-presentational.md) — `<span>` for weight or colour, `<strong>` only for meaning

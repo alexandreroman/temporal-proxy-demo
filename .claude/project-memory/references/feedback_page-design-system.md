@@ -18,13 +18,16 @@ the background and `#B664FF` the dominant accent;
 Typography splits by availability. temporal.io
 sets its text in **Aeonik**, which is licensed and
 cannot be served from a public CDN, so the page
-uses **Schibsted Grotesk** in its place — a
-geometric grotesque of the same temperature,
-available on Google Fonts. Its mono is **Noto Sans
+uses **General Sans** in its place — a geometric
+grotesque of the same temperature, whose display
+weight sits closest to Aeonik's width and colour,
+served from Fontshare. Its mono is **Noto Sans
 Mono**, which is not a substitute for anything:
 temporal.io ships that exact face, and the page
 uses it for everything machine-shaped — station
-names, endpoints, Workflow IDs, timings.
+names, endpoints, Workflow IDs, timings. The two
+faces come from two origins, Fontshare and Google
+Fonts, and the page preconnects to both.
 
 Every icon is an inline `<symbol>` filled or
 stroked with `currentColor`, declared once and
@@ -81,4 +84,4 @@ temporal.io or do not add one, and check it against
 CDN versions pinned and bump them deliberately.
 Record the source URL beside any asset copied in.
 Should Aeonik ever become servable, it replaces
-Schibsted Grotesk and nothing else changes.
+General Sans and nothing else changes.
