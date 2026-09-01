@@ -71,10 +71,11 @@ certificates][mtls] for the Cloud side.
 Copy the environment template and fill in the two Temporal Cloud
 values — the short Namespace name and the account id, the two halves of
 a fully-qualified Cloud Namespace (`quickstart.a1b2c` is `quickstart`
-plus `a1b2c`):
+plus `a1b2c`) — then generate the payload key's master secret:
 
 ```bash
 cp .env.example .env
+echo "KMS_MASTER_SECRET=$(openssl rand -base64 32)" >> .env
 ```
 
 Put the client certificate in `k8s/certs/` as `client.pem` and
@@ -149,6 +150,32 @@ its own — which is why `apply` ends with a `kubectl rollout restart`.
 That restart matters because temporal-proxy reads its certificate once,
 at startup.
 
+## How the payload key travels
+
+Nothing seals a payload with a key from a file. temporal-proxy generates
+a data encryption key, seals payloads with it, and asks the KMS server
+to wrap that key:
+
+```text
+KMS_MASTER_SECRET in .env
+  → Secret kms-master-secret
+  → the KMS server, which derives one AES-256-GCM key per Namespace
+  → wraps each data encryption key temporal-proxy sends it
+  → the wrapped key travels inside the sealed payload
+```
+
+The KMS server derives its key from the short Namespace name the
+application asked for — `demo` — never the fully-qualified Cloud name.
+Its certificate comes from cert-manager, and the token temporal-proxy
+presents to it comes from secretgen-controller — both generated inside
+the cluster, so neither one appears in any file.
+
+Turning encryption off is one flag, `encryption.enabled`, plus
+`make apply`. Payloads sealed earlier stay readable: the configured key
+is what builds the vault, and inbound decryption is never gated on the
+flag. Removing the whole block instead would take the vault with it and
+leave that history unreadable.
+
 ## What the application does not carry
 
 The Worker and the API each get the same two environment variables, and
@@ -184,6 +211,17 @@ manager. temporal-proxy mounts a Kubernetes Secret and reads two files
 from it; nothing in temporal-proxy can observe how that Secret was
 filled. A real deployment would have a secret manager fill it. Here
 `make` does, which is what makes the demo self-contained.
+
+The master secret is a value in `.env` that `make` copies into a Secret.
+Nothing rotates it, and losing it loses every payload ever sealed under
+it. The KMS server derives its keys rather than fronting an HSM or a key
+service — it shows the shape of the contract, not a key manager.
+
+Payloads reach Temporal Cloud sealed, so the Cloud Web UI shows workflow
+inputs and results as `binary/encrypted`. Making them readable there
+needs a codec server, which temporal-proxy does not provide and which
+would have to be reachable from the browser over HTTPS — out of reach of
+a local cluster without a tunnel.
 
 ## License
 

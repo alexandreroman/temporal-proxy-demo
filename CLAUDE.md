@@ -13,8 +13,10 @@ See [README.md](README.md) for full documentation.
 - Tailwind CSS and Alpine.js — the embedded page, both from a CDN
 - temporal-proxy — one gRPC endpoint in front of every upstream
 - Kubernetes on Kind — the local cluster the demo runs in
-- Kustomize — the Worker and the API
-- Helm — Traefik and temporal-proxy, from their upstream charts
+- Kustomize — the Worker, the API and the KMS server
+- Helm — Traefik, cert-manager and temporal-proxy, from their upstream charts
+- cert-manager — issues the KMS server's certificate
+- secretgen-controller — generates the KMS server's bearer token
 - Traefik — the cluster's only published entrypoint
 - Temporal Cloud — the demo's upstream (TLS + client certificate)
 
@@ -23,11 +25,14 @@ See [README.md](README.md) for full documentation.
 ```bash
 make worktree-init  # generate this worktree's cluster config
 make                # list every target
-make app-up         # cluster, temporal-proxy, Worker and API
+make app-up         # cluster, KMS server, temporal-proxy, Worker and API
 make demo           # curl the API to start one Workflow
 make check          # tests and static checks
 make cluster-down   # delete the cluster
 ```
+
+`.env` also needs `KMS_MASTER_SECRET`; `require-setup`
+refuses to deploy without it.
 
 ## Modules
 
@@ -36,10 +41,13 @@ make cluster-down   # delete the cluster
   and the embedded page that drives it
 - `internal/hello` — the hello-workflow Workflow and its Activity
 - `internal/temporalclient` — the shared client: plaintext, no credentials
+- `cmd/kms` — gRPC server wrapping and unwrapping payload keys
+- `internal/kms` — derives one AES-256-GCM key per Namespace
 - `k8s` — the cluster configuration: the application's manifests in
-  `app`, the charts' values in `charts`, the client certificate in
-  `certs`, plus `namespaces.yaml`, applied on its own, and
-  `kind-config.yaml.in`, the template `worktree-init` renders
+  `app`, the KMS server's in `kms`, the charts' values in `charts`,
+  the client certificate in `certs`, plus `namespaces.yaml`, applied
+  on its own, and `kind-config.yaml.in`, the template `worktree-init`
+  renders
 
 ## Agents
 

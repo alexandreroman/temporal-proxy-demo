@@ -69,7 +69,7 @@ demo: ## Trigger one Workflow through the HTTP API
 # That link is built from the two Cloud values, so without them the row names
 # what to set instead of linking to a Namespace nothing can name. This target
 # reports what is there, whatever state the setup is in, so it carries no
-# require-cloud guard.
+# require-setup guard.
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
 	@port=$(published-traefik-port); port=$${port:-$(TRAEFIK_PORT)}; \
@@ -136,8 +136,12 @@ cluster-create:
 			--image kindest/node:v1.37.0
 	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
 
-# Gateway API CRDs are not shipped by the Traefik chart, so they come from
-# the pinned upstream release, applied before it.
+# Gateway API CRDs are not shipped by the Traefik chart, so they come from the
+# pinned upstream release, applied before it: an HTTPRoute or a Gateway has no
+# API to land on otherwise. cert-manager issues the certificate the KMS server
+# presents, and secretgen-controller generates the bearer token that server
+# reads at runtime; its controller is waited for, because nothing answers a
+# request for a generated Secret until it is running.
 .PHONY: cluster-up
 cluster-up: cluster-create ## Create the cluster and install its platform components
 	kubectl --context kind-$(CLUSTER) apply -f \
@@ -146,6 +150,14 @@ cluster-up: cluster-create ## Create the cluster and install its platform compon
 		--repo https://traefik.github.io/charts --version 41.4.0 \
 		--namespace traefik --create-namespace \
 		-f k8s/charts/traefik.yaml --wait
+	helm --kube-context kind-$(CLUSTER) upgrade --install cert-manager cert-manager \
+		--repo https://charts.jetstack.io --version v1.21.1 \
+		--namespace cert-manager --create-namespace \
+		-f k8s/charts/cert-manager.yaml --wait
+	kubectl --context kind-$(CLUSTER) apply -f \
+		https://github.com/carvel-dev/secretgen-controller/releases/download/v0.21.2/release.yml
+	kubectl --context kind-$(CLUSTER) -n secretgen-controller rollout status \
+		deploy/secretgen-controller --timeout=120s
 
 # Paired with cluster-up.
 .PHONY: cluster-down
@@ -166,20 +178,21 @@ image: ## Build the image and load it into the cluster (after cluster-up)
 	$(CONTAINER_TOOL) build -t $(IMAGE) .
 	kind load docker-image $(IMAGE) --name '$(CLUSTER)'
 
-# The Temporal Cloud upstream needs two values and a client certificate, all
-# of which temporal-proxy validates on startup: with any of them missing it
-# crash-loops on a configuration error, far from the command that caused it.
-# Refuse before touching the cluster, and name everything that is missing
-# rather than only the first thing. A .env that does not exist yet leaves
-# these variables empty, which counts as missing here. `apply` and `app-up`
-# depend on this guard rather than a reader invoking it, so it carries no help
-# description.
-define require-cloud-setup
+# The Temporal Cloud upstream needs two values and a client certificate, and
+# the KMS server needs a master secret, all of which temporal-proxy or the
+# KMS server validates on startup: with any of them missing it crash-loops on
+# a configuration error, far from the command that caused it. Refuse before
+# touching the cluster, and name everything that is missing rather than only
+# the first thing. A .env that does not exist yet leaves these variables
+# empty, which counts as missing here. `apply` and `app-up` depend on this
+# guard rather than a reader invoking it, so it carries no help description.
+define require-setup-check
 missing=''; \
 [ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
 [ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
 [ -f k8s/certs/client.pem ] || missing="$$missing k8s/certs/client.pem"; \
 [ -f k8s/certs/client.key ] || missing="$$missing k8s/certs/client.key"; \
+[ -n '$(KMS_MASTER_SECRET)' ] || missing="$$missing KMS_MASTER_SECRET"; \
 if [ -n "$$missing" ]; then \
   echo "Cannot deploy, these are missing:$$missing"; \
   echo "The values go in .env (copy .env.example); the certificate goes in"; \
@@ -188,15 +201,15 @@ if [ -n "$$missing" ]; then \
 fi
 endef
 
-.PHONY: require-cloud
-require-cloud:
-	@$(require-cloud-setup)
+.PHONY: require-setup
+require-setup:
+	@$(require-setup-check)
 
 # `kubectl create secret` refuses to overwrite a Secret that already exists, so
 # every one of them is rendered client-side and piped into `apply` instead:
-# that is what makes `make apply` runnable a second time. Both Secrets belong
-# to temporal-proxy's namespace, so it is part of this shared shape; each call
-# supplies only the kind, the name and the sources.
+# that is what makes `make apply` runnable a second time. Every Secret this
+# builds belongs to temporal-proxy's namespace, so it is part of this shared
+# shape; each call supplies only the kind, the name and the sources.
 define apply-secret
 kubectl --context kind-$(CLUSTER) -n temporal-proxy create secret $(1) \
 	--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
@@ -215,13 +228,24 @@ endef
 # upgrade would pick up a configuration schema this repository has not been
 # checked against.
 .PHONY: apply
-apply: require-cloud ## Deploy temporal-proxy and the application (after cluster-up)
+apply: require-setup ## Deploy temporal-proxy and the application (after cluster-up)
 	kubectl --context kind-$(CLUSTER) apply -f k8s/namespaces.yaml
 	$(call apply-secret,generic temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
 		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)')
 	$(call apply-secret,tls temporal-cloud-client \
 		--cert=k8s/certs/client.pem --key=k8s/certs/client.key)
+# Silenced with @, unlike its two neighbours above: this recipe line expands
+# to the master secret itself, and make echoes a recipe line it does not run
+# quietly. The @echo replaces that echo with one that names the Secret
+# instead of the value poured into it.
+	@$(call apply-secret,generic kms-master-secret \
+		--from-literal=KMS_MASTER_SECRET='$(KMS_MASTER_SECRET)')
+	@echo 'Secret kms-master-secret updated'
+	kubectl --context kind-$(CLUSTER) apply -k k8s/kms
+	kubectl --context kind-$(CLUSTER) -n temporal-proxy wait --for=condition=Ready \
+		certificate/kms-tls --timeout=120s
+	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/kms --timeout=120s
 	helm --kube-context kind-$(CLUSTER) upgrade --install temporal-proxy temporal-proxy \
 		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
 		--namespace temporal-proxy \
@@ -241,22 +265,24 @@ apply: require-cloud ## Deploy temporal-proxy and the application (after cluster
 # temporal-proxy and waited for it, its pod template being just as
 # blind to a changed configuration or certificate.
 .PHONY: app-up
-app-up: require-cloud cluster-up image apply ## Bring the demo up: the cluster, temporal-proxy and the application
+app-up: require-setup cluster-up image apply ## Bring the demo up: the cluster, temporal-proxy and the application
 	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
 	@$(publish-endpoints)
 
 # Paired with app-up, and it removes only what k8s/app holds: the cluster,
-# Traefik and temporal-proxy stay standing, so app-up is quick to run again.
-# A teardown never fails over something already being gone, which takes two
-# guards: `--ignore-not-found` for a resource the kustomization names, and the
+# Traefik, temporal-proxy and the KMS server — its Deployment, Certificates
+# and Password — stay standing, so app-up is quick to run again. A teardown
+# never fails over something already being gone, which takes two guards:
+# `--ignore-not-found` for a resource the kustomization names, and the
 # `kind get clusters` test, borrowed from cluster-create, for the cluster
-# itself, whose absence kubectl reports as an unknown context. No require-cloud
-# guard either: removing workloads needs neither the Cloud values nor the
-# certificate, and demanding them would fail the one command someone reaches
-# for when those are the problem. The published Demo App address stops
-# answering whichever way the application went, so the info panel goes with it.
+# itself, whose absence kubectl reports as an unknown context. No
+# require-setup guard either: removing workloads needs neither the Cloud
+# values, the certificate, nor the master secret, and demanding them would
+# fail the one command someone reaches for when those are the problem. The
+# published Demo App address stops answering whichever way the application
+# went, so the info panel goes with it.
 .PHONY: app-down
 app-down: ## Remove the application, leaving the cluster and temporal-proxy up
 	@if kind get clusters 2>/dev/null | grep -qx '$(CLUSTER)'; then \

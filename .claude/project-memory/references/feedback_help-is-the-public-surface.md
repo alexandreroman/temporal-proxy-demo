@@ -9,7 +9,7 @@ type: feedback
 `make help` lists a target when that target carries
 a `##` description, and the listing is the contract
 with a reader: everything in it is a command someone
-would type. Internal guards, `require-cloud` among
+would type. Internal guards, `require-setup` among
 them, carry no description and stay out of it, with
 their rationale in the comment block above the
 `define` they run.

@@ -51,7 +51,26 @@ comment naming a proxy is
 a claim about the deployment, and it is exactly the
 claim the demo exists to disprove.
 
-**How to apply:** review new Go code with
-`grep -rniE "proxy|gateway|upstream" --include='*.go' .`
-— only import paths carrying the repository name
-should match. See [Demo scope](project_demo-scope.md).
+**How to apply:** review new Go code in the packages
+this rule covers:
+
+```sh
+grep -rniE "proxy|gateway|upstream" --include='*.go' \
+  cmd/worker cmd/app internal/hello \
+  internal/temporalclient internal/kms
+```
+
+Checked by hand — `make check` runs `go test` and
+`go vet`, not this grep. Only an import path carrying
+the repository name is expected to match: the module
+path is `github.com/alexandreroman/temporal-proxy-demo`,
+so any file importing one of its own packages carries
+the substring "proxy", and nothing else should.
+`cmd/kms` sits outside that scope: it implements
+`api.kms.v1.EncryptionService`, an interface
+temporal-proxy defines, so the name there names the
+interface it implements, not the endpoint it serves.
+`internal/kms` stays inside the rule despite sharing
+a name with that neighbour — it is pure cryptography
+and names nothing about its caller. See
+[Demo scope](project_demo-scope.md).

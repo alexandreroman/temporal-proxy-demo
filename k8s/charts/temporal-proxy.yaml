@@ -48,6 +48,31 @@ envFrom:
   - secretRef:
       name: temporal-cloud-config
 
+# One key from the Secret, not the whole of it: the master secret in the
+# neighbouring kms-master-secret Secret never reaches this container.
+env:
+  - name: KMS_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: kms-api-key
+        key: KMS_API_KEY
+
+# One key here too, so the KMS server's private key never reaches this
+# container either — only the certificate authority that signed it, which
+# is what the extension server's tls.ca is set to below.
+volumes:
+  - name: kms-ca
+    secret:
+      secretName: kms-tls
+      items:
+        - key: ca.crt
+          path: ca.crt
+
+volumeMounts:
+  - name: kms-ca
+    mountPath: /etc/temporal-proxy/certs/kms
+    readOnly: true
+
 config:
   routing:
     default: cloud   # Namespaced requests
@@ -78,3 +103,39 @@ config:
           overrides:
             - local: demo
               remote: ${TEMPORAL_CLOUD_NAMESPACE}.${TEMPORAL_ACCOUNT}
+
+  # The key management backend. temporal-proxy builds this connection when
+  # it builds its key policies, so an unreadable ca file fails startup
+  # rather than the first payload. The chart wires tls and credentials for
+  # the gateway and for upstreams only, never for an extension server, so
+  # both are supplied by hand below.
+  extensionServers:
+    - name: kms
+      hostPort: kms.temporal-proxy:9443
+      tls:
+        ca: /etc/temporal-proxy/certs/kms/ca.crt
+      credentials:
+        static:
+          apiKey: ${KMS_API_KEY}
+
+  # Envelope encryption. Each data encryption key is wrapped by the key
+  # addressed here: "kms" names the server above, and "payloads" is a
+  # local key name recorded in every sealed payload so the same key is
+  # chosen to open it.
+  #
+  # `enabled: false` stops sealing new payloads while leaving everything sealed
+  # earlier readable, because the key below is what builds the vault and inbound
+  # decryption is never gated. That makes this flag the whole of what turns
+  # encryption off — deleting the block instead would take the vault with it and
+  # leave the existing history unreadable.
+  #
+  # cacheSize is stated rather than left out: the value is passed through as
+  # configured, and an absent key means zero, which disables the cache instead
+  # of defaulting it.
+  encryption:
+    enabled: true
+    cacheSize: 200
+    default:
+      uri: extension://kms/payloads
+      duration: 1h
+      renewBefore: 15m
