@@ -6,13 +6,6 @@
 # through Helm's templating — which is why the ${VAR} references
 # survive into the rendered config and this file stays committable.
 
-# Every rendered object takes its name from the Helm release, so a
-# release named anything else would publish the Service as, say,
-# `proxy-temporal-proxy` and break both Deployments in k8s/app with no
-# error until the Worker fails to connect. They dial
-# `temporal-proxy.temporal-proxy:7233`, and this is what pins it.
-fullnameOverride: temporal-proxy
-
 # The chart would otherwise default to its own appVersion, which
 # trails the image releases.
 image:

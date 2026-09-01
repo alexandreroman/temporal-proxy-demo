@@ -17,6 +17,7 @@ ports:
 
 providers:
   kubernetesGateway:
+    # Off by default; this is how `k8s/app/httproute.yaml` reaches Traefik.
     enabled: true
 
 # The chart's default Gateway restricts routes to its own namespace, and

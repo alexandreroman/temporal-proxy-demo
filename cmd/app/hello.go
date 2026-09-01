@@ -18,11 +18,12 @@ import (
 // defaultName is greeted when the request carries no name.
 const defaultName = "Temporal"
 
-// execution names the Workflow Execution that produced a greeting. The Workflow itself does
-// not report these identifiers — they belong to the Execution, not to its result.
+// execution names the Workflow Execution that produced a greeting, and carries the JSON names
+// those identifiers go out under. The Workflow itself does not report them — they belong to the
+// Execution, not to its result.
 type execution struct {
-	WorkflowID string
-	RunID      string
+	WorkflowID string `json:"workflowId"`
+	RunID      string `json:"runId"`
 }
 
 // greeter runs one greeting and returns its result, plus the Execution that produced it. The
@@ -30,13 +31,12 @@ type execution struct {
 // handler testable without a server.
 type greeter func(ctx context.Context, req hello.Request) (hello.Response, execution, error)
 
-// helloResponse is the JSON body of a successful request. The embedded hello.Response
-// contributes its own "greeting" field, so the greeting and the two identifiers sit side by
+// helloResponse is the JSON body of a successful request. Both embedded types contribute their
+// own fields, flattened into one object, so the greeting and the two identifiers sit side by
 // side in the body.
 type helloResponse struct {
 	hello.Response
-	WorkflowID string `json:"workflowId"`
-	RunID      string `json:"runId"`
+	execution
 }
 
 func helloHandler(greet greeter) http.HandlerFunc {
@@ -55,7 +55,7 @@ func helloHandler(greet greeter) http.HandlerFunc {
 			return
 		}
 
-		body := helloResponse{Response: res, WorkflowID: exec.WorkflowID, RunID: exec.RunID}
+		body := helloResponse{res, exec}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(body); err != nil {
