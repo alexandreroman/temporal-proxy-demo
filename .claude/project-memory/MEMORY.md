@@ -42,6 +42,7 @@
 - [How an HTTPRoute binds to the Traefik chart's Gateway](references/reference_traefik-gateway-binding.md) — no default Gateway is available
 - [A rollout overlaps only where traffic arrives](references/feedback_overlapping-rollout.md) — the API needs it, the Worker does not
 - [The demo page is read from the back of a room](references/feedback_page-projection-legibility.md) — the 1440x950 budget and the scale's floor
+- [Verifying a page change means rendering the template](references/feedback_verifying-a-page-change.md) — render a temp copy, not the deployment
 - [The demo page borrows temporal.io's own design system](references/feedback_page-design-system.md) — palette, typefaces, logos, one colour barred
 - [The Workflow's contract and the API's response are two different types](references/feedback_api-response-envelope.md) — not in `hello.Response`
 - [The page names no upstream](references/project_page-names-no-upstream.md) — the destination station reads `Temporal`; it shows what it dials
