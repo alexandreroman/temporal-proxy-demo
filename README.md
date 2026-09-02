@@ -21,6 +21,51 @@ is.
 [![CI][ci-badge]][ci]
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
+## Architecture
+
+```mermaid
+flowchart TB
+    client["Browser or curl"]
+    cloud["Temporal Cloud<br/>NAMESPACE.ACCOUNT.tmprl.cloud:7233"]
+
+    subgraph kind["kind cluster"]
+        direction TB
+
+        subgraph ns_traefik["namespace: traefik"]
+            traefik["Traefik<br/>the cluster's only published port"]
+        end
+
+        subgraph ns_hello["namespace: hello"]
+            api["API — cmd/app<br/>dials Namespace demo, plaintext"]
+            worker["Worker — cmd/worker<br/>long-polls Namespace demo, plaintext"]
+        end
+
+        subgraph ns_proxy["namespace: temporal-proxy"]
+            proxy["temporal-proxy<br/>upstream address, TLS,<br/>Namespace rewrite, payload sealing"]
+            kms["KMS server — cmd/kms"]
+            cert[("Secret<br/>temporal-cloud-client")]
+            master[("Secret<br/>kms-master-secret")]
+        end
+    end
+
+    client -->|HTTP| traefik
+    traefik -->|HTTPRoute| api
+    api --> proxy
+    worker --> proxy
+    proxy -->|"gRPC, TLS, API key"| kms
+    proxy -->|"gRPC, mTLS"| cloud
+    cert -.-> proxy
+    master -.-> kms
+```
+
+Solid arrows carry traffic, dotted ones are Secrets mounted into a Pod.
+Both arrows into temporal-proxy leave the application: the Worker's is a
+long poll on its Task Queue, so a Workflow reaches the Worker over a
+connection the Worker itself opened, and nothing outside the cluster
+ever dials in. Only Traefik's web entrypoint is published — the two
+arrows that cross the cluster boundary are the browser's and
+temporal-proxy's.
+
 ## Prerequisites
 
 - Docker — builds the image, and runs the cluster's nodes. Podman also
