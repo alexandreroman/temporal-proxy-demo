@@ -33,7 +33,7 @@ func HelloWorkflow(ctx workflow.Context, req Request) (Response, error) {
 		RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 3},
 	})
 
-	workflow.GetLogger(ctx).Info("Starting hello workflow", "name", req.Name)
+	workflow.GetLogger(ctx).Info("hello workflow started", "name", req.Name)
 
 	var res Response
 	if err := workflow.ExecuteActivity(ctx, Greet, req).Get(ctx, &res); err != nil {
