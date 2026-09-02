@@ -20,9 +20,9 @@ NAME ?= John Doe
 # worktrees never share a cluster.
 CLUSTER ?= $(notdir $(CURDIR))
 
-# The single host port this cluster publishes, into Traefik. Frozen into
-# k8s/kind-config.yaml by `worktree-init`, because Kind reads no
-# environment variable of its own.
+# The single host port this cluster publishes, into Traefik. It reaches Kind
+# through k8s/kind-config.yaml, generated at this default by `cluster-create`
+# and overwritten by `worktree-init` to pin a port per worktree.
 TRAEFIK_PORT ?= 8080
 
 # The host name the demo answers on, matched by k8s/app/httproute.yaml. A
@@ -30,9 +30,9 @@ TRAEFIK_PORT ?= 8080
 DEMO_HOST = hello.127-0-0-1.nip.io
 
 # The CLI that builds the image and runs the cluster's nodes. A Podman user
-# overrides this one variable; everything else Podman needs (the
-# KIND_EXPERIMENTAL_PROVIDER kind reads, and a docker-compatible CLI on PATH)
-# lives outside this Makefile.
+# overrides this one variable; kind detects Podman on its own, and needs
+# KIND_EXPERIMENTAL_PROVIDER=podman only when a docker CLI is on PATH too,
+# which kind would otherwise pick.
 CONTAINER_TOOL ?= docker
 
 # Ask the runtime what it actually published rather than recomputing it, so a
@@ -102,14 +102,20 @@ check: ## Run tests and static checks
 ##@ Kubernetes
 
 # The node image is pinned like every other version here, because the
-# application's preStop lifecycle sleep needs a recent Kubernetes: an older node
-# drops that field silently and takes the overlapping rollout with it. The
-# cluster this target creates carries no ingress until cluster-up has finished
-# with it, so cluster-up is the name a reader types and this one exists only as
-# its prerequisite, without a help description.
+# application's preStop lifecycle sleep needs a recent Kubernetes: an older
+# node drops that field silently and takes the overlapping rollout with it.
+# Kind reads no environment variable of its own, so the host port lives in a
+# generated config file, rendered here at the default TRAEFIK_PORT when it
+# is absent: `make app-up` then works on a fresh clone with no preliminary
+# step. An existing file is left alone, because it holds the port a running
+# worktree already published. The cluster this target creates carries no
+# ingress until cluster-up has finished with it, so cluster-up is the name a
+# reader types and this one exists only as its prerequisite, without a help
+# description.
 .PHONY: cluster-create
 cluster-create:
-	@test -f k8s/kind-config.yaml || { echo "Run make worktree-init first"; exit 1; }
+	@test -f k8s/kind-config.yaml || \
+		sed 's/@TRAEFIK_PORT@/$(TRAEFIK_PORT)/' k8s/kind-config.yaml.in > k8s/kind-config.yaml
 	@kind get clusters | grep -qx '$(CLUSTER)' || \
 		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml \
 			--image kindest/node:v1.37.0
