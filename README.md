@@ -70,8 +70,7 @@ temporal-proxy's.
 
 - Docker — builds the image, and runs the cluster's nodes. Podman also
   works: run `make` with `CONTAINER_TOOL=podman`, and `kind` picks
-  Podman up by itself unless a `docker` CLI is also on `PATH` — where
-  both are installed, `KIND_EXPERIMENTAL_PROVIDER=podman` settles it
+  Podman up by itself unless a `docker` CLI is also on `PATH`
 - [kind][kind] — the local Kubernetes cluster
 - `kubectl` and [Helm][helm] 3.16+ — Traefik, cert-manager and
   temporal-proxy all come from their upstream charts, each pinned to an
