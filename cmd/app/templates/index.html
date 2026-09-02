@@ -600,8 +600,9 @@
           <p class="min-w-0 max-w-2xl text-base text-muted lg:text-lg">
             The application dials one plaintext endpoint and knows nothing about what serves it.
             <strong>temporal-proxy</strong> owns the upstream, the TLS, the credentials, the Namespace rewrite and the
-            payload encryption. Its <strong>kms</strong> extension keeps that key material where you already
-            keep keys — an on-prem HSM, an internal key service — rather than a built-in cloud backend.
+            payload encryption. Your keys stay where they already are —
+            a cloud KMS, an on-prem HSM, an internal key service —
+            the last two through its <strong>kms</strong> extension.
           </p>
 
           <!-- A real form, so Enter in the field starts a run; shrink-0 keeps the button on its line. -->

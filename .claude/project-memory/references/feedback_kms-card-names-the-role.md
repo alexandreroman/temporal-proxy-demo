@@ -1,6 +1,6 @@
 ---
 name: "The kms card names the role, not the transport"
-description: "What the diagram's key-service station and the intro prose say about it, why its transport stays off the card, and why two caption items are a legitimate shape"
+description: "What the diagram's key-service station and the intro prose say about it, why its transport stays off the card, why the prose lists the places keys live without ranking them, and why two caption items are a legitimate shape"
 type: feedback
 ---
 
@@ -26,13 +26,26 @@ says the endpoint calls there, and the endpoint's own
 
 The page's prose frames it the same way, and states
 what the extension buys rather than what it does. The
-intro calls it temporal-proxy's own `kms` extension,
-not a component standing beside it, and says it keeps
-the key material where an operator already keeps keys
-— an on-prem HSM, an internal key service — rather
-than one of the built-in cloud backends. The sealing
-and the key a payload is sealed with stay
-temporal-proxy's, in the prose as on the card.
+intro says the operator's keys stay where they already
+are — a cloud KMS, an on-prem HSM, an internal key
+service — the last two through temporal-proxy's own
+`kms` extension, which is where the demo's own key
+service sits.
+
+The three places stand side by side, unranked: a
+built-in cloud backend is as legitimate a place to keep
+keys as the other two, and prose setting the extension
+against one of them argues with a choice much of the
+room has already made. The closing clause is what keeps
+that list true. The extension covers the backends
+temporal-proxy carries no built-in scheme for, so a
+cloud KMS belongs in the list of places keys live and
+not behind the extension — see [temporal-proxy
+encryption constraints](reference_proxy-encryption-constraints.md)
+for the scheme list that decides which side a backend
+falls on. The sealing and the key a payload is sealed
+with stay temporal-proxy's, in the prose as on the
+card.
 
 Wording about what temporal-proxy or one of its
 extensions is *for* comes from the upstream project's
@@ -56,7 +69,13 @@ component at all.
 **How to apply:** before adding a caption item, ask
 whether it names what the component is or what it
 produces. If it describes how something connects to it,
-it belongs in the README. See
+it belongs in the README. Where the prose lists the
+options an operator has, list them and stop — a
+comparison that rules one out reads as an argument
+against part of the audience. A sentence naming what
+the extension reaches is checked against the built-in
+scheme list before it ships: the non-ranking rule
+governs the tone of that list, never its accuracy. See
 [The diagram is cards joined by static SVG
 wires](project_diagram-is-cards-and-wires.md) for the
 caption's geometry and
