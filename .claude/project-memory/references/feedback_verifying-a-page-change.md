@@ -26,9 +26,15 @@ long value the captions have to survive. A short
 dev-server address hides every truncation the
 projected page would show.
 
-Two measurement traps are worth knowing before
-trusting a number:
+Three traps are worth knowing before trusting a
+capture or a number:
 
+- The off-screen renderer caches by URL. A second
+  capture of a URL already captured returns the
+  first render, byte for byte, however the file
+  behind it has been rewritten — so give every
+  capture a fresh query string, and compare
+  checksums when two captures should differ.
 - `casper browser screenshot --width --height`
   renders off-screen at exactly that viewport, so
   breakpoints are faithful. `casper browser eval`

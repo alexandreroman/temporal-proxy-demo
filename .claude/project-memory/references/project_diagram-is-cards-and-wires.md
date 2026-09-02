@@ -61,20 +61,26 @@ in the DOM, so nothing is lost to assistive technology
 — but a projector cannot hover a truncated value, so an
 item worth reading has to fit.
 
-The card's width therefore comes from the longest item
-that must stay whole, which is a prose caption rather
-than the endpoint address. Watch the interaction with
-the lockup card: its wider mark column makes the same
-string need more room there than on an icon card, so
-the binding measurement may not be on the card you
-expect. Include the borders in that arithmetic.
+The card's width is what the rail's content width
+leaves once the two connector columns are taken, and
+at the projected viewport it carries the 34-character
+cluster address whole. The ellipsis guards an address
+longer than that one; it is not part of what a
+deployment shows. A prose caption can bind before the
+address does, so measure the longest item that must
+stay whole against the width, and watch the
+interaction with the lockup card: its wider mark
+column makes the same string need more room there than
+on an icon card, so the binding measurement may not be
+on the card you expect. Include the borders in that
+arithmetic.
 
-The endpoint captions render `TEMPORAL_ADDRESS`, short
+The client cards render `TEMPORAL_ADDRESS`, short
 against a dev server and a long cluster DNS name in
 Kubernetes — the only place the page is projected. So
 judge truncation against the cluster value, never the
 one on screen during development. A three-item caption
-sets that height.
+sets the shared height.
 
 One card carries a different indent, derived from its
 own artwork: where a name row is a logo lockup rather
