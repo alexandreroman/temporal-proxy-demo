@@ -18,6 +18,7 @@ The whole demo runs on a local Kubernetes cluster: Traefik publishes the
 API, and temporal-proxy is the only workload that knows where Temporal
 is.
 
+[![CI][ci-badge]][ci]
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 ## Prerequisites
@@ -216,6 +217,8 @@ This project is licensed under the Apache-2.0 License — see
 
 temporal-proxy itself is a separate project, licensed under MIT.
 
+[ci]: https://github.com/alexandreroman/temporal-proxy-demo/actions/workflows/ci.yaml
+[ci-badge]: https://github.com/alexandreroman/temporal-proxy-demo/actions/workflows/ci.yaml/badge.svg
 [temporal]: https://temporal.io
 [proxy]: https://github.com/temporalio/temporal-proxy
 [kind]: https://kind.sigs.k8s.io
