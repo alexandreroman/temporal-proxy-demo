@@ -14,6 +14,8 @@ the API send plain payloads and hold no key material either. That
 happens in the proxy, below whichever SDK a Worker is written with —
 this demo uses Go, and nothing about it is specific to Go.
 
+https://github.com/user-attachments/assets/7c52c65a-6bc6-4392-b499-627fa5042904
+
 The whole demo runs on a local Kubernetes cluster: Traefik publishes the
 API, and temporal-proxy is the only workload that knows where Temporal
 is.
