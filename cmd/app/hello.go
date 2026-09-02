@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/alexandreroman/temporal-proxy-demo/internal/hello"
 	"go.temporal.io/sdk/client"
@@ -90,7 +91,7 @@ func decodeRequest(r *http.Request) (hello.Request, error) {
 func startHelloWorkflow(c client.Client) greeter {
 	return func(ctx context.Context, req hello.Request) (hello.Response, execution, error) {
 		options := client.StartWorkflowOptions{
-			ID:        "hello-" + rand.Text(), // Recognizable in the Web UI, and unique across replays.
+			ID:        "hello-" + strings.ToLower(rand.Text()), // Recognizable in the Web UI, unique across replays.
 			TaskQueue: hello.TaskQueue,
 		}
 
