@@ -55,3 +55,4 @@
 - [A typographic accent on the page is presentational](references/feedback_typographic-accent-is-presentational.md) — `<strong>` only for meaning
 - [Optical offsets on the rail's wordmark](references/feedback_optical-offsets-need-relative.md) — vertical-align cannot move it
 - [Runtime log messages follow one grammar](references/feedback_log-message-grammar.md) — lowercase, no trailing punctuation, two shapes
+- [CI runs the quality gate only](references/feedback_ci-runs-the-quality-gate-only.md) — `make check`, no image build, no cluster
