@@ -120,7 +120,9 @@ cluster-create:
 # API to land on otherwise. cert-manager issues the certificate the KMS server
 # presents, and secretgen-controller generates the bearer token that server
 # reads at runtime; its controller is waited for, because nothing answers a
-# request for a generated Secret until it is running.
+# request for a generated Secret until it is running. Every chart install
+# hides its notes: they are advisory, and Traefik's ask the reader to install
+# the Gateway API CRDs this recipe has already applied.
 .PHONY: cluster-up
 cluster-up: cluster-create ## Create the cluster and install its platform components
 	kubectl --context kind-$(CLUSTER) apply -f \
@@ -128,11 +130,11 @@ cluster-up: cluster-create ## Create the cluster and install its platform compon
 	helm --kube-context kind-$(CLUSTER) upgrade --install traefik traefik \
 		--repo https://traefik.github.io/charts --version 41.4.0 \
 		--namespace traefik --create-namespace \
-		-f k8s/charts/traefik.yaml --wait
+		-f k8s/charts/traefik.yaml --hide-notes --wait
 	helm --kube-context kind-$(CLUSTER) upgrade --install cert-manager cert-manager \
 		--repo https://charts.jetstack.io --version v1.21.1 \
 		--namespace cert-manager --create-namespace \
-		-f k8s/charts/cert-manager.yaml --wait
+		-f k8s/charts/cert-manager.yaml --hide-notes --wait
 	kubectl --context kind-$(CLUSTER) apply -f \
 		https://github.com/carvel-dev/secretgen-controller/releases/download/v0.21.2/release.yml
 	kubectl --context kind-$(CLUSTER) -n secretgen-controller rollout status \
@@ -216,7 +218,7 @@ apply: require-setup ## Deploy the KMS server, temporal-proxy and the applicatio
 	helm --kube-context kind-$(CLUSTER) upgrade --install temporal-proxy temporal-proxy \
 		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
 		--namespace temporal-proxy \
-		-f k8s/charts/temporal-proxy.yaml
+		-f k8s/charts/temporal-proxy.yaml --hide-notes
 # Unconditional, because nothing above changes the pod template: temporal-proxy
 # reads its configuration and its certificate only at startup, so this restart
 # is what makes `make apply` a working certificate rotation. The wait paired

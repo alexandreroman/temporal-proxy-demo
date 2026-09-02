@@ -19,7 +19,7 @@ is.
   and either put a `docker` shim on `PATH` or run `make` with
   `CONTAINER_TOOL=podman`
 - [kind][kind] — the local Kubernetes cluster
-- `kubectl` and [Helm][helm] 3 — Traefik, cert-manager and
+- `kubectl` and [Helm][helm] 3.16+ — Traefik, cert-manager and
   temporal-proxy all come from their upstream charts, each pinned to an
   explicit version
 - Go 1.27 or later — for `make worktree-init` and `make check`
