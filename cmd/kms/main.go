@@ -37,12 +37,12 @@ func main() {
 
 	keys, err := kms.NewKeyring([]byte(secret))
 	if err != nil {
-		log.Fatal("Failed to build the keyring", tag.Error(err))
+		log.Fatal("building the keyring failed", tag.Error(err))
 	}
 
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
-		log.Fatal("Failed to load the key pair", tag.Error(err))
+		log.Fatal("loading the key pair failed", tag.Error(err))
 	}
 
 	// TLS 1.2 is the floor the caller's dialer enforces; two Go peers negotiate 1.3.
@@ -61,7 +61,7 @@ func main() {
 		ext.WithLogger(log),
 		ext.WithServerOption(grpc.Creds(creds)),
 	); err != nil {
-		log.Fatal("Failed to serve", tag.Error(err))
+		log.Fatal("kms stopped", tag.Error(err))
 	}
 }
 

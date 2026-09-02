@@ -13,7 +13,7 @@ var greetDelay = 2 * time.Second
 
 // Greet returns a greeting for req.Name once the simulated work is done.
 func Greet(ctx context.Context, req Request) (Response, error) {
-	activity.GetLogger(ctx).Info("Greeting", "name", req.Name)
+	activity.GetLogger(ctx).Info("greet activity started", "name", req.Name)
 
 	// Honour cancellation: a bare time.Sleep would keep the Worker busy after the
 	// Workflow gave up on this Activity.
