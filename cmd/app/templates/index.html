@@ -70,14 +70,14 @@
           "application converge endpoint upstream temporal"
           "worker      converge endpoint upstream kms";
         grid-template-columns:
-          max-content 4rem max-content minmax(3rem, 1fr) max-content;
+          max-content 3.5rem max-content minmax(3rem, 1fr) max-content;
         grid-template-rows: repeat(2, 1fr);
         row-gap: 1rem;
         align-items: center;
         width: 100%;
-        /* The floor is 3 x 18.5rem of card plus 4rem and 3rem of connector, stated rather than
+        /* The floor is 3 x 20rem of card plus 3.5rem and 3rem of connector, stated rather than
            derived so that it cannot drift with an intrinsic measurement. */
-        min-width: 62.5rem;
+        min-width: 66.5rem;
         /* Inherited by every card and every leg; the hook the answer's journey home overrides. */
         --rail-accent: var(--color-violet);
       }
@@ -98,12 +98,11 @@
         --rail-accent: color-mix(in oklab, var(--color-mint) 72%, var(--color-ink));
       }
 
-      /* One fixed size for every card but the endpoint's, taken from the longest caption the page
-         can render rather than the shortest on a developer's screen: three caption items set the
-         height, and the width is set by the lockup card's 31-character "namespace set by
-         temporal-proxy", the longest item that has to stay whole. The endpoint address varies by
-         deployment, and is cut. Both connectors' viewBoxes are derived from the height, so the two
-         move together. */
+      /* One fixed size for every card but the endpoint's: three caption items set the height, and
+         the width is the room the rail's content width leaves once the two connector columns are
+         taken. That width carries the 34-character cluster address whole, so the ellipsis protects
+         a longer address rather than being what every deployment shows. Both connectors' viewBoxes
+         are derived from the height, so the two move together. */
       .rail-station {
         /* The mark's 1em box plus the mono character between the mark and the name, so a name and
            its caption start at the same x. A rem, not an em: the caption is set two steps smaller. */
@@ -117,7 +116,7 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 0.375rem;
-        width: 18.5rem;
+        width: 20rem;
         height: 8rem;
         padding: 1rem;
         border: 1px solid var(--color-hairline);
@@ -183,7 +182,7 @@
          fixed size, so its SVG carries hard-coded coordinates and nothing is measured at runtime.
          Keep each viewBox in the same ratio as its column, or the drawing letterboxes away from the
          cards it points at. pathLength normalises every wire to 100, so the pulse needs nothing from
-         the stretch. The converging region's width is the slant: 64 gives 32°, and at 40 it would
+         the stretch. The converging region's width is the slant: 56 gives 36°, and at 40 it would
          reach 45°, where a wire reads as a corner between two cards rather than as a run. */
       .rail-connector {
         position: relative; /* the boundary below is positioned against the upstream leg */
@@ -268,13 +267,15 @@
       /* A boundary rather than a note about one wire: it runs the full height of the region, so it
          crosses both of the endpoint's onward wires and reads as the line past which nothing is the
          application's business — the upstream and the key service alike. Line and label are both
-         out of flow, so the boundary costs the diagram no height. */
+         out of flow, so the boundary costs the diagram no height. An annotation and not a wire, it
+         stays below the wires' 4px stroke and takes the label's own --color-muted, so line and
+         label read as one annotation rather than as another connector. */
       .rail-marker {
         position: absolute;
         top: 0;
         bottom: 0;
         left: 50%;
-        border-left: 1px dashed var(--color-hairline);
+        border-left: 2px dashed var(--color-muted);
       }
 
       /* Both rows are occupied to the boundary's right, so the label hangs below them, in the room
@@ -585,7 +586,9 @@
     >
       <!-- The headline takes the content width on its own line; from md the intro and the control
            row sit beside each other beneath it, which is where the vertical room the rail and the
-           result panel need comes from. md and not sm: at sm the intro would set ~33 characters. -->
+           result panel need comes from. md and not sm: at sm the intro would set ~33 characters.
+           The intro's 44rem cap sits just under the room the control row leaves it, so the cap is
+           what bounds the measure rather than the form giving way. -->
       <header class="flex flex-col gap-6 lg:gap-8">
         <h1 class="title-sweep text-3xl tracking-tight lg:text-5xl">
           Temporal Proxy <span class="font-bold">Demo</span>
@@ -597,12 +600,12 @@
         <div class="flex flex-col gap-8 md:flex-row md:items-center md:justify-between md:gap-10">
           <!-- min-w-0 lets the intro give way to the form: a flex item's own min-width: auto would
                hold it at its longest unbreakable content. -->
-          <p class="min-w-0 max-w-2xl text-base text-muted lg:text-lg">
+          <p class="min-w-0 max-w-[44rem] text-base text-muted lg:text-lg">
             The application dials one plaintext endpoint and knows nothing about what serves it.
             <strong>temporal-proxy</strong> owns the upstream, the TLS, the credentials, the Namespace rewrite and the
             payload encryption. Your keys stay where they already are —
-            a cloud KMS, an on-prem HSM, an internal key service —
-            the last two through its <strong>kms</strong> extension.
+            a cloud KMS, an on-prem HSM —
+            and you can bring your own key service using its <strong>kms</strong> extension.
           </p>
 
           <!-- A real form, so Enter in the field starts a run; shrink-0 keeps the button on its line. -->
@@ -690,13 +693,13 @@
           <!-- Wires of their own that never meet: each phase lights exactly one path, so a lit wire
                always says whose traffic is on it. -->
           <li class="rail-connector rail-at-converge">
-            <svg viewBox="0 0 64 272" aria-hidden="true">
+            <svg viewBox="0 0 56 272" aria-hidden="true">
               <!-- Each wire declared once and drawn twice: the shaft that is always there, and the
                    pulse that travels it. pathLength normalises every wire to 100. The box is the two
                    card rows and the gap between them, so the ends sit on the cards' own centres. -->
               <defs>
-                <path id="rail-wire-application" pathLength="100" d="M0 64 64 104" />
-                <path id="rail-wire-worker" pathLength="100" d="M0 208 64 168" />
+                <path id="rail-wire-application" pathLength="100" d="M0 64 56 104" />
+                <path id="rail-wire-worker" pathLength="100" d="M0 208 56 168" />
               </defs>
               <g :class="legClass('application')">
                 <use class="rail-path" href="#rail-wire-application" />

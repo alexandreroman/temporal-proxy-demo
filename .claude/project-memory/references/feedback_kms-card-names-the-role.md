@@ -27,23 +27,26 @@ says the endpoint calls there, and the endpoint's own
 The page's prose frames it the same way, and states
 what the extension buys rather than what it does. The
 intro says the operator's keys stay where they already
-are — a cloud KMS, an on-prem HSM, an internal key
-service — the last two through temporal-proxy's own
-`kms` extension, which is where the demo's own key
+are — a cloud KMS, an on-prem HSM — and that they can
+bring their own key service through temporal-proxy's
+own `kms` extension, which is where the demo's own key
 service sits.
 
-The three places stand side by side, unranked: a
-built-in cloud backend is as legitimate a place to keep
-keys as the other two, and prose setting the extension
-against one of them argues with a choice much of the
-room has already made. The closing clause is what keeps
-that list true. The extension covers the backends
-temporal-proxy carries no built-in scheme for, so a
-cloud KMS belongs in the list of places keys live and
-not behind the extension — see [temporal-proxy
-encryption constraints](reference_proxy-encryption-constraints.md)
-for the scheme list that decides which side a backend
-falls on. The sealing and the key a payload is sealed
+The places stand side by side, unranked: a built-in
+cloud backend is as legitimate a place to keep keys as
+any other, and prose setting the extension against one
+of them argues with a choice much of the room has
+already made. What keeps the list true is that it puts
+no named backend behind the extension: the extension
+covers the backends temporal-proxy carries no built-in
+scheme for, so prose placing a cloud KMS behind it
+reads as false to anyone who knows the scheme list —
+see [temporal-proxy encryption
+constraints](reference_proxy-encryption-constraints.md)
+for the list that decides which side a backend falls
+on. An invitation to bring a key service of one's own
+names no backend at all, so it stays true whatever the
+scheme list holds. The sealing and the key a payload is sealed
 with stay temporal-proxy's, in the prose as on the
 card.
 
