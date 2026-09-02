@@ -1,10 +1,18 @@
 # Temporal Proxy Demo
 
-Runs Temporal Workers that know nothing about the Temporal Service they
-talk to. [temporal-proxy][proxy] sits in front of them and owns the
-upstream address, TLS, the client certificate and the Namespace names,
-so the Worker and the API carry no upstream connection, TLS, credential
-or Namespace configuration of their own.
+Runs Temporal Workers that know nothing about the
+[Temporal Service][temporal] they talk to. [temporal-proxy][proxy] sits
+in front of them and owns the upstream address, TLS, the client
+certificate and the Namespace names, so the Worker and the API carry no
+upstream connection, TLS, credential or Namespace configuration of their
+own.
+
+Connection details are only the first thing it takes over. Payload
+encryption is another: temporal-proxy seals every payload before it
+leaves the cluster and unseals it on the way back, so the Worker and
+the API send plain payloads and hold no key material either. That
+happens in the proxy, below whichever SDK a Worker is written with —
+this demo uses Go, and nothing about it is specific to Go.
 
 The whole demo runs on a local Kubernetes cluster: Traefik publishes the
 API, and temporal-proxy is the only workload that knows where Temporal
@@ -15,14 +23,14 @@ is.
 ## Prerequisites
 
 - Docker — builds the image, and runs the cluster's nodes. Podman also
-  works: export `KIND_EXPERIMENTAL_PROVIDER=podman` so `kind` uses it,
-  and either put a `docker` shim on `PATH` or run `make` with
-  `CONTAINER_TOOL=podman`
+  works: run `make` with `CONTAINER_TOOL=podman`, and `kind` picks
+  Podman up by itself unless a `docker` CLI is also on `PATH` — where
+  both are installed, `KIND_EXPERIMENTAL_PROVIDER=podman` settles it
 - [kind][kind] — the local Kubernetes cluster
 - `kubectl` and [Helm][helm] 3.16+ — Traefik, cert-manager and
   temporal-proxy all come from their upstream charts, each pinned to an
   explicit version
-- Go 1.27 or later — for `make worktree-init` and `make check`
+- Go 1.27 or later
 - A Temporal Cloud Namespace whose accepted client CA signed the
   certificate in `k8s/certs/`
 
@@ -83,7 +91,6 @@ Put the client certificate in `k8s/certs/` as `client.pem` and
 `client.key`, then bring the demo up and trigger a Workflow:
 
 ```bash
-make worktree-init
 make app-up
 make demo
 ```
@@ -92,17 +99,17 @@ make demo
 {"greeting":"Hello, John Doe!","workflowId":"hello-x4t7…","runId":"01a0…"}
 ```
 
-`make worktree-init` writes `k8s/kind-config.yaml`, which pins the one
-host port this cluster publishes; `make app-up` creates the cluster,
-installs everything in it and waits for the rollout. The answer takes
-about two seconds — the Activity sleeps, so there is time to watch the
-Execution in the Cloud Web UI. `make endpoints` prints the addresses,
-and `make demo NAME=Alex` greets someone else.
+`make app-up` creates the cluster, installs everything in it and waits
+for the rollout. The answer takes about two seconds — the Activity
+sleeps, so there is time to watch the Execution in the Cloud Web UI.
+`make endpoints` prints the addresses, and `make demo NAME=Alex` greets
+someone else.
 
-The API also serves a page at the published address, which
-`make endpoints` prints: one button starts an Execution, and the request
-is drawn travelling through the stack. The page and `make demo` are two
-ways into the same endpoint.
+`make demo` is not the only way in. The API also serves a page at that
+same published address, the one `make endpoints` prints: one button
+starts an Execution, and the request is drawn travelling through the
+stack and back while it runs, so a Workflow is watched from a browser
+rather than read off a JSON line. Both go through the same endpoint.
 
 On a cluster that has just been created, Traefik loads a new route a
 moment after the rollout finishes, so the very first `make demo` can
@@ -147,10 +154,12 @@ k8s/certs/client.pem + client.key
   → the cert and key paths in the rendered configuration
 ```
 
-Rotation is two steps: replace the two files and run `make apply`, the
-narrower target that deploys temporal-proxy and the application without
-rebuilding the image. It ends by restarting temporal-proxy, which reads
-its certificate only at startup.
+What the chart mounts is an ordinary Kubernetes Secret, and nothing
+assumes where that Secret came from. `make` fills it here so the demo
+stays self-contained, but whatever else populates a Secret works just
+as well — the Vault Secrets Operator, the External Secrets Operator
+syncing from a cloud secret manager, a sealed-secret controller — and
+`tls.secretName` is the only line that has to agree with it.
 
 ## How the payload key travels
 
@@ -168,9 +177,6 @@ KMS_MASTER_SECRET in .env
 
 The KMS server derives its key from the short Namespace name the
 application asked for — `demo` — never the fully-qualified Cloud name.
-Its certificate comes from cert-manager, and the token temporal-proxy
-presents to it comes from secretgen-controller — both generated inside
-the cluster, so neither one appears in any file.
 
 Turning encryption off is one flag, `encryption.enabled`, plus
 `make apply`. Payloads sealed earlier stay readable, which is why the
@@ -203,23 +209,6 @@ for has to identify it. Both variables also have fallbacks in the code —
 `localhost:7233` and `default`, what a `temporal server start-dev`
 serves — so the binaries run unchanged outside the cluster.
 
-## Limit of this demo
-
-Both secrets come from the working directory rather than from a secret
-manager — the client certificate from `k8s/certs/`, the master secret
-from `.env` — and nothing rotates either one. Losing the master secret
-loses every payload ever sealed under it. `make` filling those Secrets
-is what makes the demo self-contained; a real deployment would have a
-secret manager fill them. The KMS server derives its keys rather than
-fronting an HSM or a key service: it shows the shape of the contract,
-not a key manager.
-
-Payloads reach Temporal Cloud sealed, so the Cloud Web UI shows workflow
-inputs and results as `binary/encrypted`. Making them readable there
-needs a codec server, which temporal-proxy does not provide and which
-would have to be reachable from the browser over HTTPS — out of reach of
-a local cluster without a tunnel.
-
 ## License
 
 This project is licensed under the Apache-2.0 License — see
@@ -227,6 +216,7 @@ This project is licensed under the Apache-2.0 License — see
 
 temporal-proxy itself is a separate project, licensed under MIT.
 
+[temporal]: https://temporal.io
 [proxy]: https://github.com/temporalio/temporal-proxy
 [kind]: https://kind.sigs.k8s.io
 [helm]: https://helm.sh
