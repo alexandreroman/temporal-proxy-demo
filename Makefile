@@ -84,13 +84,9 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 # `|| true` keeps a panel update from ever failing the target that asked for it.
 in-casper-workspace = [ -n "$$CASPER_WORKSPACE_ID" ] && command -v casper >/dev/null 2>&1
 
-define publish-endpoints
-$(in-casper-workspace) && $(MAKE) -s endpoints | casper info set - >/dev/null || true
-endef
+publish-endpoints = $(in-casper-workspace) && $(MAKE) -s endpoints | casper info set - >/dev/null || true
 
-define clear-endpoints
-$(in-casper-workspace) && casper info clear >/dev/null || true
-endef
+clear-endpoints = $(in-casper-workspace) && casper info clear >/dev/null || true
 
 ##@ Quality
 
@@ -170,24 +166,20 @@ image: ## Build the image and load it into the cluster (after cluster-up)
 # caused it: refuse before touching the cluster, and name everything that is
 # missing rather than only the first thing. `apply` and `app-up` depend on this
 # guard rather than a reader invoking it, so it carries no help description.
-define require-setup-check
-missing=''; \
-[ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
-[ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
-[ -f k8s/certs/client.pem ] || missing="$$missing k8s/certs/client.pem"; \
-[ -f k8s/certs/client.key ] || missing="$$missing k8s/certs/client.key"; \
-[ -n '$(KMS_MASTER_SECRET)' ] || missing="$$missing KMS_MASTER_SECRET"; \
-if [ -n "$$missing" ]; then \
-  echo "Cannot deploy, these are missing:$$missing"; \
-  echo "The values go in .env (copy .env.example); the certificate goes in"; \
-  echo "k8s/certs/ as client.pem and client.key. Then run the command again."; \
-  exit 1; \
-fi
-endef
-
 .PHONY: require-setup
 require-setup:
-	@$(require-setup-check)
+	@missing=''; \
+	[ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
+	[ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
+	[ -f k8s/certs/client.pem ] || missing="$$missing k8s/certs/client.pem"; \
+	[ -f k8s/certs/client.key ] || missing="$$missing k8s/certs/client.key"; \
+	[ -n '$(KMS_MASTER_SECRET)' ] || missing="$$missing KMS_MASTER_SECRET"; \
+	if [ -n "$$missing" ]; then \
+	  echo "Cannot deploy, these are missing:$$missing"; \
+	  echo "The values go in .env (copy .env.example); the certificate goes in"; \
+	  echo "k8s/certs/ as client.pem and client.key. Then run the command again."; \
+	  exit 1; \
+	fi
 
 # `kubectl create secret` refuses to overwrite a Secret that already exists, so
 # every one of them is rendered client-side and piped into `apply` instead:
@@ -204,7 +196,7 @@ endef
 # so the chart version pinned below is deliberate: an unpinned upgrade would
 # pick up a configuration schema this repository has not been checked against.
 .PHONY: apply
-apply: require-setup ## Deploy the KMS server, temporal-proxy and the application (after cluster-up)
+apply: require-setup ## Deploy the KMS server, temporal-proxy and the application (after image)
 	kubectl --context kind-$(CLUSTER) apply -f k8s/namespaces.yaml
 	$(call apply-secret,generic temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \

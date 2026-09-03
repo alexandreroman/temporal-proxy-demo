@@ -11,8 +11,7 @@ a `##` description, and the listing is the contract
 with a reader: everything in it is a command someone
 would type. Internal guards, `require-setup` among
 them, carry no description and stay out of it, with
-their rationale in the comment block above the
-`define` they run.
+their rationale in the comment block above them.
 
 Quality has one entry point, `check`, which runs the
 test suite and the static checks together.

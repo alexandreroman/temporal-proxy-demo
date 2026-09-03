@@ -38,6 +38,16 @@ that does not cannot answer to `:hover` at all.
 Containment settles both: the highlight is a plain CSS
 rule, and nothing sits over a card.
 
+**A group outline is the bottom-most ink on the band.**
+Every wire crosses it unbroken, so the connectors are
+lifted a stacking level above the groups. Source order
+cannot carry that on its own: groups and connectors
+interleave along the rail, so a wire would pass over
+the group written before it and under the one written
+after. The wires lift rather than the groups sinking —
+the backdrop layers sit at index 0 in the same
+stacking level.
+
 Because a `<li>` cannot hold a `<li>`, each group
 holds its chip, its note, then a `<ul>` of its
 stations. The group whose two cards straddle both rows
@@ -49,9 +59,8 @@ them and no gutter length is written twice.
 into its cells and pulled back out by a negative
 margin that cancels its padding *and its border* —
 `calc(-1rem - 1px)`, not `-1rem`, or two pixels of
-border stay in the count and the cards no longer land
-on the rows. Its content box then equals the cell
-exactly.
+border stay in the count and the cards land off the
+rows. Its content box then equals the cell exactly.
 
 ## What the overhang costs
 
@@ -134,8 +143,8 @@ The bubble is `position: fixed`, outside the scroll
 band so its overflow cannot clip it, and it never
 takes the pointer, or it would settle under the cursor
 and flicker. Its box is declared rather than measured:
-the stylesheet sets the width, the script reads the
-same number back, and both axes flip against the
+the stylesheet sets the width, the script restates
+the same number, and both axes flip against the
 viewport with no call into layout.
 
 **The caption items carry no `title`.** A native

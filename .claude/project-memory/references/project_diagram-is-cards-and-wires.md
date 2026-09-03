@@ -109,7 +109,7 @@ persona](project_rail-grouped-by-persona.md).
 
 **A caption states a component's role, not a resolved
 value.** The Namespace is the only template action a
-caption carries, so the geometry no longer moves with
+caption carries, so the geometry does not move with
 what a cluster resolved. The ellipsis guards a caption
 someone lengthens later, not something a deployment
 shows.

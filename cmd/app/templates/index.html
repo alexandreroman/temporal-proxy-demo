@@ -219,6 +219,15 @@
         position: relative; /* the containing block the svg below is taken out of flow against */
         align-self: stretch;
         pointer-events: none;
+        /* Above every group outline, whichever of the two is written first. An outline names an
+           owner and is the bottom-most ink on the band, so a wire crosses it unbroken. Source order
+           cannot promise that on its own, because groups and connectors interleave along the rail:
+           a wire would pass over the group written before it and under the one written after, and
+           reordering the list would move the seam rather than close it. Lifting the wires settles
+           it from one place — and it is the wires that lift, not the groups that sink: the backdrop
+           layers sit at index 0 in this same stacking level, so a negative index on a group would
+           put it behind them. */
+        z-index: 1;
       }
 
       /* Out of flow, and load-bearing: an svg with a viewBox carries that viewBox's aspect ratio, so
@@ -367,6 +376,7 @@
       /* The component's attributes, indented past the card's mark column so every line starts where
          the name starts. It stays a list for anything reading the page aloud; it shows no markers. */
       .rail-detail {
+        @apply font-mono text-xs leading-relaxed text-muted;
         list-style: none;
         padding-left: var(--rail-mark-column);
         /* The card packs its children to the start, so the list would otherwise be as wide as its
@@ -409,7 +419,7 @@
       }
 
       /* Fixed, out of the rail's band and out of the flow: it follows the pointer without moving
-         anything. Its width is declared here and read back by the script, which keeps the bubble
+         anything. Its width is declared here and restated by the script, which keeps the bubble
          off the edges without having to measure anything. It never takes the pointer, or it would
          land under it and flicker. The role and the prose are two blocks a gap apart, the way a
          card holds its name and its caption, rather than a margin hung on one of them. */
@@ -438,6 +448,7 @@
       /* The names set the band the captions hang from, so each needs room for the lockup's 0.475em
          descent, which the type's own line-height does not leave. All five share the value. */
       .rail-name {
+        @apply font-mono text-sm text-fg lg:text-base;
         line-height: 1.625;
       }
 
@@ -738,7 +749,9 @@
           <!-- A real form, so Enter in the field starts a run; shrink-0 keeps the button on its line. -->
           <form class="flex shrink-0 flex-wrap items-end gap-4" @submit.prevent="run()">
             <div class="flex flex-col gap-2">
-              <label class="font-mono text-xs tracking-widest text-muted uppercase" for="name">What’s your name?</label>
+              <label class="font-mono text-xs tracking-widest text-muted uppercase" for="name">
+                What’s your name?
+              </label>
               <!-- The field goes inert while a run is in flight, and it is required: the form's own
                    submit event never fires while it is empty. value repeats the component's default
                    because Alpine is deferred and this field is not cloaked — the attribute is what
@@ -781,13 +794,13 @@
 
       <!-- A band of its own, so a keyboard can reach the diagram and scroll it without a pointer. -->
       <div
-        class="rail-scroll w-full focus-visible:outline-2 focus-visible:outline-offset-2
+        class="rail-scroll focus-visible:outline-2 focus-visible:outline-offset-2
                focus-visible:outline-violet"
         tabindex="0"
         role="region"
         aria-label="The path a request takes through the stack"
       >
-        <ol class="rail">
+        <ol class="rail" role="list">
           <!-- Each group names a role and then holds the components it answers for, so the reading
                order names an owner before what it owns. An <li> cannot nest an <li>, so the cards
                are a list of their own inside the group. -->
@@ -812,7 +825,7 @@
                  stop announcing the list at all. Every list on the rail carries it for that. -->
             <ul class="rail-persona-stations" role="list">
               <li class="rail-station" :class="stationClass('application')">
-                <p class="rail-name font-mono text-sm text-fg lg:text-base">
+                <p class="rail-name">
                   <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
                   >application
                 </p>
@@ -824,7 +837,7 @@
                      one caption breaks a reading the diagram makes on its own. The key service is a
                      side call off that path and takes no part in it, so the slots leave its caption
                      alone. -->
-                <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+                <ul class="rail-detail" role="list">
                   <li>connects to temporal-proxy</li>
                   <li>plaintext</li>
                   <li>namespace "{{ .Namespace }}"</li>
@@ -832,11 +845,11 @@
               </li>
 
               <li class="rail-station" :class="stationClass('worker')">
-                <p class="rail-name font-mono text-sm text-fg lg:text-base">
+                <p class="rail-name">
                   <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
                   >worker
                 </p>
-                <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+                <ul class="rail-detail" role="list">
                   <li>connects to temporal-proxy</li>
                   <li>plaintext</li>
                   <li>namespace "{{ .Namespace }}"</li>
@@ -847,8 +860,8 @@
 
           <!-- Wires of their own that never meet: each phase lights exactly one path, so a lit wire
                always says whose traffic is on it. -->
-          <li class="rail-connector rail-at-converge">
-            <svg viewBox="0 0 72 316" aria-hidden="true">
+          <li class="rail-connector rail-at-converge" aria-hidden="true">
+            <svg viewBox="0 0 72 316">
               <!-- Each wire declared once and drawn twice: the shaft that is always there, and the
                    pulse that travels it. pathLength normalises every wire to 100, on a curve as on
                    a segment. The box is the two card rows and the gap between them, so each wire
@@ -883,8 +896,8 @@
                a curve — 312 less the radius, less that radius again, less the half stroke, which
                puts the outer edge at 288 with 12px of straight edge to spare. It clears the group's
                name chip, which runs from x 0 to x 155, as a consequence. -->
-          <li class="rail-connector rail-at-keylink">
-            <svg viewBox="0 0 312 316" aria-hidden="true">
+          <li class="rail-connector rail-at-keylink" aria-hidden="true">
+            <svg viewBox="0 0 312 316">
               <defs>
                 <path id="rail-wire-kms" pathLength="100" d="M286 128 286 188" />
               </defs>
@@ -910,11 +923,11 @@
             </span>
             <ul class="rail-persona-stations" role="list">
               <li class="rail-station" :class="stationClass('proxy')">
-                <p class="rail-name font-mono text-sm text-fg lg:text-base">
+                <p class="rail-name">
                   <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
                   >temporal-proxy
                 </p>
-                <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+                <ul class="rail-detail" role="list">
                   <li>one endpoint</li>
                   <li>payloads are sealed here</li>
                   <li>authentication happens here</li>
@@ -938,7 +951,7 @@
             </span>
             <ul class="rail-persona-stations" role="list">
               <li class="rail-station" :class="stationClass('kms')">
-                <p class="rail-name font-mono text-sm text-fg lg:text-base">
+                <p class="rail-name">
                   <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
                   >key service
                 </p>
@@ -946,7 +959,7 @@
                      it the platform's key service says the name back, and the possessive is the
                      only word it adds. A determiner does not earn a line read from the back of a
                      room. -->
-                <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+                <ul class="rail-detail" role="list">
                   <li>temporal-proxy extension</li>
                   <li>derives one key per namespace</li>
                 </ul>
@@ -954,8 +967,8 @@
             </ul>
           </li>
 
-          <li class="rail-connector rail-at-upstream">
-            <svg viewBox="0 0 48 316" preserveAspectRatio="none" aria-hidden="true">
+          <li class="rail-connector rail-at-upstream" aria-hidden="true">
+            <svg viewBox="0 0 48 316" preserveAspectRatio="none">
               <!-- The one wire that leaves the cluster, declared in the box it is drawn against: it
                    answers to this viewBox and to its x-only stretch, and it sits on the endpoint's
                    own row rather than on the box's centre. -->
@@ -975,7 +988,7 @@
           >
             <!-- temporal.io's own lockup, taken from
                  https://temporal.io/images/logos/logo-temporal-with-copy-white-text.svg -->
-            <p class="rail-name font-mono text-sm text-fg lg:text-base">
+            <p class="rail-name">
               <svg
                 class="rail-logo"
                 viewBox="0 0 172 44"
@@ -995,7 +1008,7 @@
                   <path d="M29.261 14.4612C28.2363 6.85604 25.6521 0.5 21.6645 0.5C17.6881 0.5 15.0928 6.85604 14.068 14.4612C6.40468 15.4782 0 18.0427 0 22C0 25.9463 6.40468 28.5218 14.068 29.5388C15.0928 37.144 17.6769 43.5 21.6645 43.5C25.641 43.5 28.2363 37.144 29.261 29.5388C36.9244 28.5218 43.3291 25.9573 43.3291 22C43.3291 18.0427 36.9244 15.4671 29.261 14.4612ZM13.823 27.3059C6.48265 26.2558 2.19429 23.846 2.19429 21.9889C2.19429 20.1319 6.47151 17.7221 13.823 16.672C13.6559 18.4296 13.5779 20.2203 13.5779 21.9889C13.5779 23.7576 13.6559 25.5594 13.823 27.3059ZM21.6645 2.66658C23.5358 2.66658 25.964 6.91131 27.0222 14.2069C25.2511 14.0411 23.4467 13.9638 21.6645 13.9638C19.8824 13.9638 18.0779 14.0522 16.3069 14.2069C17.365 6.92237 19.7932 2.66658 21.6645 2.66658ZM29.5061 27.3059C29.1496 27.3612 27.6571 27.527 27.2895 27.5712C27.2561 27.947 27.0779 29.4172 27.0222 29.771C25.964 37.0555 23.5358 41.3113 21.6645 41.3113C19.7932 41.3113 17.365 37.0666 16.3069 29.771C16.2512 29.4172 16.0841 27.936 16.0395 27.5712C15.8725 25.8468 15.7611 23.9897 15.7611 21.9889C15.7611 19.9882 15.8613 18.1422 16.0395 16.4067C17.7772 16.2409 19.6484 16.1303 21.6645 16.1303C23.6806 16.1303 25.5408 16.2298 27.2895 16.4067C27.6682 16.4398 29.1496 16.6167 29.5061 16.672C36.8464 17.7221 41.1348 20.1319 41.1348 21.9889C41.1348 23.846 36.8464 26.2558 29.5061 27.3059Z" fill="currentColor" />
               </svg>
             </p>
-            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+            <ul class="rail-detail" role="list">
               <li>unknown to the app</li>
               <li>every payload arrives sealed</li>
               <li>namespace set by temporal-proxy</li>

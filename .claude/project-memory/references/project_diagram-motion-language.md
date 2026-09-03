@@ -84,8 +84,8 @@ hop leaving the endpoint: each carries both phase
 colours in both directions, so its violet steps and its
 mint steps are pairwise indistinguishable, and only a
 card happening to flip colour separates them. The client
-wires do imply direction, each carrying one phase
-colour only.
+wires do imply direction: each is crossed once in each
+direction, in a different phase colour each way.
 
 **Why:** an audience reads this from the back of a room
 and infers the protocol from what moves. A colour or an
