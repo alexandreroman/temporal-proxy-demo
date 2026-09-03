@@ -84,13 +84,9 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 # `|| true` keeps a panel update from ever failing the target that asked for it.
 in-casper-workspace = [ -n "$$CASPER_WORKSPACE_ID" ] && command -v casper >/dev/null 2>&1
 
-define publish-endpoints
-$(in-casper-workspace) && $(MAKE) -s endpoints | casper info set - >/dev/null || true
-endef
+publish-endpoints = $(in-casper-workspace) && $(MAKE) -s endpoints | casper info set - >/dev/null || true
 
-define clear-endpoints
-$(in-casper-workspace) && casper info clear >/dev/null || true
-endef
+clear-endpoints = $(in-casper-workspace) && casper info clear >/dev/null || true
 
 ##@ Quality
 
@@ -204,7 +200,7 @@ endef
 # so the chart version pinned below is deliberate: an unpinned upgrade would
 # pick up a configuration schema this repository has not been checked against.
 .PHONY: apply
-apply: require-setup ## Deploy the KMS server, temporal-proxy and the application (after cluster-up)
+apply: require-setup ## Deploy the KMS server, temporal-proxy and the application (after image)
 	kubectl --context kind-$(CLUSTER) apply -f k8s/namespaces.yaml
 	$(call apply-secret,generic temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
