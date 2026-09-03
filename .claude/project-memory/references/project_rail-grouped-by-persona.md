@@ -49,9 +49,8 @@ them and no gutter length is written twice.
 into its cells and pulled back out by a negative
 margin that cancels its padding *and its border* —
 `calc(-1rem - 1px)`, not `-1rem`, or two pixels of
-border stay in the count and the cards no longer land
-on the rows. Its content box then equals the cell
-exactly.
+border stay in the count and the cards land off the
+rows. Its content box then equals the cell exactly.
 
 ## What the overhang costs
 
@@ -134,8 +133,8 @@ The bubble is `position: fixed`, outside the scroll
 band so its overflow cannot clip it, and it never
 takes the pointer, or it would settle under the cursor
 and flicker. Its box is declared rather than measured:
-the stylesheet sets the width, the script reads the
-same number back, and both axes flip against the
+the stylesheet sets the width, the script restates
+the same number, and both axes flip against the
 viewport with no call into layout.
 
 **The caption items carry no `title`.** A native

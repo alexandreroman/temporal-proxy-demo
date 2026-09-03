@@ -49,9 +49,8 @@ to fade out before it reaches the diagram. Its
 ceiling is an attention limit rather than a contrast
 one — a grid bright enough to cross the diagram's
 band makes the cards read as holes punched in a lit
-field, and the caliper leader loses its singularity
-among lines of comparable weight, while still
-measuring safely inside contrast limits.
+field, while still measuring safely inside contrast
+limits.
 
 `#444CE7` is barred from anything text-sized. It
 measures 3.01:1 against `#141414` — exactly the
