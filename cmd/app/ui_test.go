@@ -26,21 +26,22 @@ func TestPage(t *testing.T) {
 		name      string
 		address   string
 		namespace string
-		// The whole caption, not each value: "demo" alone also occurs in the page's own script.
+		// Two caption items, not the Namespace alone: "demo" by itself also occurs in the page's
+		// own script.
 		wantCaption string
 	}{
 		{
-			// The address is supplied and appears nowhere in the caption: serving the page does
-			// not depend on it, only on the Namespace resolved alongside it.
+			// The address is supplied so the page has one to leak: it puts no host on screen and
+			// says nothing about where it connects beyond the Namespace resolved alongside it.
 			name:        "endpoint supplied",
 			address:     "temporal.example:7233",
 			namespace:   "demo",
-			wantCaption: `connects to temporal-proxy plaintext namespace "demo"`,
+			wantCaption: `plaintext namespace "demo"`,
 		},
 		{
 			// Both unset: the fallbacks in the code, which are what a Temporal dev server serves.
 			name:        "endpoint unset",
-			wantCaption: `connects to temporal-proxy plaintext namespace "default"`,
+			wantCaption: `plaintext namespace "default"`,
 		},
 	}
 
@@ -61,6 +62,10 @@ func TestPage(t *testing.T) {
 			}
 			if !strings.Contains(shownText(rec.Body.String()), tt.wantCaption) {
 				t.Errorf("body does not show the endpoint caption %q", tt.wantCaption)
+			}
+			// The guard is required: strings.Contains reports true for an empty substring.
+			if tt.address != "" && strings.Contains(rec.Body.String(), tt.address) {
+				t.Errorf("body shows the address %q, want no host on the page", tt.address)
 			}
 		})
 	}
