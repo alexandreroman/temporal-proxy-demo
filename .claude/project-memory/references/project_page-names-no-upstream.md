@@ -1,6 +1,6 @@
 ---
 name: "The page names no upstream"
-description: "The destination station reads Temporal, and the page shows only the endpoint and Namespace the application dials"
+description: "The destination station reads Temporal, and the page shows only the endpoint a client names and the Namespace it dials"
 type: project
 ---
 
@@ -9,12 +9,13 @@ type: project
 The page `cmd/app` serves names no upstream. Its
 destination station reads `Temporal` and nothing
 more: no vendor, no host, no environment. The two
-endpoint stations show the address and the short
-Namespace name the application dials, resolved
-through the same code path the Temporal client
-dials with, so the page reports the pair that was
-actually used and cannot drift from the deployment
-it runs in.
+client stations show the short Namespace name the
+application dials, resolved through the same code
+path the Temporal client dials with, so the page
+reports the Namespace that was actually used and
+cannot drift from the deployment it runs in. What
+they say about where they connect names the
+endpoint they dial and stops there.
 
 The three stations that run in the cluster carry a
 Kubernetes mark. The destination station does not:

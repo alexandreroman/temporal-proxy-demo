@@ -60,7 +60,7 @@
                               ├──► temporal-proxy ──► Temporal
              worker ──────────╯           │
                                           ▼
-                                         kms
+                                     key service
 
          A leg carries traffic both ways over one run, so the wires claim no direction — the pulse
          says which way. The upstream column is the only one that flexes: it is stretched on x alone
@@ -93,9 +93,14 @@
         grid-template-columns:
           var(--rail-card-width) 4.5rem var(--rail-card-width) minmax(3.5rem, 1fr) var(--rail-card-width);
         grid-template-rows: repeat(2, 1fr);
-        /* A floor rather than comfort: the two middle-column outlines overhang 17px each into this
-           gutter, so 3rem is what leaves 14px of air between their strokes. */
-        row-gap: 3rem;
+        /* Bounded at both ends. The two middle-column outlines overhang 17px each into this
+           gutter, so the air between their strokes is this value less 34 — 3.75rem leaves 26px, and
+           anything under it crowds two dashed boxes into reading as one. The ceiling is the page's
+           own height: the rail is two 8rem rows plus this gutter, and at the projected 1440x950 the
+           page ends 940px down, so the last 10px of that budget is all this value has left to
+           spend. Growing it past that starts the page scrolling, and the room the audience watches
+           the rail in is not a variable to reclaim. */
+        row-gap: 3.75rem;
         align-items: center;
         width: 100%;
         /* The floor is three card columns plus 4.5rem and 3.5rem of connector, stated rather than
@@ -124,12 +129,15 @@
       }
 
       /* One fixed size for every card: three caption items set the height, and the width is the
-         rail's own --rail-card-width, so a card and the column it stands in cannot disagree. That
-         width carries the 34-character cluster address whole with 9.6px to spare — 312px of card
-         less the 2rem of padding and the 1.6rem mark column leaves 254.4px, against the 244.8px the
-         address sets at text-xs in the mono face. So the ellipsis protects a longer address rather
-         than being what every deployment shows. Every connector's viewBox is derived from this
-         height and the row gap, so the drawing and the cards move together. */
+         rail's own --rail-card-width, so a card and the column it stands in cannot disagree. The
+         width is what the longest caption item needs whole, and that item does not sit on the
+         roomiest card: `namespace set by temporal-proxy` sets 223.2px at text-xs in the mono face,
+         and it is on the lockup card, whose wider mark column leaves the least room of the five —
+         312px of card less its 2px of border, the 2rem of padding and that 2.0873rem column leaves
+         244.6px, so 21.4px to spare. On the other four the binding item is `derives one key per
+         namespace`, 208.8px against 252.4px. So the ellipsis guards an item longer than any of
+         these rather than being what a deployment shows. Every connector's viewBox is derived from
+         this height and the row gap, so the drawing and the cards move together. */
       .rail-station {
         /* The mark's 1em box plus the mono character between the mark and the name, so a name and
            its caption start at the same x. A rem, not an em: the caption is set two steps smaller. */
@@ -366,10 +374,10 @@
 
       /* One line per item: wrapping is what is being avoided, not the ellipsis. The cards share one
          fixed height, so an item that wrapped on one deployment and not another would make the
-         geometry a function of the address a cluster resolved. The full text stays in the DOM, for
-         anything reading the page aloud and for nothing else: a projector hovers nothing, so an
-         item worth reading has to fit, and a fallback an audience cannot reach never served the
-         room. The pointer on the rail carries the group's tip instead. */
+         geometry a function of the Namespace a deployment asked for. The full text stays in the
+         DOM, for anything reading the page aloud and for nothing else: a projector hovers nothing,
+         so an item worth reading has to fit, and a fallback an audience cannot reach never served
+         the room. The pointer on the rail carries the group's tip instead. */
       .rail-detail li {
         overflow: hidden;
         text-overflow: ellipsis;
@@ -806,8 +814,14 @@
                   <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
                   >application
                 </p>
+                <!-- The three cards on a request's path spend their second line on the same
+                     fact, so the payload state reads straight across the rail without a word of
+                     prose: plaintext on both clients, sealed at the endpoint, already sealed at
+                     the upstream. The first line says what the card is to the next hop and the
+                     third its Namespace, on the same footing. Reordering one caption breaks a
+                     reading the diagram makes on its own. -->
                 <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
-                  <li>{{ .Address }}</li>
+                  <li>connects to temporal-proxy</li>
                   <li>plaintext</li>
                   <li>namespace "{{ .Namespace }}"</li>
                 </ul>
@@ -819,7 +833,7 @@
                   >worker
                 </p>
                 <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
-                  <li>{{ .Address }}</li>
+                  <li>connects to temporal-proxy</li>
                   <li>plaintext</li>
                   <li>namespace "{{ .Namespace }}"</li>
                 </ul>
@@ -830,11 +844,11 @@
           <!-- Wires of their own that never meet: each phase lights exactly one path, so a lit wire
                always says whose traffic is on it. -->
           <li class="rail-connector rail-at-converge">
-            <svg viewBox="0 0 72 304" aria-hidden="true">
+            <svg viewBox="0 0 72 316" aria-hidden="true">
               <!-- Each wire declared once and drawn twice: the shaft that is always there, and the
                    pulse that travels it. pathLength normalises every wire to 100, on a curve as on
                    a segment. The box is the two card rows and the gap between them, so each wire
-                   leaves its own client's centre, y 64 and y 240. The application runs straight
+                   leaves its own client's centre, y 64 and y 252. The application runs straight
                    across to the endpoint's centre; the worker climbs a row, on a cubic held
                    horizontal at both ends so that the leg reads as a run rather than as a corner.
                    The two land 36px apart on the same edge, y 64 and y 100, rather than together:
@@ -842,7 +856,7 @@
                    other for its last stretch, and a lit wire has to say whose traffic is on it. -->
               <defs>
                 <path id="rail-wire-application" pathLength="100" d="M0 64 72 64" />
-                <path id="rail-wire-worker" pathLength="100" d="M0 240 C36 240 36 100 72 100" />
+                <path id="rail-wire-worker" pathLength="100" d="M0 252 C36 252 36 100 72 100" />
               </defs>
               <g :class="legClass('application')">
                 <use class="rail-path" href="#rail-wire-application" />
@@ -857,7 +871,7 @@
 
           <!-- The endpoint and the key service share a column, so their leg is a plain drop across
                the row gap. Its box is that column over both rows, which the 19.5rem card and the
-               304px of rail put in the viewBox's own ratio, so nothing letterboxes. The drop is
+               316px of rail put in the viewBox's own ratio, so nothing letterboxes. The drop is
                pushed as far right as the two edges it meets allow. What stops it is the corner
                radius rather than the card's width: a card rounds at 0.75rem, so the edges are only
                straight out to x 300, and the wire's own outer edge sits 2px past its axis. The
@@ -866,9 +880,9 @@
                puts the outer edge at 288 with 12px of straight edge to spare. It clears the group's
                name chip, which runs from x 0 to x 155, as a consequence. -->
           <li class="rail-connector rail-at-keylink">
-            <svg viewBox="0 0 312 304" aria-hidden="true">
+            <svg viewBox="0 0 312 316" aria-hidden="true">
               <defs>
-                <path id="rail-wire-kms" pathLength="100" d="M286 128 286 176" />
+                <path id="rail-wire-kms" pathLength="100" d="M286 128 286 188" />
               </defs>
               <g :class="legClass('kms')">
                 <use class="rail-path" href="#rail-wire-kms" />
@@ -898,8 +912,8 @@
                 </p>
                 <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
                   <li>one endpoint</li>
-                  <li>authentication happens here</li>
                   <li>payloads are sealed here</li>
+                  <li>authentication happens here</li>
                 </ul>
               </li>
             </ul>
@@ -922,7 +936,7 @@
               <li class="rail-station" :class="stationClass('kms')">
                 <p class="rail-name font-mono text-sm text-fg lg:text-base">
                   <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
-                  >kms
+                  >key service
                 </p>
                 <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
                   <li>the platform's key store</li>
@@ -934,7 +948,7 @@
           </li>
 
           <li class="rail-connector rail-at-upstream">
-            <svg viewBox="0 0 48 304" preserveAspectRatio="none" aria-hidden="true">
+            <svg viewBox="0 0 48 316" preserveAspectRatio="none" aria-hidden="true">
               <!-- The one wire that leaves the cluster, declared in the box it is drawn against: it
                    answers to this viewBox and to its x-only stretch, and it sits on the endpoint's
                    own row rather than on the box's centre. -->
@@ -976,6 +990,7 @@
             </p>
             <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
               <li>unknown to the app</li>
+              <li>every payload arrives sealed</li>
               <li>namespace set by temporal-proxy</li>
             </ul>
           </li>

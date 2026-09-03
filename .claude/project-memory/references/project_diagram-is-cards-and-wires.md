@@ -86,29 +86,33 @@ diagram's rows size to that instead of to the cards.
 The width is declared once, as a custom property on
 the rail, and read by both the column that holds a
 card and the card itself, so the two cannot disagree.
-It is derived rather than chosen: the
-34-character cluster address sets 244.8px at
-`text-xs` in Noto Sans Mono, and the card's 1rem of
-padding either side plus its 1.6rem mark column leave
-254.4px — 9.6px of slack. The ellipsis guards an
-address longer than that one; it is not part of what a
-deployment shows. A prose caption can bind before the
-address does, so measure the longest item that must
-stay whole against the width, and watch the
-interaction with the lockup card: its wider mark
-column makes the same string need more room there than
-on an icon card, so the binding measurement may not be
-on the card you expect. Include the borders in that
-arithmetic, and re-derive it together with the
-connector columns, which answer to the persona boxes'
-overhang — see [The rail is grouped by
+It is derived rather than chosen, from the longest
+caption item that has to stay whole.
+
+**That item is not on the card you would guess.** The
+lockup card's mark column is wider than an icon
+card's, so the same string needs more room there:
+its items get a 244.6px box against the 252.4px an
+icon card gives, and the longest of them,
+`namespace set by temporal-proxy`, measures 223.2px
+at `text-xs` in Noto Sans Mono — 21.4px of slack,
+against 43.6px on the tightest icon card. The lockup
+card is what the width answers to. Include the
+borders in that arithmetic: `box-sizing: border-box`
+fits them inside the declared width, so an item's box
+is 2px narrower than padding alone suggests.
+
+Re-derive that width together with the connector
+columns, which answer to the persona boxes' overhang
+— see [The rail is grouped by
 persona](project_rail-grouped-by-persona.md).
 
-The client cards render `TEMPORAL_ADDRESS`, short
-against a dev server and a long cluster DNS name in
-Kubernetes — the only place the page is projected. So
-judge truncation against the cluster value, never the
-one on screen during development.
+**A caption states a component's role, not a resolved
+value.** The Namespace is the only template action a
+caption carries, so the geometry no longer moves with
+what a cluster resolved. The ellipsis guards a caption
+someone lengthens later, not something a deployment
+shows.
 
 **A caption item is truncated, never wrapped.** Each
 one holds a single line and ends in an ellipsis when
@@ -116,9 +120,9 @@ it does not fit, because the cards share a fixed
 height that a second line box would break. The full
 text stays in the DOM, so nothing is lost to assistive
 technology — but a projector cannot hover a truncated
-value, so an item worth reading has to fit. A
-three-item caption sets the shared height; a station
-with fewer leaves that room unused.
+value, so an item worth reading has to fit. Three
+items is what every card carries and what sets the
+shared height, so none of them has room to give.
 
 One card carries a different indent, derived from its
 own artwork: where a name row is a logo lockup rather
@@ -143,7 +147,8 @@ a live layout.
 
 **How to apply:** change a card's size and re-derive
 the connector viewBoxes and the column sum together.
-Test a caption change against the cluster address, not
-the dev-server one. See [The demo page is read from
-the back of a
-room](feedback_page-projection-legibility.md).
+Measure a caption change against the lockup card's
+longest item, which is the one the width answers to,
+and read the result off a render rather than trusting
+the arithmetic. See [The demo page is read from the
+back of a room](feedback_page-projection-legibility.md).

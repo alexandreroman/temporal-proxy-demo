@@ -1,28 +1,27 @@
 ---
-name: "The kms card names the role, not the transport"
-description: "What the diagram's key-service station and the intro prose say about it, why its transport stays off the card, why the prose lists the places keys live without ranking them, and why two caption items are a legitimate shape"
+name: "The key service card names the role, not the transport"
+description: "What the diagram's key-service station and the intro prose say about it, why its transport stays off the card, and why the prose lists the places keys live without ranking them"
 type: feedback
 ---
 
-# The kms card names the role, not the transport
+# The key service card names the role, not the transport
 
-The diagram's `kms` station carries three caption
-items: `the platform's key store`, then
-`temporal-proxy extension`, then `derives one key per
-namespace`. The card says what the service *is* — the
-platform's store of keys, reached as an extension
-rather than as a Temporal component — and what it
-produces: one wrapping key per Namespace, which is the
-tenancy boundary, because learning one Namespace's key
-hands over none of the others.
+**The station is called `key service`**, not by the
+name of the component that implements it. The room
+reads a role there; `kms` is what the deployment, the
+extension and the code are called, and those keep the
+name. The card then says what that service is —
+reached as an extension rather than as a Temporal
+component — and what it produces: one wrapping key per
+Namespace, which is the tenancy boundary, because
+learning one Namespace's key hands over none of the
+others.
 
-The first item names the role the station is drawn
-under. The diagram groups each component with the
-person who answers for it, and this one sits with the
-security operator, so the card has to say what that
-role supplies to the platform rather than leave a
-reader to infer it from the wire — see [The rail is
-grouped by persona](project_rail-grouped-by-persona.md).
+Naming the role on the card matters because the
+diagram groups each component with the person who
+answers for it, and this one sits with the security
+operator — see [The rail is grouped by
+persona](project_rail-grouped-by-persona.md).
 
 How temporal-proxy reaches it stays off the card. TLS,
 the bearer token and the controllers that issue them
@@ -67,14 +66,22 @@ accurate and sells nothing: a sentence saying the
 extension wraps keys names an operation the audience
 has no reason to care about.
 
-Two items is a shape the cards allow. A three-item
-caption sets their fixed height, so a station with
-fewer leaves that room unused — which the upstream's
-lockup card does.
+Three items is what every card carries, and the shape
+that sets their shared height. The cards allow fewer,
+which simply leaves that room unused; a card with
+three has none to give.
+
+**The three items line up across the cards on a
+request's path**, so the same slot answers the same
+question at each station. The second one carries the
+state of a payload there — plaintext at the clients,
+sealed at the endpoint, sealed on arrival upstream —
+and that is the encryption story read straight across
+the diagram, without a line of prose.
 
 **Why:** the diagram is watched from the back of a
-room, not read, and each station gets two or three
-lines that have to land in one glance. A line about
+room, not read, and each station gets three lines that
+have to land in one glance. A line about
 plumbing displaces the fact that justifies drawing the
 component at all.
 

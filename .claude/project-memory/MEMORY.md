@@ -46,11 +46,11 @@
 - [The demo page borrows temporal.io's own design system](references/feedback_page-design-system.md) — palette, typefaces, logos, one colour barred
 - [The Workflow's contract and the API's response are two different types](references/feedback_api-response-envelope.md) — not in `hello.Response`
 - [The page names no upstream](references/project_page-names-no-upstream.md) — the destination station reads `Temporal`; it shows what it dials
-- [The kms card names the role, not the transport](references/feedback_kms-card-names-the-role.md) — the platform's key store, and what it omits
+- [The key service card names the role, not the transport](references/feedback_kms-card-names-the-role.md) — a role, not a component
 - [The page's error hints name no command](references/project_page-hints-name-no-command.md) — one binary, two places to run it, no command named
 - [Lifecycle targets come in up/down pairs](references/feedback_up-down-target-pairs.md) — symmetric pairs, and a teardown that tolerates absence
 - [The diagram is cards joined by static SVG wires](references/project_diagram-is-cards-and-wires.md) — one card size, hard-coded wires
-- [The rail is grouped by persona](references/project_rail-grouped-by-persona.md) — three dashed groups, an upstream in none, and what hover reveals
+- [The rail is grouped by persona](references/project_rail-grouped-by-persona.md) — three dashed groups, an upstream in none, and what hover shows
 - [What the diagram's motion means](references/project_diagram-motion-language.md) — no arrowheads, violet out, mint home
 - [The pulse durations are declared once, in the parse-time stylesheet](references/project_pulse-durations-single-source.md) — one value read twice
 - [A typographic accent on the page is presentational](references/feedback_typographic-accent-is-presentational.md) — `<strong>` only for meaning

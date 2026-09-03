@@ -73,11 +73,17 @@ change it and re-derive them all:
 - the upstream column, 62px, with an overhang on one
   side only — the upstream card is bare — leaving
   45px, and 39px at its `3.5rem` floor;
-- the row gap, 48px, which two groups overhang from
-  opposite sides, leaving 14px between their outlines.
+- the row gap, 60px, which two groups overhang from
+  opposite sides, leaving 26px between their outlines,
+  and which the link to the key service crosses.
 
-**The row gap is a floor, not comfort**, and the link
-to the key service crosses both borders in it.
+**The row gap answers to a floor and a ceiling**, and
+neither is comfort. Below `2 × 17px` the two outlines
+in it touch. Above, the rail grows and the page runs
+out of the projection viewport: at 60px it closes at
+940px of 950, so what is left is 10px, not room to
+spend. Take vertical room from the type scale or the
+section gaps before taking it from here.
 
 The card width is declared once, as a custom property
 on the rail, and read by both the column that holds a

@@ -14,17 +14,20 @@ only once the image is rebuilt and the Deployment
 restarted.
 
 The fast loop skips the cluster entirely:
-substitute the template's actions — `.Address` and
-`.Namespace` — into a copy outside the repository,
-serve that copy over HTTP, and screenshot it. HTTP
-rather than the file itself, because the browser
-panel opens `http` and `https` and nothing else.
+substitute the template's actions into a copy
+outside the repository, serve that copy over HTTP,
+and screenshot it. HTTP rather than the file
+itself, because the browser panel opens `http` and
+`https` and nothing else.
 
-Judge the result against the cluster address,
-`temporal-proxy.temporal-proxy:7233`, which is the
-long value the captions have to survive. A short
-dev-server address hides every truncation the
-projected page would show.
+A state the page only reaches through Alpine is
+reached the same way: rewrite the component's
+initial data in the copy, rather than driving the
+live page. A synthetic `mousemove` is worth
+knowing about here — it runs the handlers, so it
+settles what the script does, but it never
+triggers `:hover`, so it settles nothing about
+what the stylesheet does.
 
 Three traps are worth knowing before trusting a
 capture or a number:

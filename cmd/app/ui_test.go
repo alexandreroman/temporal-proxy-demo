@@ -13,8 +13,8 @@ var (
 	whitespace = regexp.MustCompile(`\s+`)
 )
 
-// What the page shows, as opposed to how it marks it up: the caption's address sits in an element
-// of its own, so the tags come out and the whitespace they leave behind is collapsed.
+// What the page shows, as opposed to how it marks it up: each caption item sits in an element of
+// its own, so the tags come out and the whitespace they leave behind is collapsed.
 func shownText(body string) string {
 	return whitespace.ReplaceAllString(htmlTag.ReplaceAllString(body, " "), " ")
 }
@@ -30,15 +30,17 @@ func TestPage(t *testing.T) {
 		wantCaption string
 	}{
 		{
+			// The address is supplied and appears nowhere in the caption: serving the page does
+			// not depend on it, only on the Namespace resolved alongside it.
 			name:        "endpoint supplied",
 			address:     "temporal.example:7233",
 			namespace:   "demo",
-			wantCaption: `temporal.example:7233 plaintext namespace "demo"`,
+			wantCaption: `connects to temporal-proxy plaintext namespace "demo"`,
 		},
 		{
 			// Both unset: the fallbacks in the code, which are what a Temporal dev server serves.
 			name:        "endpoint unset",
-			wantCaption: `localhost:7233 plaintext namespace "default"`,
+			wantCaption: `connects to temporal-proxy plaintext namespace "default"`,
 		},
 	}
 
