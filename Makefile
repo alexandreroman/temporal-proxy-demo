@@ -166,24 +166,20 @@ image: ## Build the image and load it into the cluster (after cluster-up)
 # caused it: refuse before touching the cluster, and name everything that is
 # missing rather than only the first thing. `apply` and `app-up` depend on this
 # guard rather than a reader invoking it, so it carries no help description.
-define require-setup-check
-missing=''; \
-[ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
-[ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
-[ -f k8s/certs/client.pem ] || missing="$$missing k8s/certs/client.pem"; \
-[ -f k8s/certs/client.key ] || missing="$$missing k8s/certs/client.key"; \
-[ -n '$(KMS_MASTER_SECRET)' ] || missing="$$missing KMS_MASTER_SECRET"; \
-if [ -n "$$missing" ]; then \
-  echo "Cannot deploy, these are missing:$$missing"; \
-  echo "The values go in .env (copy .env.example); the certificate goes in"; \
-  echo "k8s/certs/ as client.pem and client.key. Then run the command again."; \
-  exit 1; \
-fi
-endef
-
 .PHONY: require-setup
 require-setup:
-	@$(require-setup-check)
+	@missing=''; \
+	[ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
+	[ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
+	[ -f k8s/certs/client.pem ] || missing="$$missing k8s/certs/client.pem"; \
+	[ -f k8s/certs/client.key ] || missing="$$missing k8s/certs/client.key"; \
+	[ -n '$(KMS_MASTER_SECRET)' ] || missing="$$missing KMS_MASTER_SECRET"; \
+	if [ -n "$$missing" ]; then \
+	  echo "Cannot deploy, these are missing:$$missing"; \
+	  echo "The values go in .env (copy .env.example); the certificate goes in"; \
+	  echo "k8s/certs/ as client.pem and client.key. Then run the command again."; \
+	  exit 1; \
+	fi
 
 # `kubectl create secret` refuses to overwrite a Secret that already exists, so
 # every one of them is rendered client-side and piped into `apply` instead:
