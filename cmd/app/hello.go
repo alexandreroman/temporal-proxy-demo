@@ -32,10 +32,10 @@ type execution struct {
 	RunID      string `json:"runId"`
 }
 
-// greeter runs one greeting and returns its result, plus the Execution that produced it. The
-// HTTP layer depends on this function rather than on a Temporal client, which keeps the
-// handler testable without a server.
-type greeter func(ctx context.Context, req hello.Request) (hello.Response, execution, error)
+// greeter runs one greeting and returns the body the API answers with. The HTTP layer depends
+// on this function rather than on a Temporal client, which keeps the handler testable without
+// a server.
+type greeter func(ctx context.Context, req hello.Request) (helloResponse, error)
 
 // helloResponse is the JSON body of a successful request. Both embedded types contribute their
 // own fields, flattened into one object, so the greeting and the two identifiers sit side by
@@ -51,19 +51,17 @@ func helloHandler(greet greeter) http.HandlerFunc {
 
 		req, err := decodeRequest(r)
 		if err != nil {
-			slog.Warn("rejecting request", "error", err)
+			slog.Warn("request rejected", "error", err)
 			http.Error(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
 
-		res, exec, err := greet(r.Context(), req)
+		body, err := greet(r.Context(), req)
 		if err != nil {
 			slog.Error("greeting failed", "name", req.Name, "error", err)
 			http.Error(w, "greeting failed", http.StatusInternalServerError)
 			return
 		}
-
-		body := helloResponse{res, exec}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(body); err != nil {
@@ -89,7 +87,7 @@ func decodeRequest(r *http.Request) (hello.Request, error) {
 
 // startHelloWorkflow starts one Workflow Execution and waits for its result.
 func startHelloWorkflow(c client.Client) greeter {
-	return func(ctx context.Context, req hello.Request) (hello.Response, execution, error) {
+	return func(ctx context.Context, req hello.Request) (helloResponse, error) {
 		options := client.StartWorkflowOptions{
 			ID:        "hello-" + strings.ToLower(rand.Text()), // Recognizable in the Web UI, unique across replays.
 			TaskQueue: hello.TaskQueue,
@@ -97,7 +95,7 @@ func startHelloWorkflow(c client.Client) greeter {
 
 		run, err := c.ExecuteWorkflow(ctx, options, hello.HelloWorkflow, req)
 		if err != nil {
-			return hello.Response{}, execution{}, fmt.Errorf("start hello workflow: %w", err)
+			return helloResponse{}, fmt.Errorf("start hello workflow: %w", err)
 		}
 
 		exec := execution{WorkflowID: run.GetID(), RunID: run.GetRunID()}
@@ -105,8 +103,8 @@ func startHelloWorkflow(c client.Client) greeter {
 
 		var res hello.Response
 		if err := run.Get(ctx, &res); err != nil {
-			return hello.Response{}, execution{}, fmt.Errorf("wait for workflow %s: %w", exec.WorkflowID, err)
+			return helloResponse{}, fmt.Errorf("wait for workflow %s: %w", exec.WorkflowID, err)
 		}
-		return res, exec, nil
+		return helloResponse{res, exec}, nil
 	}
 }

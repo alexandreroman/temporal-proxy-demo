@@ -22,16 +22,16 @@ type fakeGreeter struct {
 	err    error
 }
 
-func (f *fakeGreeter) greet(_ context.Context, req hello.Request) (hello.Response, execution, error) {
+func (f *fakeGreeter) greet(_ context.Context, req hello.Request) (helloResponse, error) {
 	f.called = true
 	f.req = req
 	if f.err != nil {
-		return hello.Response{}, execution{}, f.err
+		return helloResponse{}, f.err
 	}
 
 	res := hello.Response{Greeting: "Hello, " + req.Name + "!"}
 	exec := execution{WorkflowID: "hello-" + req.Name, RunID: "run-1"}
-	return res, exec, nil
+	return helloResponse{res, exec}, nil
 }
 
 func TestHelloEndpoint(t *testing.T) {
