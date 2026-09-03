@@ -128,16 +128,18 @@
         --rail-accent: color-mix(in oklab, var(--color-mint) 72%, var(--color-ink));
       }
 
-      /* One fixed size for every card: three caption items set the height, and the width is the
-         rail's own --rail-card-width, so a card and the column it stands in cannot disagree. The
-         width is what the longest caption item needs whole, and that item does not sit on the
-         roomiest card: `namespace set by temporal-proxy` sets 223.2px at text-xs in the mono face,
-         and it is on the lockup card, whose wider mark column leaves the least room of the five —
-         312px of card less its 2px of border, the 2rem of padding and that 2.0873rem column leaves
-         244.6px, so 21.4px to spare. On the other four the binding item is `derives one key per
-         namespace`, 208.8px against 252.4px. So the ellipsis guards an item longer than any of
-         these rather than being what a deployment shows. Every connector's viewBox is derived from
-         this height and the row gap, so the drawing and the cards move together. */
+      /* One fixed size for every card. A caption of three items is the shape that fixes the height;
+         a card carrying fewer leaves the room under its last line unused, which is a shape the cards
+         admit. The width is the rail's own --rail-card-width, so a card and the column it stands in
+         cannot disagree. The width is what the longest caption item needs whole, and that item does
+         not sit on the roomiest card: `namespace set by temporal-proxy` sets 223.2px at text-xs in
+         the mono face, and it is on the lockup card, whose wider mark column leaves the least room
+         of the five — 312px of card less its 2px of border, the 2rem of padding and that 2.0873rem
+         column leaves 244.6px, so 21.4px to spare. On the other four the binding item is `derives
+         one key per namespace`, 208.8px against 252.4px, and it is the longer of the two items its
+         own card carries. So the ellipsis guards an item longer than any of these rather than being
+         what a deployment shows. Every connector's viewBox is derived from this height and the row
+         gap, so the drawing and the cards move together. */
       .rail-station {
         /* The mark's 1em box plus the mono character between the mark and the name, so a name and
            its caption start at the same x. A rem, not an em: the caption is set two steps smaller. */
@@ -814,12 +816,14 @@
                   <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
                   >application
                 </p>
-                <!-- The three cards on a request's path spend their second line on the same
-                     fact, so the payload state reads straight across the rail without a word of
-                     prose: plaintext on both clients, sealed at the endpoint, already sealed at
-                     the upstream. The first line says what the card is to the next hop and the
-                     third its Namespace, on the same footing. Reordering one caption breaks a
-                     reading the diagram makes on its own. -->
+                <!-- The cards on a request's path — the two clients, the endpoint, the upstream —
+                     spend their second line on the same fact, so the payload state reads straight
+                     across the rail without a word of prose: plaintext on both clients, sealed at
+                     the endpoint, already sealed at the upstream. The first line says what the card
+                     is to the next hop and the third its Namespace, on the same footing. Reordering
+                     one caption breaks a reading the diagram makes on its own. The key service is a
+                     side call off that path and takes no part in it, so the slots leave its caption
+                     alone. -->
                 <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
                   <li>connects to temporal-proxy</li>
                   <li>plaintext</li>
@@ -938,8 +942,11 @@
                   <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
                   >key service
                 </p>
+                <!-- Two items, because the station is already called `key service`: a line naming
+                     it the platform's key service says the name back, and the possessive is the
+                     only word it adds. A determiner does not earn a line read from the back of a
+                     room. -->
                 <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
-                  <li>the platform's key service</li>
                   <li>temporal-proxy extension</li>
                   <li>derives one key per namespace</li>
                 </ul>

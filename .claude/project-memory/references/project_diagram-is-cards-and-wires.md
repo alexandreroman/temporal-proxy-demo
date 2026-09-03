@@ -120,9 +120,9 @@ it does not fit, because the cards share a fixed
 height that a second line box would break. The full
 text stays in the DOM, so nothing is lost to assistive
 technology — but a projector cannot hover a truncated
-value, so an item worth reading has to fit. Three
-items is what every card carries and what sets the
-shared height, so none of them has room to give.
+value, so an item worth reading has to fit. A
+three-item caption is what sets the shared height; a
+card with fewer leaves that room unused.
 
 One card carries a different indent, derived from its
 own artwork: where a name row is a logo lockup rather
