@@ -38,6 +38,16 @@ that does not cannot answer to `:hover` at all.
 Containment settles both: the highlight is a plain CSS
 rule, and nothing sits over a card.
 
+**A group outline is the bottom-most ink on the band.**
+Every wire crosses it unbroken, so the connectors are
+lifted a stacking level above the groups. Source order
+cannot carry that on its own: groups and connectors
+interleave along the rail, so a wire would pass over
+the group written before it and under the one written
+after. The wires lift rather than the groups sinking —
+the backdrop layers sit at index 0 in the same
+stacking level.
+
 Because a `<li>` cannot hold a `<li>`, each group
 holds its chip, its note, then a `<ul>` of its
 stations. The group whose two cards straddle both rows

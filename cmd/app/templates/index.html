@@ -219,6 +219,15 @@
         position: relative; /* the containing block the svg below is taken out of flow against */
         align-self: stretch;
         pointer-events: none;
+        /* Above every group outline, whichever of the two is written first. An outline names an
+           owner and is the bottom-most ink on the band, so a wire crosses it unbroken. Source order
+           cannot promise that on its own, because groups and connectors interleave along the rail:
+           a wire would pass over the group written before it and under the one written after, and
+           reordering the list would move the seam rather than close it. Lifting the wires settles
+           it from one place — and it is the wires that lift, not the groups that sink: the backdrop
+           layers sit at index 0 in this same stacking level, so a negative index on a group would
+           put it behind them. */
+        z-index: 1;
       }
 
       /* Out of flow, and load-bearing: an svg with a viewBox carries that viewBox's aspect ratio, so
