@@ -31,19 +31,17 @@ stacks into a reading-order list. Narrower than its
 content, it scrolls horizontally from the left, by
 hand — a run does not move it. Below the width where
 all the components fit, the parts that leave the
-viewport first are the endpoint's two onward hops and
-the pair of components beyond them, which is where the
-return journey happens.
+viewport first are the endpoint's hop to the upstream
+and the upstream card itself.
 
 The type scale is compressed at the top and floored
 at the bottom. Display sizes carry legibility
 headroom a projector never needs, so the top of the
-scale is where it gives. The floor holds: the
-station captions at `text-xs` and the caliper label
-at `0.7rem` are the smallest text on the page and
-the first thing to fail from the back row. Every
-size relationship remains an ordering at both
-breakpoints.
+scale is where it gives. The floor holds at `text-xs`:
+the station captions and the persona chips are the
+smallest text on the page and the first thing to fail
+from the back row. Every size relationship remains an
+ordering at both breakpoints.
 
 The diagram carries three brightness levels on its
 component cards — a card border is a far larger
@@ -79,12 +77,13 @@ gives.
 
 Room reserved against a clip is sized for a webfont's
 unloaded metrics, not for the line box a measurement
-returns. The boundary's label hangs below the rail's
-rows in the scroll band's own bottom padding, and that
-axis is `hidden` rather than scrollable, so a line box
-that a fallback's metrics set taller than the measured
-one is cut with nothing to scroll back. A few pixels of
-slack cost nothing; the clip is not recoverable.
+returns. A persona chip sits astride the top border of
+its group, above the rail's rows and in the scroll
+band's own top padding, and that axis is `hidden`
+rather than scrollable, so a line box that a
+fallback's metrics set taller than the measured one is
+cut with nothing to scroll back. A few pixels of slack
+cost nothing; the clip is not recoverable.
 
 **Why:** every accessory on the page competes with
 the one thing the audience is meant to watch. A

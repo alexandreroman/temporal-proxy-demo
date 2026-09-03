@@ -6,14 +6,23 @@ type: feedback
 
 # The kms card names the role, not the transport
 
-The diagram's `kms` station carries two caption items:
+The diagram's `kms` station carries three caption
+items: `the platform's key store`, then
 `temporal-proxy extension`, then `derives one key per
 namespace`. The card says what the service *is* — the
-key service temporal-proxy plugs into, rather than a
-Temporal component — and what it produces: one wrapping
-key per Namespace, which is the tenancy boundary,
-because learning one Namespace's key hands over none of
-the others.
+platform's store of keys, reached as an extension
+rather than as a Temporal component — and what it
+produces: one wrapping key per Namespace, which is the
+tenancy boundary, because learning one Namespace's key
+hands over none of the others.
+
+The first item names the role the station is drawn
+under. The diagram groups each component with the
+person who answers for it, and this one sits with the
+security operator, so the card has to say what that
+role supplies to the platform rather than leave a
+reader to infer it from the wire — see [The rail is
+grouped by persona](project_rail-grouped-by-persona.md).
 
 How temporal-proxy reaches it stays off the card. TLS,
 the bearer token and the controllers that issue them
@@ -61,7 +70,7 @@ has no reason to care about.
 Two items is a shape the cards allow. A three-item
 caption sets their fixed height, so a station with
 fewer leaves that room unused — which the upstream's
-lockup card already does.
+lockup card does.
 
 **Why:** the diagram is watched from the back of a
 room, not read, and each station gets two or three

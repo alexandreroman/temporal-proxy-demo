@@ -53,42 +53,66 @@
 
       /* The rail: the real topology, always left to right. Both clients dial the same endpoint,
          and only that endpoint reaches further — to the upstream, and to the service that holds the
-         key its payloads are sealed with:
+         key its payloads are sealed with. Two boundaries cut the run into three bands: what the
+         developer writes and ships, what the platform runs, and the upstream.
 
-             application ─────►\                     ┌─────► Temporal
-                                temporal-proxy ──────┤
-             worker ──────────►/                     └─────► kms
+             application ─────╮  ╎
+                              ├──╎──► temporal-proxy ──╎──► Temporal
+             worker ──────────╯  ╎          │          ╎
+                                 ╎          ▼          ╎
+                                 ╎         kms         ╎
 
          A leg carries traffic both ways over one run, so the wires claim no direction — the pulse
-         says which way. Only the endpoint's two onward hops flex: they share a column stretched on
-         x alone and both wires are horizontal, so their 4px weight is a y measure and comes through
-         exact. An x-only stretch would thin the diagonals, and non-scaling-stroke would cost the
-         pulse, because a device-space dash stops honouring pathLength. */
+         says which way. The upstream column is the only one that flexes: it is stretched on x alone
+         and its wire is horizontal, so the 4px weight is a y measure and comes through exact. An
+         x-only stretch would thin a diagonal, and non-scaling-stroke would cost the pulse, because
+         a device-space dash stops honouring pathLength. The worker's leg is a curve rather than a
+         straight line, which over one row would climb at about 63° and read as a corner between two
+         cards rather than as a run; the kms leg is a short vertical segment in the row gap. */
       .rail {
+        /* One width for a card and for the column it stands in, declared once so the two cannot
+           disagree. Declared rather than measured: a max-content column would take its width from a
+           box whose margins are negative, which is exact and unreadable. And the width that bounds
+           a caption's truncation is read beside the column it fixes. */
+        --rail-card-width: 19.5rem;
+
         display: grid;
+        /* The items are the three groups, the connectors and the upstream card: a group holds its
+           own cards, so a role and the components it answers for share one cell. */
         grid-template-areas:
-          "application converge endpoint upstream temporal"
-          "worker      converge endpoint upstream kms";
+          "developer converge platform upstream temporal"
+          "developer converge security upstream .";
+        /* The connector columns are what the groups' overhang is paid out of. At the projected
+           viewport the band is 1104px, and the three card columns take 936 of it. A group's outline
+           hangs 17px past its cell — 1rem of padding and its own 1px of stroke — and each connector
+           carries that overhang on either side of its boundary, plus the clear air before the
+           stroke — except to the right of the upstream boundary, where the Temporal card stands
+           bare. So converge is 2 x 17 + 2 x 19, upstream's floor is 17 + 19 + 20, and the band's
+           own inline padding pays for the leftmost overhang. */
         grid-template-columns:
-          max-content 3.5rem max-content minmax(3rem, 1fr) max-content;
+          var(--rail-card-width) 4.5rem var(--rail-card-width) minmax(3.5rem, 1fr) var(--rail-card-width);
         grid-template-rows: repeat(2, 1fr);
-        row-gap: 1rem;
+        /* A floor rather than comfort: the two middle-column outlines overhang 17px each into this
+           gutter, so 3rem is what leaves 14px of air between their strokes. */
+        row-gap: 3rem;
         align-items: center;
         width: 100%;
-        /* The floor is 3 x 20rem of card plus 3.5rem and 3rem of connector, stated rather than
+        /* The floor is three card columns plus 4.5rem and 3.5rem of connector, stated rather than
            derived so that it cannot drift with an intrinsic measurement. */
-        min-width: 66.5rem;
+        min-width: calc(3 * var(--rail-card-width) + 8rem);
         /* Inherited by every card and every leg; the hook the answer's journey home overrides. */
         --rail-accent: var(--color-violet);
       }
 
-      .rail-at-application { grid-area: application; }
-      .rail-at-worker { grid-area: worker; }
       .rail-at-converge { grid-area: converge; }
-      .rail-at-endpoint { grid-area: endpoint; }
       .rail-at-upstream { grid-area: upstream; }
       .rail-at-temporal { grid-area: temporal; }
-      .rail-at-kms { grid-area: kms; }
+
+      /* A named area can cover a cell only once, and this connector deliberately lies over both
+         groups of its column, so its lines are numbered instead. */
+      .rail-at-keylink {
+        grid-area: 1 / 3 / 3 / 4;
+      }
 
       /* The answer's journey home leaves the violet: mint is the colour the greeting arrives in.
          One declaration serves the wire and the card, so the two cannot disagree about the phase.
@@ -98,11 +122,13 @@
         --rail-accent: color-mix(in oklab, var(--color-mint) 72%, var(--color-ink));
       }
 
-      /* One fixed size for every card but the endpoint's: three caption items set the height, and
-         the width is the room the rail's content width leaves once the two connector columns are
-         taken. That width carries the 34-character cluster address whole, so the ellipsis protects
-         a longer address rather than being what every deployment shows. Both connectors' viewBoxes
-         are derived from the height, so the two move together. */
+      /* One fixed size for every card: three caption items set the height, and the width is the
+         rail's own --rail-card-width, so a card and the column it stands in cannot disagree. That
+         width carries the 34-character cluster address whole with 9.6px to spare — 312px of card
+         less the 2rem of padding and the 1.6rem mark column leaves 254.4px, against the 244.8px the
+         address sets at text-xs in the mono face. So the ellipsis protects a longer address rather
+         than being what every deployment shows. Every connector's viewBox is derived from this
+         height and the row gap, so the drawing and the cards move together. */
       .rail-station {
         /* The mark's 1em box plus the mono character between the mark and the name, so a name and
            its caption start at the same x. A rem, not an em: the caption is set two steps smaller. */
@@ -116,25 +142,13 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 0.375rem;
-        width: 20rem;
+        width: var(--rail-card-width);
         height: 8rem;
         padding: 1rem;
         border: 1px solid var(--color-hairline);
         border-radius: 0.75rem;
         background-color: var(--color-surface);
         transition: background-color 200ms, border-color 200ms, box-shadow 200ms;
-      }
-
-      /* The one card that grows: both onward wires leave this station, and the column they cross
-         flexes, which only a horizontal wire survives — so each has to meet its own row's centre,
-         y 64 and y 208, well outside the band an 8rem card centred in the grid would cover.
-         Stretching the card puts its right edge across both. Its two converging wires still land
-         on the left edge at y 104 and y 168, which the taller edge still covers. The name and the
-         caption are centred in what the stretch leaves, rather than pinned to its top. */
-      .rail-station-endpoint {
-        align-self: stretch;
-        height: auto;
-        justify-content: center;
       }
 
       /* The lockup's star fills the left of its box, so the shared column would land this caption
@@ -178,15 +192,22 @@
         }
       }
 
-      /* The legs, drawn as SVG so the two converging on the endpoint can slant. Each region is a
-         fixed size, so its SVG carries hard-coded coordinates and nothing is measured at runtime.
-         Keep each viewBox in the same ratio as its column, or the drawing letterboxes away from the
-         cards it points at. pathLength normalises every wire to 100, so the pulse needs nothing from
-         the stretch. The converging region's width is the slant: 56 gives 36°, and at 40 it would
-         reach 45°, where a wire reads as a corner between two cards rather than as a run. */
+      /* The legs, drawn as SVG so the one that changes row can bend. Each region is a fixed size,
+         so its SVG carries hard-coded coordinates and nothing is measured at runtime. Keep each
+         viewBox in the same ratio as its column, or the drawing letterboxes away from the cards it
+         points at. pathLength normalises every wire to 100, so the pulse needs nothing from the
+         stretch, and a curve answers to it exactly as a straight segment does.
+
+         Nothing here takes the pointer: the wires are aria-hidden and the boundary a connector
+         hosts is an annotation, while an svg's own box would swallow every event across its whole
+         column. That box lies over the 17px a neighbouring group overhangs into it — which would
+         leave that strip the one part of a group deaf to its own hover — and, where a connector
+         spans both rows, over the cards inside the groups themselves. One rule for the three of
+         them, rather than a special case on the one that reaches furthest. */
       .rail-connector {
-        position: relative; /* the boundary below is positioned against the upstream leg */
+        position: relative; /* each boundary below is positioned against its own connector */
         align-self: stretch;
+        pointer-events: none;
       }
 
       /* Out of flow, and load-bearing: an svg with a viewBox carries that viewBox's aspect ratio, so
@@ -264,12 +285,11 @@
         }
       }
 
-      /* A boundary rather than a note about one wire: it runs the full height of the region, so it
-         crosses both of the endpoint's onward wires and reads as the line past which nothing is the
-         application's business — the upstream and the key service alike. Line and label are both
-         out of flow, so the boundary costs the diagram no height. An annotation and not a wire, it
-         stays below the wires' 4px stroke and takes the label's own --color-muted, so line and
-         label read as one annotation rather than as another connector. */
+      /* Two boundaries, identical, cutting the rail into three bands: what the developer writes and
+         ships, what the platform runs, and the upstream. Each runs the full height of the connector
+         it sits in and stays out of flow, so a boundary costs the diagram no height. An annotation
+         and not a wire, it stays below the wires' 4px stroke and takes the annotations' own
+         --color-muted, so it reads as a note on the rail rather than as another connector. */
       .rail-marker {
         position: absolute;
         top: 0;
@@ -278,15 +298,72 @@
         border-left: 2px dashed var(--color-muted);
       }
 
-      /* Both rows are occupied to the boundary's right, so the label hangs below them, in the room
-         the scroll band's bottom padding leaves: a note beside a card is read as belonging to it. */
-      .rail-marker-label {
+      /* Three human roles, each around the components it answers for. A group is the grid item and
+         its cards are its children, so the outline contains them rather than lying over them: that
+         is what lets it answer to the pointer while the captions underneath keep the tooltips a
+         layer would have taken. It overhangs its cards on every side, and an outline stays out of
+         the grid's own sizing, so it adds no track and stretches none — but the room that overhang
+         needs is real: the two connector columns, the row gap and the band's inline padding are
+         each sized to hold it. The stroke is thinner and quieter than a boundary's: it surrounds,
+         it does not cut. Stretched, because the grid centres its items and a group has to be as
+         tall as the rows it spans for its cards to land on them. */
+      .rail-persona {
+        position: relative;
+        align-self: stretch;
+        /* The overhang, taken back from the grid: the margin cancels the padding and the border, so
+           the content box is exactly the cell and the cards fall on the rows to the pixel. Taking
+           back 1rem alone would leave the 2px of stroke in the count. */
+        margin: calc(-1rem - 1px);
+        padding: 1rem;
+        border: 1px dashed color-mix(in oklab, var(--color-muted) 55%, transparent);
+        border-radius: 1rem;
+        transition: border-color 150ms;
+      }
+
+      /* A group answers the pointer on a neutral axis — the ink, never an accent. A run paints the
+         cards violet or mint, and a hover that reached for either would read as traffic.
+         Lightening alone would not carry, because a dash is the vocabulary every annotation on the
+         rail is drawn in, the two boundaries included, and a brighter dash is still one of them.
+         Solid takes the group out of that family: it is the only unbroken stroke on the band apart
+         from the cards themselves, which is what names it from the back of a room. The width is
+         untouched, so no geometry moves. Only the colour is in the transition above, so the stroke
+         closes at once while the colour slides — that is the intent, not an omission to fix:
+         border-style does not interpolate, and listing it would buy nothing. */
+      .rail-persona:hover {
+        border-style: solid;
+        border-color: color-mix(in oklab, var(--color-fg) 55%, transparent);
+      }
+
+      .rail-persona:hover .rail-persona-name {
+        color: var(--color-fg);
+      }
+
+      .rail-persona-developer { grid-area: developer; }
+      .rail-persona-platform  { grid-area: platform; }
+      .rail-persona-security  { grid-area: security; }
+
+      /* The group's cards fall on the grid's own rows without the row gap being copied here: the
+         content box is as tall as the two rows and the gutter between them, and space-between puts
+         one card at each end. */
+      .rail-persona-stations {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        list-style: none;
+      }
+
+      /* The name sits astride the stroke, the way a fieldset's legend does: it costs no height, and
+         which outline it belongs to is not open to question. The background is the page's flat
+         field, which is what the stroke crosses. */
+      .rail-persona-name {
         position: absolute;
-        top: calc(100% + 2rem);
-        left: 50%;
-        width: 17rem;
-        transform: translateX(-50%);
-        text-align: center;
+        top: 0;
+        left: 1rem;
+        transform: translateY(-50%);
+        padding-inline: 0.5rem;
+        background-color: var(--color-ink);
+        white-space: nowrap;
       }
 
       /* The component's attributes, indented past the card's mark column so every line starts where
@@ -301,7 +378,10 @@
 
       /* One line per item: wrapping is what is being avoided, not the ellipsis. The cards share one
          fixed height, so an item that wrapped on one deployment and not another would make the
-         geometry a function of the address a cluster resolved. The full text stays in the DOM. */
+         geometry a function of the address a cluster resolved. The full text stays in the DOM, for
+         anything reading the page aloud and for nothing else: a projector hovers nothing, so an
+         item worth reading has to fit, and a fallback an audience cannot reach never served the
+         room. The pointer on the rail carries the group's tip instead. */
       .rail-detail li {
         overflow: hidden;
         text-overflow: ellipsis;
@@ -312,16 +392,41 @@
          than stacking into a reading-order list, and it starts at the left. */
       .rail-scroll {
         overflow-x: auto;
-        /* An axis beside overflow-x: auto cannot stay visible. The padding is the room the clip
-           would otherwise cut: at the top a lit card's halo, whose dwell ring reaches 14px, and at
-           the bottom that same halo plus the boundary's label hanging under the rows. The bottom
-           holds more than the label measures, because its line box is only measurable once the
-           webfont has loaded, and a fallback's metrics can make it taller: nothing scrolls back
-           what this axis clips. */
+        /* An axis beside overflow-x: auto cannot stay visible, so the block padding is the room
+           the clip would otherwise cut. At the bottom that is a group's outline, 17px under the
+           last card and so past the 14px a lit card's dwell ring reaches. At the top it is that
+           group's name chip — sized for the chip a fallback face would set, not for the one
+           measured here. The chip is seated on a line box, and a line box is only measurable once
+           the webfont has arrived; a fallback whose metrics run taller lifts the chip into whatever
+           slack is left, and this axis scrolls nothing back. So the top holds 8.5px of clearance
+           above the measured chip deliberately: that margin is the value's reason and not spare
+           room to reclaim. The inline padding is the leftmost outline's own overhang, 1rem of a
+           group's padding and its 1px of stroke; a pixel short of it and this axis would cut the
+           stroke off rather than scroll to it, since only the trailing edge of an axis scrolls. */
         overflow-y: hidden;
-        padding-block: 1rem 3.5rem;
+        padding-block: 2rem 1.5rem;
+        padding-inline: calc(1rem + 1px);
         scrollbar-width: thin;
         scrollbar-color: var(--color-hairline) transparent;
+      }
+
+      /* Fixed, out of the rail's band and out of the flow: it follows the pointer without moving
+         anything. Its width is declared here and read back by the script, which keeps the bubble
+         off the edges without having to measure anything. It never takes the pointer, or it would
+         land under it and flicker. The role and the prose are two blocks a gap apart, the way a
+         card holds its name and its caption, rather than a margin hung on one of them. */
+      .rail-tip {
+        position: fixed;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+        width: 20rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--color-hairline);
+        border-radius: 0.75rem;
+        background-color: var(--color-surface);
+        pointer-events: none;
       }
 
       .inline-mark {
@@ -341,6 +446,12 @@
       /* The markup carries no space after the mark: this margin is the space. */
       .rail-name .inline-mark {
         margin-right: calc(var(--rail-mark-column) - 1em);
+      }
+
+      /* Same convention on a persona's name, which has no caption under it to line up with, so the
+         gap is a plain one rather than a shared column. */
+      .rail-persona-name .inline-mark {
+        margin-right: 0.4em;
       }
 
       /* Its height is in em, so the name stays as tall as the other three. Two offsets, each doing
@@ -511,6 +622,7 @@
 
       /* Every state change survives; only the travel and the glow stop. */
       @media (prefers-reduced-motion: reduce) {
+        .rail-persona,
         .rail-station,
         .rail-path {
           transition: none;
@@ -564,8 +676,8 @@
       <symbol id="kubernetes-mark" viewBox="0 0 24 24">
         <path d="M10.204 14.35l.007.01-.999 2.413a5.171 5.171 0 0 1-2.075-2.597l2.578-.437.004.005a.44.44 0 0 1 .484.606zm-.833-2.129a.44.44 0 0 0 .173-.756l.002-.011L7.585 9.7a5.143 5.143 0 0 0-.73 3.255l2.514-.725.002-.009zm1.145-1.98a.44.44 0 0 0 .699-.337l.01-.005.15-2.62a5.144 5.144 0 0 0-3.01 1.442l2.147 1.523.004-.002zm.76 2.75l.723.349.722-.347.18-.78-.5-.623h-.804l-.5.623.179.779zm1.5-3.095a.44.44 0 0 0 .7.336l.008.003 2.134-1.513a5.188 5.188 0 0 0-2.992-1.442l.148 2.615.002.001zm10.876 5.97l-5.773 7.181a1.6 1.6 0 0 1-1.248.594l-9.261.003a1.6 1.6 0 0 1-1.247-.596l-5.776-7.18a1.583 1.583 0 0 1-.307-1.34L2.1 5.573c.108-.47.425-.864.863-1.073L11.305.513a1.606 1.606 0 0 1 1.385 0l8.345 3.985c.438.209.755.604.863 1.073l2.062 8.955c.108.47-.005.963-.308 1.34zm-3.289-2.057c-.042-.01-.103-.026-.145-.034-.174-.033-.315-.025-.479-.038-.35-.037-.638-.067-.895-.148-.105-.04-.18-.165-.216-.216l-.201-.059a6.45 6.45 0 0 0-.105-2.332 6.465 6.465 0 0 0-.936-2.163c.052-.047.15-.133.177-.159.008-.09.001-.183.094-.282.197-.185.444-.338.743-.522.142-.084.273-.137.415-.242.032-.024.076-.062.11-.089.24-.191.295-.52.123-.736-.172-.216-.506-.236-.745-.045-.034.027-.08.062-.111.088-.134.116-.217.23-.33.35-.246.25-.45.458-.673.609-.097.056-.239.037-.303.033l-.19.135a6.545 6.545 0 0 0-4.146-2.003l-.012-.223c-.065-.062-.143-.115-.163-.25-.022-.268.015-.557.057-.905.023-.163.061-.298.068-.475.001-.04-.001-.099-.001-.142 0-.306-.224-.555-.5-.555-.275 0-.499.249-.499.555l.001.014c0 .041-.002.092 0 .128.006.177.044.312.067.475.042.348.078.637.056.906a.545.545 0 0 1-.162.258l-.012.211a6.424 6.424 0 0 0-4.166 2.003 8.373 8.373 0 0 1-.18-.128c-.09.012-.18.04-.297-.029-.223-.15-.427-.358-.673-.608-.113-.12-.195-.234-.329-.349-.03-.026-.077-.062-.111-.088a.594.594 0 0 0-.348-.132.481.481 0 0 0-.398.176c-.172.216-.117.546.123.737l.007.005.104.083c.142.105.272.159.414.242.299.185.546.338.743.522.076.082.09.226.1.288l.16.143a6.462 6.462 0 0 0-1.02 4.506l-.208.06c-.055.072-.133.184-.215.217-.257.081-.546.11-.895.147-.164.014-.305.006-.48.039-.037.007-.09.02-.133.03l-.004.002-.007.002c-.295.071-.484.342-.423.608.061.267.349.429.645.365l.007-.001.01-.003.129-.029c.17-.046.294-.113.448-.172.33-.118.604-.217.87-.256.112-.009.23.069.288.101l.217-.037a6.5 6.5 0 0 0 2.88 3.596l-.09.218c.033.084.069.199.044.282-.097.252-.263.517-.452.813-.091.136-.185.242-.268.399-.02.037-.045.095-.064.134-.128.275-.034.591.213.71.248.12.556-.007.69-.282v-.002c.02-.039.046-.09.062-.127.07-.162.094-.301.144-.458.132-.332.205-.68.387-.897.05-.06.13-.082.215-.105l.113-.205a6.453 6.453 0 0 0 4.609.012l.106.192c.086.028.18.042.256.155.136.232.229.507.342.84.05.156.074.295.145.457.016.037.043.09.062.129.133.276.442.402.69.282.247-.118.341-.435.213-.71-.02-.039-.045-.096-.065-.134-.083-.156-.177-.261-.268-.398-.19-.296-.346-.541-.443-.793-.04-.13.007-.21.038-.294-.018-.022-.059-.144-.083-.202a6.499 6.499 0 0 0 2.88-3.622c.064.01.176.03.213.038.075-.05.144-.114.28-.104.266.039.54.138.87.256.154.06.277.128.448.173.036.01.088.019.13.028l.009.003.007.001c.297.064.584-.098.645-.365.06-.266-.128-.537-.423-.608zM16.4 9.701l-1.95 1.746v.005a.44.44 0 0 0 .173.757l.003.01 2.526.728a5.199 5.199 0 0 0-.108-1.674A5.208 5.208 0 0 0 16.4 9.7zm-4.013 5.325a.437.437 0 0 0-.404-.232.44.44 0 0 0-.372.233h-.002l-1.268 2.292a5.164 5.164 0 0 0 3.326.003l-1.27-2.296h-.01zm1.888-1.293a.44.44 0 0 0-.27.036.44.44 0 0 0-.214.572l-.003.004 1.01 2.438a5.15 5.15 0 0 0 2.081-2.615l-2.6-.44-.004.005z" />
       </symbol>
-      <!-- arrow-right and loader-circle from Lucide (ISC): lucide.dev/icons/arrow-right
-           and lucide.dev/icons/loader-circle -->
+      <!-- arrow-right, loader-circle, code, server and key-round from Lucide (ISC):
+           lucide.dev/icons/arrow-right, /loader-circle, /code, /server and /key-round -->
       <symbol id="arrow-right-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
         <path d="M5 12h14" />
@@ -574,6 +686,23 @@
       <symbol id="loader-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+      </symbol>
+      <symbol id="developer-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+        <path d="m16 18 6-6-6-6" />
+        <path d="m8 6-6 6 6 6" />
+      </symbol>
+      <symbol id="platform-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+        <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
+        <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
+        <path d="M6 6h.01" />
+        <path d="M6 18h.01" />
+      </symbol>
+      <symbol id="security-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+        <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
       </symbol>
     </svg>
 
@@ -661,45 +790,71 @@
         aria-label="The path a request takes through the stack"
       >
         <ol class="rail">
+          <!-- Each group names a role and then holds the components it answers for, so the reading
+               order names an owner before what it owns. An <li> cannot nest an <li>, so the cards
+               are a list of their own inside the group. -->
           <li
-            class="rail-station rail-at-application"
-            :class="stationClass('application')"
+            class="rail-persona rail-persona-developer"
+            @mousemove="showTip($event, $el)"
+            @mouseleave="hideTip()"
           >
-            <p class="rail-name font-mono text-sm text-fg lg:text-base">
-              <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
-              >application
-            </p>
+            <span class="rail-persona-name font-mono text-xs text-muted">
+              <svg class="inline-mark" aria-hidden="true"><use href="#developer-mark" /></svg
+              >developer
+            </span>
+            <!-- What the role answers for, written once: the tip reads it off this element, so the
+                 string lives in a single place, and a screen reader reads it too, where the effect
+                 it drives is the pointer's alone. -->
+            <span class="sr-only rail-persona-note">
+              Writes the application and the Worker. Holds no credentials for what serves the
+              endpoint, seals no payloads, and would not change a line if the destination were
+              self-hosted.
+            </span>
             <!-- role="list" survives list-style: none, which Safari otherwise takes as a cue to
-                 stop announcing the list at all. -->
-            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
-              <li>{{ .Address }}</li>
-              <li>plaintext</li>
-              <li>namespace "{{ .Namespace }}"</li>
-            </ul>
-          </li>
+                 stop announcing the list at all. Every list on the rail carries it for that. -->
+            <ul class="rail-persona-stations" role="list">
+              <li class="rail-station" :class="stationClass('application')">
+                <p class="rail-name font-mono text-sm text-fg lg:text-base">
+                  <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
+                  >application
+                </p>
+                <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+                  <li>{{ .Address }}</li>
+                  <li>plaintext</li>
+                  <li>namespace "{{ .Namespace }}"</li>
+                </ul>
+              </li>
 
-          <li class="rail-station rail-at-worker" :class="stationClass('worker')">
-            <p class="rail-name font-mono text-sm text-fg lg:text-base">
-              <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
-              >worker
-            </p>
-            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
-              <li>{{ .Address }}</li>
-              <li>plaintext</li>
-              <li>namespace "{{ .Namespace }}"</li>
+              <li class="rail-station" :class="stationClass('worker')">
+                <p class="rail-name font-mono text-sm text-fg lg:text-base">
+                  <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
+                  >worker
+                </p>
+                <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+                  <li>{{ .Address }}</li>
+                  <li>plaintext</li>
+                  <li>namespace "{{ .Namespace }}"</li>
+                </ul>
+              </li>
             </ul>
           </li>
 
           <!-- Wires of their own that never meet: each phase lights exactly one path, so a lit wire
                always says whose traffic is on it. -->
           <li class="rail-connector rail-at-converge">
-            <svg viewBox="0 0 56 272" aria-hidden="true">
+            <svg viewBox="0 0 72 304" aria-hidden="true">
               <!-- Each wire declared once and drawn twice: the shaft that is always there, and the
-                   pulse that travels it. pathLength normalises every wire to 100. The box is the two
-                   card rows and the gap between them, so the ends sit on the cards' own centres. -->
+                   pulse that travels it. pathLength normalises every wire to 100, on a curve as on
+                   a segment. The box is the two card rows and the gap between them, so each wire
+                   leaves its own client's centre, y 64 and y 240. The application runs straight
+                   across to the endpoint's centre; the worker climbs a row, on a cubic held
+                   horizontal at both ends so that the leg reads as a run rather than as a corner.
+                   The two land 36px apart on the same edge, y 64 and y 100, rather than together:
+                   both curves finish horizontal, so a shared landing would lay one wire over the
+                   other for its last stretch, and a lit wire has to say whose traffic is on it. -->
               <defs>
-                <path id="rail-wire-application" pathLength="100" d="M0 64 56 104" />
-                <path id="rail-wire-worker" pathLength="100" d="M0 208 56 168" />
+                <path id="rail-wire-application" pathLength="100" d="M0 64 72 64" />
+                <path id="rail-wire-worker" pathLength="100" d="M0 240 C36 240 36 100 72 100" />
               </defs>
               <g :class="legClass('application')">
                 <use class="rail-path" href="#rail-wire-application" />
@@ -710,45 +865,101 @@
                 <use class="rail-pulse" href="#rail-wire-worker" />
               </g>
             </svg>
+            <span class="rail-marker" aria-hidden="true"></span>
           </li>
 
-          <li
-            class="rail-station rail-station-endpoint rail-at-endpoint"
-            :class="stationClass('proxy')"
-          >
-            <p class="rail-name font-mono text-sm text-fg lg:text-base">
-              <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
-              >temporal-proxy
-            </p>
-            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
-              <li>one endpoint</li>
-              <li>authentication happens here</li>
-              <li>payloads are sealed here</li>
-            </ul>
-          </li>
-
-          <li class="rail-connector rail-at-upstream">
-            <svg viewBox="0 0 48 272" preserveAspectRatio="none" aria-hidden="true">
-              <!-- Both of the wires that leave the endpoint, declared in the box they are drawn
-                   against: each answers to this viewBox and to its x-only stretch, and each sits on
-                   its own row's centre rather than on the box's. -->
+          <!-- The endpoint and the key service share a column, so their leg is a plain drop across
+               the row gap. Its box is that column over both rows, which the 19.5rem card and the
+               304px of rail put in the viewBox's own ratio, so nothing letterboxes. The drop is
+               pushed as far right as the two edges it meets allow. What stops it is the corner
+               radius rather than the card's width: a card rounds at 0.75rem, so the edges are only
+               straight out to x 300, and the wire's own outer edge sits 2px past its axis. The
+               margin is one more radius, so that the wire meets straight edge and not the start of
+               a curve — 312 less the radius, less that radius again, less the half stroke, which
+               puts the outer edge at 288 with 12px of straight edge to spare. It clears the group's
+               name chip, which runs from x 0 to x 155, as a consequence. -->
+          <li class="rail-connector rail-at-keylink">
+            <svg viewBox="0 0 312 304" aria-hidden="true">
               <defs>
-                <path id="rail-wire-temporal" pathLength="100" d="M0 64 48 64" />
-                <path id="rail-wire-kms" pathLength="100" d="M0 208 48 208" />
+                <path id="rail-wire-kms" pathLength="100" d="M286 128 286 176" />
               </defs>
-              <g :class="legClass('temporal')">
-                <use class="rail-path" href="#rail-wire-temporal" />
-                <use class="rail-pulse" href="#rail-wire-temporal" />
-              </g>
               <g :class="legClass('kms')">
                 <use class="rail-path" href="#rail-wire-kms" />
                 <use class="rail-pulse" href="#rail-wire-kms" />
               </g>
             </svg>
-            <span class="rail-marker" aria-hidden="true"></span>
-            <span class="rail-marker-label font-mono text-[0.7rem] leading-snug text-muted">
-              the application's knowledge ends here
+          </li>
+
+          <li
+            class="rail-persona rail-persona-platform"
+            @mousemove="showTip($event, $el)"
+            @mouseleave="hideTip()"
+          >
+            <span class="rail-persona-name font-mono text-xs text-muted">
+              <svg class="inline-mark" aria-hidden="true"><use href="#platform-mark" /></svg
+              >platform operator
             </span>
+            <span class="sr-only rail-persona-note">
+              Runs temporal-proxy and owns its configuration. One component decides where every
+              Namespace in the org lands, and what it takes to get there.
+            </span>
+            <ul class="rail-persona-stations" role="list">
+              <li class="rail-station" :class="stationClass('proxy')">
+                <p class="rail-name font-mono text-sm text-fg lg:text-base">
+                  <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
+                  >temporal-proxy
+                </p>
+                <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+                  <li>one endpoint</li>
+                  <li>authentication happens here</li>
+                  <li>payloads are sealed here</li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+
+          <li
+            class="rail-persona rail-persona-security"
+            @mousemove="showTip($event, $el)"
+            @mouseleave="hideTip()"
+          >
+            <span class="rail-persona-name font-mono text-xs text-muted">
+              <svg class="inline-mark" aria-hidden="true"><use href="#security-mark" /></svg
+              >security operator
+            </span>
+            <span class="sr-only rail-persona-note">
+              Owns the keys payloads are sealed with. Runs the kms extension, or points
+              temporal-proxy at the key service already in use.
+            </span>
+            <ul class="rail-persona-stations" role="list">
+              <li class="rail-station" :class="stationClass('kms')">
+                <p class="rail-name font-mono text-sm text-fg lg:text-base">
+                  <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
+                  >kms
+                </p>
+                <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
+                  <li>the platform's key store</li>
+                  <li>temporal-proxy extension</li>
+                  <li>derives one key per namespace</li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+
+          <li class="rail-connector rail-at-upstream">
+            <svg viewBox="0 0 48 304" preserveAspectRatio="none" aria-hidden="true">
+              <!-- The one wire that leaves the cluster, declared in the box it is drawn against: it
+                   answers to this viewBox and to its x-only stretch, and it sits on the endpoint's
+                   own row rather than on the box's centre. -->
+              <defs>
+                <path id="rail-wire-temporal" pathLength="100" d="M0 64 48 64" />
+              </defs>
+              <g :class="legClass('temporal')">
+                <use class="rail-path" href="#rail-wire-temporal" />
+                <use class="rail-pulse" href="#rail-wire-temporal" />
+              </g>
+            </svg>
+            <span class="rail-marker" aria-hidden="true"></span>
           </li>
 
           <li
@@ -780,17 +991,6 @@
             <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
               <li>unknown to the app</li>
               <li>namespace set by temporal-proxy</li>
-            </ul>
-          </li>
-
-          <li class="rail-station rail-at-kms" :class="stationClass('kms')">
-            <p class="rail-name font-mono text-sm text-fg lg:text-base">
-              <svg class="inline-mark" aria-hidden="true"><use href="#kubernetes-mark" /></svg
-              >kms
-            </p>
-            <ul class="rail-detail font-mono text-xs leading-relaxed text-muted" role="list">
-              <li>temporal-proxy extension</li>
-              <li>derives one key per namespace</li>
             </ul>
           </li>
         </ol>
@@ -855,6 +1055,26 @@
           <p class="max-w-3xl text-sm text-muted lg:text-base" x-text="error.hint"></p>
         </div>
       </section>
+
+      <!-- What the group under the pointer answers for. One element for the three of them, and
+           outside the scroll band, whose overflow would otherwise clip it. Everything it shows —
+           the role's name, the symbol beside it, the prose — is read off the group, so nothing the
+           rail already carries is written a second time here. -->
+      <div
+        class="rail-tip"
+        x-show="tip"
+        x-cloak
+        :style="{ left: tipX + 'px', top: tipY + 'px' }"
+        aria-hidden="true"
+      >
+        <!-- The chip's own setting, in full ink: on the rail the role is a label laid across a
+             stroke, and here it is the tip's title. -->
+        <p class="font-mono text-xs text-fg">
+          <svg class="inline-mark" aria-hidden="true"><use :href="tipMark" /></svg>
+          <span x-text="tipName"></span>
+        </p>
+        <p class="font-sans text-sm leading-relaxed text-fg" x-text="tip"></p>
+      </div>
     </main>
 
     <script>
@@ -903,6 +1123,14 @@
       const NO_RESULT = { greeting: "", workflowId: "" };
       const NO_ERROR = { title: "", hint: "" };
 
+      // The box the tip occupies, in pixels. The width restates the stylesheet's, which .rail-tip's
+      // own comment says from its side; the height is a ceiling reserved for the turn away from an
+      // edge, not a constraint placed on the element, and it covers the role's line and the longest
+      // of the three notes, rounded up.
+      const TIP_WIDTH = 320;
+      const TIP_HEIGHT = 160;
+      const TIP_GAP = 16;
+
       // The hop between two neighbouring stations: the leg it crosses is whichever end is not the
       // endpoint. It carries the phase it belongs to, so the rail reads a colour off the hop itself.
       function hop(from, to, phase) {
@@ -925,6 +1153,11 @@
           result: NO_RESULT,
           durationMs: 0, // the round trip, timed around the fetch
           error: NO_ERROR,
+          tip: "", // the prose of the group under the pointer, empty when it is over none of them
+          tipName: "", // the role's name, read back off that group's chip
+          tipMark: "", // the symbol that chip carries
+          tipX: 0,
+          tipY: 0,
 
           // A blank field is not a name: "" and "   " are refused alike. The button, the required
           // field and run() all answer to this one rule.
@@ -1073,14 +1306,33 @@
             }
             return classes;
           },
+
+          // The tip sits below and to the right of the pointer, and turns back rather than leaving
+          // the viewport. Its box is declared and not measured: the width comes from the stylesheet
+          // and the height is the room the role's line and the longest of the three notes take,
+          // rounded up.
+          //
+          // The name, the symbol and the prose are all read off the group, which is what keeps the
+          // tip from holding a second copy of any of them. The chip and the note are written over
+          // several lines in the markup, so the source's newlines and indentation sit inside those
+          // strings rather than at their ends, which is all trim() reaches. Flow text hides it —
+          // CSS collapses whitespace — but the string is wrong for anything that is not flow text.
+          showTip(event, group) {
+            const chip = group.querySelector(".rail-persona-name");
+            this.tipName = chip.textContent.replace(/\s+/g, " ").trim();
+            this.tipMark = chip.querySelector("use").getAttribute("href");
+            this.tip = group.querySelector(".rail-persona-note").textContent.replace(/\s+/g, " ").trim();
+            this.tipX = Math.min(event.clientX + TIP_GAP, window.innerWidth - TIP_WIDTH - TIP_GAP);
+            this.tipY = Math.min(event.clientY + TIP_GAP, window.innerHeight - TIP_HEIGHT - TIP_GAP);
+          },
+
+          hideTip() {
+            this.tip = "";
+            this.tipName = "";
+            this.tipMark = "";
+          },
         }));
       });
-
-      // A caption item is cut with an ellipsis when it does not fit, so each carries its own text as
-      // a title. Reading it off the element keeps a second copy out of the markup.
-      for (const item of document.querySelectorAll(".rail-detail li")) {
-        item.title = item.textContent.trim();
-      }
     </script>
   </body>
 </html>
