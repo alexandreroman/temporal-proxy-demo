@@ -247,8 +247,8 @@ and the rewrite from `demo` to the fully-qualified Cloud Namespace.
 which upstream serves it — picking an upstream is not something the
 application can do.
 
-The page renders those same two values and names no upstream at all —
-naming one is precisely what the application cannot do.
+The page renders only the short Namespace name and names no upstream at
+all — naming one is precisely what the application cannot do.
 
 The short name is `demo` rather than `default` because one
 temporal-proxy fronts several applications, so the name each one asks
