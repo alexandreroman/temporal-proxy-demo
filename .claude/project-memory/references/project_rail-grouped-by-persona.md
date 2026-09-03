@@ -1,6 +1,6 @@
 ---
 name: "The rail is grouped by persona"
-description: "Three groups naming the role that answers for each component, the upstream that belongs to none, the unlabelled boundaries, the lengths sized for the groups' overhang, and what the pointer reveals"
+description: "Three groups naming the role that answers for each component, the upstream that belongs to none, the lengths sized for the groups' overhang, and what the pointer reveals"
 type: project
 ---
 
@@ -21,12 +21,13 @@ line the diagram exists to draw: everything inside a
 dashed box is somebody's to run, and the thing beyond
 them is not.
 
-Two identical dashed boundaries cut the rail into
-three bands, one before the endpoint and one before
-the upstream. **Neither carries a label.** The chips
-already say who owns what, and a legend under the rail
-costs vertical room in the one budget that has none to
-spare.
+**The groups are the only division the rail draws.**
+An outline around what somebody runs says where a
+limit falls and who it belongs to in one mark; a
+separate rule between the bands says the first half of
+that and repeats what the outlines already show. The
+chips carry no legend under the rail either — the one
+budget the page has none of is vertical.
 
 ## A group contains its cards
 
@@ -55,24 +56,25 @@ exactly.
 ## What the overhang costs
 
 A group overhangs its cards by 17px: 1rem of padding
-and the 1px of its own stroke. Four lengths answer to
-that number and move together — change it and
-re-derive them all:
+and the 1px of its own stroke. **A connector column's
+width is what holds two groups apart**, so four
+lengths answer to that number and move together —
+change it and re-derive them all:
 
 - the scroll band's inline padding, which is the same
   17px, because `overflow-x: auto` makes only
   *trailing* overflow scrollable: a leading pixel is
   clipped, and the leading pixel here is the border
-  itself;
-- the column the client wires cross, 72px, which
-  carries an overhang on each side of its boundary and
-  leaves 19px of air either way;
+  itself. The leftmost group has no column to its
+  left, so the band's padding is what pays for it;
+- the column the client wires cross, 72px, carrying an
+  overhang from each side and leaving 38px between the
+  two outlines;
 - the upstream column, 62px, with an overhang on one
-  side only — the upstream card is bare — so its
-  boundary sits 14px from the group and 31px from the
-  card;
+  side only — the upstream card is bare — leaving
+  45px, and 39px at its `3.5rem` floor;
 - the row gap, 48px, which two groups overhang from
-  opposite sides, leaving 14px between their borders.
+  opposite sides, leaving 14px between their outlines.
 
 **The row gap is a floor, not comfort**, and the link
 to the key service crosses both borders in it.
@@ -96,11 +98,10 @@ mint, and a highlight reaching for either would read
 as traffic.
 
 **The border closes to a solid stroke**, which is what
-carries from the back of a room. A dash is the
-vocabulary every annotation on the rail is drawn in,
-the two boundaries included, so a brighter dash is
-still one of the family; a hovered group is the band's
-only unbroken stroke apart from the cards themselves.
+carries from the back of a room. The three groups are
+drawn in one dashed hand, so a brighter dash is still
+one of the three; a hovered group is the band's only
+unbroken stroke apart from the cards themselves.
 Only the colour transitions — `border-style` does not
 interpolate, so listing it beside the colour would
 suggest a smoothness that cannot exist.
@@ -121,8 +122,7 @@ including the strip a neighbouring group overhangs
 into it, which would leave that strip the one part of
 a group deaf to its own hover. Nothing in a connector
 is clickable — its wires are hidden from assistive
-technology and the boundary it hosts is an annotation
-— so one rule covers all three.
+technology — so one rule covers all three.
 
 The bubble is `position: fixed`, outside the scroll
 band so its overflow cannot clip it, and it never
@@ -149,9 +149,10 @@ without costing the rail a line of vertical room.
 
 **How to apply:** add a component to the group of
 whoever answers for it, or to none if nobody in the
-org does. Keep the boundaries unlabelled. Before
-changing the overhang, re-derive the four lengths
-above together, and check the result at 1440×950 — see
+org does, and let the outlines be the only division
+the rail draws. Before changing the overhang,
+re-derive the four lengths above together, and check
+the result at 1440×950 — see
 [Verifying a page change means rendering the
 template](feedback_verifying-a-page-change.md) and
 [The diagram is cards joined by static SVG

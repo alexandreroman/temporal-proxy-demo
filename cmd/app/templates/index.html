@@ -53,14 +53,14 @@
 
       /* The rail: the real topology, always left to right. Both clients dial the same endpoint,
          and only that endpoint reaches further — to the upstream, and to the service that holds the
-         key its payloads are sealed with. Two boundaries cut the run into three bands: what the
-         developer writes and ships, what the platform runs, and the upstream.
+         key its payloads are sealed with. The groups say who answers for what: what the developer
+         writes and ships, what the platform runs, and the upstream, which is in no group at all.
 
-             application ─────╮  ╎
-                              ├──╎──► temporal-proxy ──╎──► Temporal
-             worker ──────────╯  ╎          │          ╎
-                                 ╎          ▼          ╎
-                                 ╎         kms         ╎
+             application ─────╮
+                              ├──► temporal-proxy ──► Temporal
+             worker ──────────╯           │
+                                          ▼
+                                         kms
 
          A leg carries traffic both ways over one run, so the wires claim no direction — the pulse
          says which way. The upstream column is the only one that flexes: it is stretched on x alone
@@ -82,13 +82,14 @@
         grid-template-areas:
           "developer converge platform upstream temporal"
           "developer converge security upstream .";
-        /* The connector columns are what the groups' overhang is paid out of. At the projected
-           viewport the band is 1104px, and the three card columns take 936 of it. A group's outline
-           hangs 17px past its cell — 1rem of padding and its own 1px of stroke — and each connector
-           carries that overhang on either side of its boundary, plus the clear air before the
-           stroke — except to the right of the upstream boundary, where the Temporal card stands
-           bare. So converge is 2 x 17 + 2 x 19, upstream's floor is 17 + 19 + 20, and the band's
-           own inline padding pays for the leftmost overhang. */
+        /* A connector column is what holds two groups apart. At the projected viewport the band is
+           1104px and the three card columns take 936 of it. A group's outline hangs 17px past its
+           cell — 1rem of padding and its own 1px of stroke — so a connector is sized for two of
+           those overhangs to clear each other with air left between them: converge's 72px leave 38
+           between the two strokes, and upstream's 62 leave 45 between the centre group and the
+           Temporal card, which carries no outline to hang. At the narrowest the band goes,
+           upstream's 56px floor still leaves 39. The scroll band's own inline padding pays for the
+           leftmost overhang, which has no column to its left. */
         grid-template-columns:
           var(--rail-card-width) 4.5rem var(--rail-card-width) minmax(3.5rem, 1fr) var(--rail-card-width);
         grid-template-rows: repeat(2, 1fr);
@@ -198,14 +199,14 @@
          points at. pathLength normalises every wire to 100, so the pulse needs nothing from the
          stretch, and a curve answers to it exactly as a straight segment does.
 
-         Nothing here takes the pointer: the wires are aria-hidden and the boundary a connector
-         hosts is an annotation, while an svg's own box would swallow every event across its whole
-         column. That box lies over the 17px a neighbouring group overhangs into it — which would
-         leave that strip the one part of a group deaf to its own hover — and, where a connector
-         spans both rows, over the cards inside the groups themselves. One rule for the three of
-         them, rather than a special case on the one that reaches furthest. */
+         Nothing here takes the pointer: the wires are aria-hidden, and an svg's own box would
+         otherwise swallow every event across its whole column. That box lies over the 17px a
+         neighbouring group overhangs into it — which would leave that strip the one part of a group
+         deaf to its own hover — and, where a connector spans both rows, over the cards inside the
+         groups themselves. One rule for the three of them, rather than a special case on the one
+         that reaches furthest. */
       .rail-connector {
-        position: relative; /* each boundary below is positioned against its own connector */
+        position: relative; /* the containing block the svg below is taken out of flow against */
         align-self: stretch;
         pointer-events: none;
       }
@@ -285,27 +286,14 @@
         }
       }
 
-      /* Two boundaries, identical, cutting the rail into three bands: what the developer writes and
-         ships, what the platform runs, and the upstream. Each runs the full height of the connector
-         it sits in and stays out of flow, so a boundary costs the diagram no height. An annotation
-         and not a wire, it stays below the wires' 4px stroke and takes the annotations' own
-         --color-muted, so it reads as a note on the rail rather than as another connector. */
-      .rail-marker {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 50%;
-        border-left: 2px dashed var(--color-muted);
-      }
-
       /* Three human roles, each around the components it answers for. A group is the grid item and
          its cards are its children, so the outline contains them rather than lying over them: that
-         is what lets it answer to the pointer while the captions underneath keep the tooltips a
-         layer would have taken. It overhangs its cards on every side, and an outline stays out of
+         is what lets it answer to the pointer at all, which a layer laid across the cards would
+         have taken instead. It overhangs its cards on every side, and an outline stays out of
          the grid's own sizing, so it adds no track and stretches none — but the room that overhang
          needs is real: the two connector columns, the row gap and the band's inline padding are
-         each sized to hold it. The stroke is thinner and quieter than a boundary's: it surrounds,
-         it does not cut. Stretched, because the grid centres its items and a group has to be as
+         each sized to hold it. The stroke is a dash and a quiet one: it names an owner, it does not
+         draw a component. Stretched, because the grid centres its items and a group has to be as
          tall as the rows it spans for its cards to land on them. */
       .rail-persona {
         position: relative;
@@ -322,10 +310,10 @@
 
       /* A group answers the pointer on a neutral axis — the ink, never an accent. A run paints the
          cards violet or mint, and a hover that reached for either would read as traffic.
-         Lightening alone would not carry, because a dash is the vocabulary every annotation on the
-         rail is drawn in, the two boundaries included, and a brighter dash is still one of them.
-         Solid takes the group out of that family: it is the only unbroken stroke on the band apart
-         from the cards themselves, which is what names it from the back of a room. The width is
+         Lightening alone would not carry, because a dash is what all three groups are drawn in, and
+         a brighter dash is still one of the three. Solid takes the hovered group out of that
+         family: it is the only unbroken stroke on the band apart from the cards themselves, which
+         is what names it from the back of a room. The width is
          untouched, so no geometry moves. Only the colour is in the transition above, so the stroke
          closes at once while the colour slides — that is the intent, not an omission to fix:
          border-style does not interpolate, and listing it would buy nothing. */
@@ -865,7 +853,6 @@
                 <use class="rail-pulse" href="#rail-wire-worker" />
               </g>
             </svg>
-            <span class="rail-marker" aria-hidden="true"></span>
           </li>
 
           <!-- The endpoint and the key service share a column, so their leg is a plain drop across
@@ -959,7 +946,6 @@
                 <use class="rail-pulse" href="#rail-wire-temporal" />
               </g>
             </svg>
-            <span class="rail-marker" aria-hidden="true"></span>
           </li>
 
           <li
