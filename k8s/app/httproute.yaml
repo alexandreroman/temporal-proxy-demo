@@ -1,6 +1,4 @@
-# The only thing this cluster exposes. Traefik's port is the single
-# published port, and this is the only route behind it, fronting the
-# API.
+# Traefik's port is the single published port, and this route fronts the API.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

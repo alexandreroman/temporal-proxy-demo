@@ -75,8 +75,11 @@ volumeMounts:
 
 config:
   routing:
-    default: cloud   # Namespaced requests
-    system: cloud    # Namespace-less requests, e.g. GetSystemInfo on connect
+    # This one key selects the upstream: write `selfhosted` in place of
+    # `cloud`, run `make apply`, and nothing else moves. `system`, which
+    # would take the Namespace-less requests on its own, is omitted, so
+    # those follow `default` too.
+    default: cloud
   upstreams:
     - name: cloud
       # ${VAR} references stay literal here and in the ConfigMap built
@@ -103,6 +106,14 @@ config:
           overrides:
             - local: demo
               remote: ${TEMPORAL_CLOUD_NAMESPACE}.${TEMPORAL_ACCOUNT}
+
+    # No `tls`, because this endpoint is dialled in plaintext inside the
+    # cluster, and no `namespaces.rules`, because the Service registers the
+    # Namespace under `demo`, the very name the application asks for — the
+    # local name and the remote name are the same string, so there is nothing
+    # to rewrite. The Cloud upstream above needs both.
+    - name: selfhosted
+      hostPort: temporal.temporal:7233
 
   # The key management backend. temporal-proxy builds this connection when
   # it builds its key policies, so an unreadable ca file fails startup

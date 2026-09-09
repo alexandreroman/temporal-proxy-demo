@@ -1,0 +1,64 @@
+# The demo's second upstream: a whole Temporal Service in one container,
+# the dev server the Temporal CLI ships. Nothing is persisted — the dev
+# server holds its state in memory — so every restart starts from an empty
+# Namespace, which is what makes this container disposable.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal
+spec:
+  selector:
+    matchLabels:
+      app: temporal
+  template:
+    metadata:
+      labels:
+        app: temporal
+    spec:
+      # The dev server never calls the Kubernetes API.
+      automountServiceAccountToken: false
+      containers:
+        - name: temporal
+          # Pinned like every other version here. This tag carries CLI 1.8.3,
+          # Server 1.31.2 and Web UI 2.50.1.
+          image: temporalio/temporal:1.8.3
+          # The image already entrypoints on the temporal CLI, so the
+          # arguments are all this container needs.
+          args:
+            - server
+            - start-dev
+            # The dev server binds localhost by default, which answers
+            # nothing from outside the pod. `--ui-ip` follows `--ip`, so the
+            # Web UI needs no flag of its own.
+            - --ip=0.0.0.0
+            # Creates, at startup, the short Namespace name the application
+            # asks for: only `default` is created on its own.
+            - --namespace=demo
+            # The demo makes no outbound calls of its own; this is the one
+            # Web UI default that would make one, just as
+            # `global.checkNewVersion` is Traefik's in
+            # `k8s/charts/traefik.yaml`.
+            - --ui-disable-news-fetch
+          # The frontend the cluster dials, and the Web UI.
+          ports:
+            - name: grpc
+              containerPort: 7233
+            - name: ui
+              containerPort: 8233
+          # A bare grpc probe asks the empty service name, which grpc-go's
+          # health server sets to SERVING as soon as it is constructed: it
+          # answers before the frontend can serve. Temporal sets a status per
+          # named service, so naming the WorkflowService is what waits for the
+          # service the cluster dials.
+          readinessProbe:
+            grpc:
+              port: 7233
+              service: temporal.api.workflowservice.v1.WorkflowService
+          # A whole Temporal Service needs more room than the demo's own
+          # workloads, which sit at 20m and 32Mi.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
