@@ -1,5 +1,8 @@
 # Temporal Proxy Demo
 
+[![CI][ci-badge]][ci]
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 Runs Temporal Workers that know nothing about the
 [Temporal Service][temporal] they talk to. [temporal-proxy][proxy] sits
 in front of them and owns the upstream address, TLS, the client
@@ -19,9 +22,6 @@ https://github.com/user-attachments/assets/a35beca7-2195-40da-917f-2e213daa0cd6
 The whole demo runs on a local Kubernetes cluster: Traefik publishes the
 API, and temporal-proxy is the only workload that knows where Temporal
 is.
-
-[![CI][ci-badge]][ci]
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 ## Architecture
 
