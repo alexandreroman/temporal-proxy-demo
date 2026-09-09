@@ -316,6 +316,9 @@ matches on the Namespace a request asks for, so a single temporal-proxy
 can serve `demo` from the self-hosted Service and another application's
 Namespace from Cloud, with neither application aware of the split.
 
+temporal-proxy's own [documentation][proxy-docs] covers everything it does
+beyond what this demo shows.
+
 ## What the application does not carry
 
 The Worker and the API each get the same two environment variables, and
@@ -354,6 +357,7 @@ temporal-proxy itself is a separate project, licensed under MIT.
 [ci-badge]: https://github.com/alexandreroman/temporal-proxy-demo/actions/workflows/ci.yaml/badge.svg
 [temporal]: https://temporal.io
 [proxy]: https://github.com/temporalio/temporal-proxy
+[proxy-docs]: https://docs.temporal.io/production-deployment/temporal-proxy
 [kind]: https://kind.sigs.k8s.io
 [helm]: https://helm.sh
 [mtls]: https://docs.temporal.io/cloud/certificates
