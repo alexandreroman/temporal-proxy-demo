@@ -9,9 +9,11 @@ type: project
 The project is a teaching demo, not a product: it shows
 how a Temporal Worker and HTTP API run against
 temporal-proxy on Kubernetes while carrying no upstream
-connection details of their own. Temporal Cloud is the
-demo's one upstream, reached with a client certificate
-mounted from a Kubernetes Secret.
+connection details of their own. It declares two upstreams:
+Temporal Cloud, reached with a client certificate mounted
+from a Kubernetes Secret, is the one the demo ships routed
+at, and a self-hosted Temporal Service in the cluster's
+`temporal` namespace is the second.
 
 Everything the demo teaches sits in temporal-proxy's
 configuration, so the Worker and the API are
@@ -46,4 +48,6 @@ written.
 **How to apply:** when adding material, ask whether it
 changes how temporal-proxy is configured. Anything that
 does not belongs in a different repository. See
-[encryption constraints](reference_proxy-encryption-constraints.md).
+[encryption constraints](reference_proxy-encryption-constraints.md)
+and [Two upstreams, and the one
+word](project_two-upstreams-one-word.md).
