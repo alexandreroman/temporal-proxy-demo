@@ -13,19 +13,22 @@ See [README.md](README.md) for full documentation.
 - Tailwind CSS and Alpine.js — the embedded page, both from a CDN
 - temporal-proxy — one gRPC endpoint in front of every upstream
 - Kubernetes on Kind — the local cluster the demo runs in
-- Kustomize — the Worker, the API and the KMS server
+- Kustomize — the Worker, the API, the KMS server and the
+  self-hosted Temporal Service
 - Helm — Traefik, cert-manager and temporal-proxy, from their upstream charts
 - cert-manager — issues the KMS server's certificate
 - secretgen-controller — generates the KMS server's bearer token
 - Traefik — the cluster's only published entrypoint
-- Temporal Cloud — the demo's upstream (TLS + client certificate)
+- Temporal Cloud — the upstream the demo ships routed at
+  (TLS + client certificate)
+- Temporal Service — self-hosted in the cluster, the second upstream
 
 ## Build & run
 
 ```bash
 make worktree-init  # generate this worktree's cluster config
 make                # list every target
-make app-up         # cluster, KMS server, temporal-proxy, Worker and API
+make app-up         # cluster and everything the demo runs on
 make demo           # curl the API to start one Workflow
 make check          # tests and static checks
 make cluster-down   # delete the cluster
@@ -44,10 +47,10 @@ refuses to deploy without it.
 - `cmd/kms` — gRPC server wrapping and unwrapping payload keys
 - `internal/kms` — derives one AES-256-GCM key per Namespace
 - `k8s` — the cluster configuration: the application's manifests in
-  `app`, the KMS server's in `kms`, the charts' values in `charts`,
-  the client certificate in `certs`, plus `namespaces.yaml`, applied
-  on its own, and `kind-config.yaml.in`, the template `worktree-init`
-  renders
+  `app`, the KMS server's in `kms`, the self-hosted Temporal Service's
+  in `temporal`, the charts' values in `charts`, the client certificate
+  in `certs`, plus `namespaces.yaml`, applied on its own, and
+  `kind-config.yaml.in`, the template `worktree-init` renders
 
 ## Agents
 

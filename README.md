@@ -21,7 +21,9 @@ https://github.com/user-attachments/assets/a35beca7-2195-40da-917f-2e213daa0cd6
 
 The whole demo runs on a local Kubernetes cluster: Traefik publishes the
 API, and temporal-proxy is the only workload that knows where Temporal
-is.
+is. That cluster also holds a self-hosted Temporal Service, a second
+upstream the Worker and the API can be routed at without a line of
+either of them changing.
 
 ## Architecture
 
@@ -48,14 +50,20 @@ flowchart TB
             cert[("Secret<br/>temporal-cloud-client")]
             master[("Secret<br/>kms-master-secret")]
         end
+
+        subgraph ns_temporal["namespace: temporal"]
+            selfhosted["Self-hosted Temporal<br/>one container, in memory"]
+        end
     end
 
     client -->|HTTP| traefik
     traefik -->|HTTPRoute| api
+    traefik -->|HTTPRoute| selfhosted
     api --> proxy
     worker --> proxy
     proxy -->|"gRPC, TLS, API key"| kms
     proxy -->|"gRPC, mTLS"| cloud
+    proxy -->|"gRPC, plaintext"| selfhosted
     cert -.-> proxy
     master -.-> kms
 ```
@@ -67,6 +75,11 @@ connection the Worker itself opened, and nothing outside the cluster
 ever dials in. Only Traefik's web entrypoint is published — the two
 arrows that cross the cluster boundary are the browser's and
 temporal-proxy's.
+
+temporal-proxy has two upstreams and forwards to one of them. Temporal
+Cloud is the one the demo ships routed at; the self-hosted Service sits
+there until the configuration says otherwise, which is
+[the scenario below](#routing-at-another-temporal-service).
 
 ## Prerequisites
 
@@ -163,9 +176,10 @@ moment after the rollout finishes, so the very first `make demo` can
 answer `503`. Run it again.
 
 Run `make` to list every target. `make app-down` removes the Worker and
-the API and leaves the cluster, Traefik, temporal-proxy and the KMS
-server standing, so `make app-up` puts the demo back without rebuilding
-any of that; `make cluster-down` deletes everything.
+the API and leaves the cluster, Traefik, temporal-proxy, the KMS server
+and the self-hosted Temporal Service standing, so `make app-up` puts the
+demo back without rebuilding any of that; `make cluster-down` deletes
+everything.
 
 ## What runs where
 
@@ -173,20 +187,22 @@ any of that; `make cluster-down` deletes everything.
 | ---------------- | ------------------------------------------------------ |
 | `traefik`        | Traefik and its Gateway, the cluster's only port       |
 | `temporal-proxy` | temporal-proxy and the KMS server, plus what they read |
+| `temporal`       | The self-hosted Temporal Service, the second upstream  |
 | `hello`          | The Worker and the API, with Service and route         |
 
 `make cluster-up` also creates a `cert-manager` and a
 `secretgen-controller` namespace, for the two controllers that issue the
 KMS server's certificate and generate its bearer token.
 
-Traefik's web entrypoint is the single published port, and the API is
-the only route behind it. Everything else is reachable only from inside
-the cluster, temporal-proxy included.
+Traefik's web entrypoint is the single published port, and the two
+routes behind it are the API and the self-hosted Web UI. Everything else
+is reachable only from inside the cluster, temporal-proxy included.
 
 Traefik, cert-manager and temporal-proxy come from their upstream Helm
 charts, each pinned to an explicit version, with the values this demo
 needs in `k8s/charts/`. The Worker and the API come from the manifests
-under `k8s/app`, applied with Kustomize.
+under `k8s/app`, and the self-hosted Temporal Service from
+`k8s/temporal`, both applied with Kustomize.
 
 ## How the certificate travels
 
@@ -228,6 +244,77 @@ application asked for — `demo` — never the fully-qualified Cloud name.
 Turning encryption off is one flag, `encryption.enabled`, plus
 `make apply`. Payloads sealed earlier stay readable, which is why the
 flag rather than the whole block is what turns encryption off.
+
+## Routing at another Temporal Service
+
+Temporal Cloud is not the only upstream in the cluster. A self-hosted
+Temporal Service runs beside it, in the `temporal` namespace: one
+container, everything in memory, nothing persisted, with the `demo`
+Namespace created at startup. It is there to answer a question the
+Worker has no way to ask — which Temporal Service is serving it.
+
+Both upstreams are declared in `k8s/charts/temporal-proxy.yaml`, and
+one line picks between them. An upstream nothing routes to is never
+dialled, so switching is a single word:
+
+```yaml
+config:
+  routing:
+    default: cloud   # write `selfhosted` here instead
+  upstreams:
+    - name: cloud
+      hostPort: ${TEMPORAL_CLOUD_NAMESPACE}.${TEMPORAL_ACCOUNT}.tmprl.cloud:7233
+      # ... TLS, the client certificate, the Namespace rewrite
+    - name: selfhosted
+      hostPort: temporal.temporal:7233
+```
+
+```bash
+make apply
+make demo
+```
+
+`make apply` still runs its setup guard, so the Temporal Cloud values and
+the client certificate are required even when the Workers are routed at
+the self-hosted Service.
+
+`routing.system` is absent on purpose. Left unset, it hands the
+requests that carry no Namespace — the `GetSystemInfo` a Client sends on
+connect, among others — to `routing.default` as well, so there is only
+ever one name to change.
+
+The second upstream is two lines, and what it leaves out is the point.
+No `tls` block, because the endpoint is dialled in plaintext inside the
+cluster. No `namespaces.rules`, because that Service registers the
+Namespace under `demo` — the very name the application asks for — so
+there is nothing to rewrite, where Cloud knows it as
+`NAMESPACE.ACCOUNT`.
+
+Nothing else moves. The image is not rebuilt, the Worker and the API are
+neither restarted nor reconfigured, and they still hold the same two
+variables: `temporal-proxy.temporal-proxy:7233` and `demo`. The page
+they serve is unchanged too, because it never named an upstream in the
+first place.
+
+`make endpoints` prints the self-hosted Web UI, published on the same
+single Traefik port as the demo. Run `make demo` on either side of the
+switch and the two Executions land in different Temporal Services — the
+first in the Cloud Namespace, the second in this one.
+
+Payload encryption is not part of the switch. temporal-proxy seals every
+payload whichever upstream it forwards to, so the self-hosted Web UI
+shows sealed payloads exactly as the Cloud one does: the Temporal
+Service on the far end is never the one holding the key.
+
+The self-hosted Service keeps nothing. It starts empty, and a restart
+takes the history with it — which is what makes it disposable, and why
+Temporal Cloud is the upstream the demo ships routed at. Write `cloud`
+back and run `make apply` to return.
+
+One upstream at a time is only the simplest case: `routing.rules`
+matches on the Namespace a request asks for, so a single temporal-proxy
+can serve `demo` from the self-hosted Service and another application's
+Namespace from Cloud, with neither application aware of the split.
 
 ## What the application does not carry
 

@@ -1,0 +1,20 @@
+# The address the `selfhosted` upstream in
+# `k8s/charts/temporal-proxy.yaml` dials: `temporal.temporal:7233` from
+# anywhere in the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal
+spec:
+  selector:
+    app: temporal
+  # A Service carrying more than one port has to name each of them, and each
+  # targetPort reaches its container port by the name the Deployment gives it
+  # rather than by repeating the number.
+  ports:
+    - name: grpc
+      port: 7233
+      targetPort: grpc
+    - name: ui
+      port: 8233
+      targetPort: ui

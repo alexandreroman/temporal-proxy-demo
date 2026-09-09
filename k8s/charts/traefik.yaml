@@ -17,17 +17,17 @@ ports:
 
 providers:
   kubernetesGateway:
-    # Off by default; this is how `k8s/app/httproute.yaml` reaches Traefik.
+    # Off by default; this is how this repository's HTTPRoutes reach Traefik.
     enabled: true
 
 # The chart's default Gateway restricts routes to its own namespace, and
 # every workload here lives in another one. Only HTTPRoute is needed, so
 # the chart's Gateway is kept rather than replaced.
 gateway:
-  # `k8s/app/httproute.yaml` names this Gateway in its `parentRefs`, so the
-  # name is pinned here rather than left to the chart's default: a chart
-  # default is not a contract, and it can change between chart versions
-  # with nothing in this repository noticing.
+  # Every HTTPRoute in this repository names this Gateway in its
+  # `parentRefs`, so the name is pinned here rather than left to the chart's
+  # default: a chart default is not a contract, and it can change between
+  # chart versions with nothing in this repository noticing.
   name: traefik-gateway
   listeners:
     web:

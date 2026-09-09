@@ -29,6 +29,10 @@ TRAEFIK_PORT ?= 8080
 # manifest cannot read a make variable, so that file spells it out too.
 DEMO_HOST = hello.127-0-0-1.nip.io
 
+# The host name the self-hosted Web UI answers on, matched by
+# k8s/temporal/httproute.yaml, which spells it out too for the same reason.
+TEMPORAL_UI_HOST = temporal.127-0-0-1.nip.io
+
 # The CLI that builds the image and runs the cluster's nodes. A Podman user
 # overrides this one variable; kind detects Podman on its own, and needs
 # KIND_EXPERIMENTAL_PROVIDER=podman only when a docker CLI is on PATH too,
@@ -76,7 +80,8 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 	printf '%s\n' '# Temporal Proxy Demo' '' \
 		'| Service | Address |' '| --- | --- |' \
 		"| Demo App | <http://$(DEMO_HOST):$$port> |" \
-		"| Temporal Web UI (Cloud) | $$web_ui |"
+		"| Temporal Web UI (Cloud) | $$web_ui |" \
+		"| Temporal Web UI (self-hosted) | <http://$(TEMPORAL_UI_HOST):$$port> |"
 
 # The workspace info panel mirrors `make endpoints`, so whichever command
 # brought the stack up or down leaves it telling the truth. The CLI is on PATH
@@ -196,7 +201,7 @@ endef
 # so the chart version pinned below is deliberate: an unpinned upgrade would
 # pick up a configuration schema this repository has not been checked against.
 .PHONY: apply
-apply: require-setup ## Deploy the KMS server, temporal-proxy and the application (after image)
+apply: require-setup ## Deploy the demo's workloads into the cluster (after image)
 	kubectl --context kind-$(CLUSTER) apply -f k8s/namespaces.yaml
 	$(call apply-secret,generic temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
@@ -213,6 +218,16 @@ apply: require-setup ## Deploy the KMS server, temporal-proxy and the applicatio
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy wait --for=condition=Ready \
 		certificate/kms-tls --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/kms --timeout=120s
+# The self-hosted Temporal Service, the demo's second upstream, brought up
+# before temporal-proxy and then left standing by, so that routing the Workers
+# at it is one word in k8s/charts/temporal-proxy.yaml and a `make apply`,
+# nothing more. Its wait is the longest here because its image is the only one
+# the kubelet pulls from a public registry: the demo's own is loaded into the
+# nodes by `image`, and the charts' images sit behind Helm's `--wait`, which
+# waits five minutes by default. A Kind node is a container, so `cluster-down`
+# discards the pulled image with it and the next `app-up` pulls this one cold.
+	kubectl --context kind-$(CLUSTER) apply -k k8s/temporal
+	kubectl --context kind-$(CLUSTER) -n temporal rollout status deploy/temporal --timeout=300s
 	helm --kube-context kind-$(CLUSTER) upgrade --install temporal-proxy temporal-proxy \
 		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
 		--namespace temporal-proxy \
@@ -230,7 +245,7 @@ apply: require-setup ## Deploy the KMS server, temporal-proxy and the applicatio
 # temporal-proxy and waited for it, its pod template being just as
 # blind to a changed configuration or certificate.
 .PHONY: app-up
-app-up: require-setup cluster-up image apply ## Bring up the cluster, the KMS server, temporal-proxy and the application
+app-up: require-setup cluster-up image apply ## Bring up the cluster and everything the demo runs on
 	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
 	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
@@ -242,7 +257,7 @@ app-up: require-setup cluster-up image apply ## Bring up the cluster, the KMS se
 # reports as an unknown context. No require-setup guard either: a teardown
 # needs none of those values.
 .PHONY: app-down
-app-down: ## Remove the application, leaving the cluster, temporal-proxy and the KMS server up
+app-down: ## Remove the application, leaving the cluster and everything else up
 	@if kind get clusters 2>/dev/null | grep -qx '$(CLUSTER)'; then \
 		kubectl --context kind-$(CLUSTER) delete -k k8s/app --ignore-not-found; \
 	else \

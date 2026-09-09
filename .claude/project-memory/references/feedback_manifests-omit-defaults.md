@@ -6,9 +6,10 @@ type: feedback
 
 # Manifests state only what differs from the default
 
-A Kubernetes manifest under `k8s/app/` and the Kind
-cluster template carry a field only when its value
-differs from the API's own default. `replicas`,
+A Kubernetes manifest under `k8s/app/` or
+`k8s/temporal/`, and the Kind cluster template, carry a
+field only when its value differs from the API's own
+default. `replicas`,
 `imagePullPolicy` on a tag other than `latest`, an
 HTTPRoute rule's `matches` where it would be the
 default path prefix, and `protocol` in a Kind port
@@ -18,8 +19,8 @@ The values files under `k8s/charts/` read inverted:
 a field there exists because it overrides a chart
 default, and the comment above it names which
 default and why. One of them restates a chart
-default on purpose: `gateway.name`, which
-`k8s/app/httproute.yaml` names in its `parentRefs`.
+default on purpose: `gateway.name`, which every
+HTTPRoute in this repository names in its `parentRefs`.
 A chart default is not a contract across chart
 versions, so a name another file depends on is
 pinned rather than inherited.
