@@ -9,7 +9,7 @@
 # The chart would otherwise default to its own appVersion, which
 # trails the image releases.
 image:
-  tag: v0.5.2
+  tag: v0.6.0
 
 # Also becomes the gateway's listen address, since the chart derives
 # config.hostPort from this port.
@@ -107,13 +107,18 @@ config:
             - local: demo
               remote: ${TEMPORAL_CLOUD_NAMESPACE}.${TEMPORAL_ACCOUNT}
 
-    # No `tls`, because this endpoint is dialled in plaintext inside the
-    # cluster, and no `namespaces.rules`, because the Service registers the
-    # Namespace under `demo`, the very name the application asks for — the
-    # local name and the remote name are the same string, so there is nothing
-    # to rewrite. The Cloud upstream above needs both.
+    # `insecure: true` is how plaintext inside the cluster is stated rather
+    # than implied: an upstream that says nothing about its transport is
+    # dialled over TLS and verified against the system roots, which this
+    # frontend does not answer. It stands in place of a `tls` block rather
+    # than beside one — the two are mutually exclusive, and setting both is a
+    # validation error. No `namespaces.rules` either, because the Service
+    # registers the Namespace under `demo`, the very name the application
+    # asks for — the local name and the remote name are the same string, so
+    # there is nothing to rewrite. The Cloud upstream above needs both.
     - name: selfhosted
       hostPort: temporal.temporal:7233
+      insecure: true
 
   # The key management backend. temporal-proxy builds this connection when
   # it builds its key policies, so an unreadable ca file fails startup
@@ -140,9 +145,9 @@ config:
   # encryption off — deleting the block instead would take the vault with it and
   # leave the existing history unreadable.
   #
-  # cacheSize is stated rather than left out: the value is passed through as
-  # configured, and an absent key means zero, which disables the cache instead
-  # of defaulting it.
+  # cacheSize is a size this demo picks rather than inherits: left out, the DEK
+  # cache falls back to its own default of 100, and an explicit 0 is what
+  # disables it.
   encryption:
     enabled: true
     cacheSize: 200

@@ -29,6 +29,7 @@
 - [Per-worktree configuration lives on disk](references/feedback_worktree-config-on-disk.md) — a generated kind-config.yaml, and the port read back
 - [Naming the proxy outside the Go code](references/feedback_naming-the-proxy.md) — call it `temporal-proxy`, and how the port variable is named
 - [Outbound TLS rules for a temporal-proxy upstream](references/reference_proxy-outbound-tls.md) — a client certificate also needs a verifying `ca`
+- [Transport security is stated, not inferred](references/reference_proxy-transport-security.md) — an upstream silent about its transport is dialled over TLS
 - [One environment file, loaded for every target](references/feedback_single-env-file.md) — a single `.env` for every target, no per-target tier
 - [The API tolerates unknown request fields](references/project_lenient-request-decoding.md) — extra JSON fields are ignored
 - [Local development needs no cluster](references/project_local-development.md) — the Go inner loop runs against an ephemeral Temporal dev server
