@@ -6,10 +6,16 @@ type: reference
 
 # Outbound TLS rules for a temporal-proxy upstream
 
-Three rules govern an upstream's `tls` block, and
+Four rules govern an upstream's `tls` block, and
 none of them is visible from the config structs
 alone:
 
+- An upstream with no `tls` block at all is dialled
+  over TLS and verified against the system root
+  pool. The block is what *replaces* that default,
+  never what turns TLS on — see [Transport security
+  is stated, not
+  inferred](reference_proxy-transport-security.md).
 - An upstream that sets `cert` and `key` must also
   set `ca`. The proxy refuses to start otherwise:
   `ca: certificate authority is required when a
@@ -43,4 +49,6 @@ or one that cannot verify a public upstream.
 (`loadCAPool`), and
 `internal/transport/creds/dialer.go`, where the
 pool becomes `tls.Config.RootCAs`. See
-[temporal-proxy upstream resources](reference_temporal-proxy-upstream.md).
+[temporal-proxy upstream resources](reference_temporal-proxy-upstream.md)
+and [Transport security is stated, not
+inferred](reference_proxy-transport-security.md).

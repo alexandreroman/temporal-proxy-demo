@@ -133,13 +133,13 @@ cluster-create:
 .PHONY: cluster-up
 cluster-up: cluster-create ## Create the cluster and install its platform components
 	kubectl --context kind-$(CLUSTER) apply -f \
-		https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/standard-install.yaml
+		https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml
 	helm --kube-context kind-$(CLUSTER) upgrade --install traefik traefik \
-		--repo https://traefik.github.io/charts --version 41.4.0 \
+		--repo https://traefik.github.io/charts --version 41.5.0 \
 		--namespace traefik --create-namespace \
 		-f k8s/charts/traefik.yaml --hide-notes --wait
 	helm --kube-context kind-$(CLUSTER) upgrade --install cert-manager cert-manager \
-		--repo https://charts.jetstack.io --version v1.21.1 \
+		--repo https://charts.jetstack.io --version v1.21.2 \
 		--namespace cert-manager --create-namespace \
 		-f k8s/charts/cert-manager.yaml --hide-notes --wait
 	kubectl --context kind-$(CLUSTER) apply -f \

@@ -27,9 +27,12 @@ none of them visible from a configuration file alone:
 - `Decrypt` receives only the ciphertext, with no
   namespace and no context, so `Wrap` has to frame the key
   identifier into the ciphertext it returns.
-- `internal/config/extensions.go` requires TLS to an
-  extension server only when credentials are set on it, so
-  an in-cluster extension server may run in plaintext.
+- `internal/config/extensions.go` rejects credentials sent
+  over an insecure connection, so an extension server that
+  authenticates the proxy is dialled over TLS. A plaintext
+  in-cluster extension server is the one that carries no
+  credentials, and it declares `insecure: true` to get
+  there.
 - The Temporal Cloud Web UI calls a codec server from the
   browser over HTTPS, and the response needs
   `Access-Control-Allow-Origin: https://cloud.temporal.io`,
@@ -46,11 +49,12 @@ none of them visible from a configuration file alone:
   configured with a key but `enabled: false` stops sealing
   new payloads while everything sealed under that key stays
   readable.
-- `internal/kms/fx.go` always passes `Encryption.CacheSize`
-  to the vault, which builds a DEK cache only for a positive
-  value — an absent `cacheSize` yields `0`, not the vault
-  library's own default of 100, so every inbound payload
-  pays a fresh unwrap call.
+- `Encryption.CacheSize` is a `*int`, so the config
+  distinguishes an operator who wrote nothing from one who
+  wrote zero. `Encryption.DEKCacheSize()` answers an absent
+  field with `crypto.DefaultCacheSize` (100) and a written
+  `0` with no cache at all, which is what makes disabling
+  the DEK cache something spelled out rather than inherited.
 - The temporal-proxy Helm chart's `_helpers.tpl` wires TLS
   Secrets and rewrites `secretKeyRef` credentials for the
   gateway, the upstreams, and `auth.staticToken` — never for
@@ -79,12 +83,14 @@ read `pkg/crypto/keys.go` and its test for
 `DefaultSchemes`, `pkg/ext/kms.go` for the `ext.KMS`
 interface, `pkg/crypto` for `crypto.KEK` and
 `crypto.KEKRegistry`, `internal/config/extensions.go` for
-the TLS rule, `internal/dataplane/dataplane.go` for the
-`Enabled` gate and the always-on vault,
-`internal/kms/fx.go` for the cache-size pass-through,
+the credentials rule, `internal/dataplane/dataplane.go` for
+the `Enabled` gate and the always-on vault,
+`internal/config/encryption.go` for `DEKCacheSize`,
 `pkg/crypto/dek.go` for the fixed cipher, and the
 temporal-proxy chart's `_helpers.tpl`
 (`go.temporal.io/helm-charts`) for what it wires and what
 it leaves to `env`/`volumes`/`volumeMounts`. See
-[temporal-proxy upstream resources](reference_temporal-proxy-upstream.md) and
-[Demo scope](project_demo-scope.md).
+[temporal-proxy upstream resources](reference_temporal-proxy-upstream.md),
+[Transport security is stated, not
+inferred](reference_proxy-transport-security.md)
+and [Demo scope](project_demo-scope.md).

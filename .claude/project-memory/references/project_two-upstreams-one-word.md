@@ -27,12 +27,14 @@ Four properties make that possible:
   cannot resolve for a Namespace-less request.
 - An upstream nothing routes to is never dialled, so both
   stand declared and neither costs anything.
-- The self-hosted upstream carries no `tls`, because its
-  endpoint is dialled in plaintext inside the cluster, and
-  no `namespaces.rules`, because its Service registers the
-  Namespace under `demo` — the same string the application
-  asks for, so there is nothing to rewrite. The Cloud
-  upstream needs both.
+- The self-hosted upstream sets `insecure: true`, because
+  its endpoint is dialled in plaintext inside the cluster
+  and an upstream silent about its transport is dialled
+  over TLS. It carries no `namespaces.rules`, because its
+  Service registers the Namespace under `demo` — the same
+  string the application asks for, so there is nothing to
+  rewrite. The Cloud upstream needs a `tls` block and the
+  rules both.
 - Payload encryption is orthogonal to the choice:
   temporal-proxy seals every payload whichever upstream it
   forwards to, so the self-hosted Web UI shows sealed
@@ -50,9 +52,11 @@ choice. `routing.rules` matches on the Namespace a request
 asks for, so serving several upstreams at once is a rule per
 Namespace rather than a second copy of this arrangement. The
 fallback and the rule evaluation are in `internal/router/mux.go`
-(`Mux.Switch`) and `internal/config/routing.go` at v0.5.2. See
+(`Mux.Switch`) and `internal/config/routing.go` at v0.6.0. See
 [Demo scope](project_demo-scope.md),
 [temporal-proxy's Helm chart](reference_proxy-helm-chart.md),
-[Outbound TLS rules](reference_proxy-outbound-tls.md) and
+[Outbound TLS rules](reference_proxy-outbound-tls.md),
+[Transport security is stated, not
+inferred](reference_proxy-transport-security.md) and
 [The short Namespace name identifies the
 tenant](feedback_namespace-identifies-the-tenant.md).
