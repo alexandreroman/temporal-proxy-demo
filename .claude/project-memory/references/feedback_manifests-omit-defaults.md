@@ -6,10 +6,10 @@ type: feedback
 
 # Manifests state only what differs from the default
 
-A Kubernetes manifest under `k8s/app/` or
-`k8s/temporal/`, and the Kind cluster template, carry a
-field only when its value differs from the API's own
-default. `replicas`,
+A Kubernetes manifest under `k8s/app/`, `k8s/kms/` or
+`k8s/temporal/`, `k8s/namespaces.yaml`, and the Kind
+cluster template carry a field only when its value
+differs from the API's own default. `replicas`,
 `imagePullPolicy` on a tag other than `latest`, an
 HTTPRoute rule's `matches` where it would be the
 default path prefix, and `protocol` in a Kind port

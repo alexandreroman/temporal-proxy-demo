@@ -94,11 +94,9 @@ out of the projection viewport: at 60px it closes at
 spend. Take vertical room from the type scale or the
 section gaps before taking it from here.
 
-The card width is declared once, as a custom property
-on the rail, and read by both the column that holds a
-card and the card itself — so the width that bounds
-caption truncation cannot drift from the column it
-sets.
+The card width those columns sit between is covered
+in [The diagram is cards joined by static SVG
+wires](project_diagram-is-cards-and-wires.md).
 
 ## What the pointer reveals
 

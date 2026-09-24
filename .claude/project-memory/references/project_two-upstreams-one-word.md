@@ -25,8 +25,13 @@ Four properties make that possible:
   `system` with a dedicated upstream only because its
   `hostPort` is templated on the remote Namespace, which
   cannot resolve for a Namespace-less request.
-- An upstream nothing routes to is never dialled, so both
-  stand declared and neither costs anything.
+- Both upstreams stay up whichever one serves.
+  temporal-proxy opens a connection to every static
+  upstream at startup and refuses to start while one is
+  unreachable, so the self-hosted Temporal Service runs
+  even while Cloud serves every request. The switch
+  changes where requests go, never what the proxy
+  connects to.
 - The self-hosted upstream sets `insecure: true`, because
   its endpoint is dialled in plaintext inside the cluster
   and an upstream silent about its transport is dialled
@@ -52,11 +57,13 @@ choice. `routing.rules` matches on the Namespace a request
 asks for, so serving several upstreams at once is a rule per
 Namespace rather than a second copy of this arrangement. The
 fallback and the rule evaluation are in `internal/router/mux.go`
-(`Mux.Switch`) and `internal/config/routing.go` at v0.7.0. See
+(`Mux.Switch`) and `internal/config/routing.go` at v0.7.0, and
+the startup connection check is in
+`internal/dataplane/lifecycle.go`. See
 [Demo scope](project_demo-scope.md),
 [temporal-proxy's Helm chart](reference_proxy-helm-chart.md),
 [Outbound TLS rules](reference_proxy-outbound-tls.md),
 [Transport security is stated, not
 inferred](reference_proxy-transport-security.md) and
-[The short Namespace name identifies the
-tenant](feedback_namespace-identifies-the-tenant.md).
+[A shared temporal-proxy means no tenant is called
+default](feedback_namespace-identifies-the-tenant.md).

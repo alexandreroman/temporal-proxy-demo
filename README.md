@@ -253,9 +253,11 @@ container, everything in memory, nothing persisted, with the `demo`
 Namespace created at startup. It is there to answer a question the
 Worker has no way to ask — which Temporal Service is serving it.
 
-Both upstreams are declared in `k8s/charts/temporal-proxy.yaml`, and
-one line picks between them. An upstream nothing routes to is never
-dialled, so switching is a single word:
+Both upstreams are declared in `k8s/charts/temporal-proxy.yaml`.
+temporal-proxy opens a connection to every declared upstream at startup
+and refuses to start if one is unreachable, so both have to be up.
+`routing.default` alone picks which one serves requests, which makes
+switching a single word:
 
 ```yaml
 config:
@@ -267,6 +269,7 @@ config:
       # ... TLS, the client certificate, the Namespace rewrite
     - name: selfhosted
       hostPort: temporal.temporal:7233
+      insecure: true
 ```
 
 ```bash
@@ -274,18 +277,20 @@ make apply
 make demo
 ```
 
-`make apply` still runs its setup guard, so the Temporal Cloud values and
-the client certificate are required even when the Workers are routed at
-the self-hosted Service.
+The Temporal Cloud values and the client certificate stay required even
+when the Workers are routed at the self-hosted Service, and not only by
+`make apply`'s setup guard: temporal-proxy itself needs them, because the
+Cloud upstream is still declared and so still dialled at startup.
 
 `routing.system` is absent on purpose. Left unset, it hands the
 requests that carry no Namespace — the `GetSystemInfo` a Client sends on
 connect, among others — to `routing.default` as well, so there is only
 ever one name to change.
 
-The second upstream is two lines, and what it leaves out is the point.
-No `tls` block, because the endpoint is dialled in plaintext inside the
-cluster. No `namespaces.rules`, because that Service registers the
+The second upstream is three lines. `insecure: true` stands where a
+`tls` block would, because the endpoint serves plaintext inside the
+cluster and an upstream that does not state its transport is dialled
+over TLS. No `namespaces.rules`, because that Service registers the
 Namespace under `demo` — the very name the application asks for — so
 there is nothing to rewrite, where Cloud knows it as
 `NAMESPACE.ACCOUNT`.
@@ -336,9 +341,6 @@ and the rewrite from `demo` to the fully-qualified Cloud Namespace.
 `TEMPORAL_NAMESPACE` says which Namespace the application asks for, not
 which upstream serves it — picking an upstream is not something the
 application can do.
-
-The page renders only the short Namespace name and names no upstream at
-all — naming one is precisely what the application cannot do.
 
 The short name is `demo` rather than `default` because one
 temporal-proxy fronts several applications, so the name each one asks

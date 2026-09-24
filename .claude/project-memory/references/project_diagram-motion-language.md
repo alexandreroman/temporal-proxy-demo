@@ -97,5 +97,5 @@ system works.
 and deciding whether it carries a request or a result;
 the colour follows from that. Leave direction to the
 pulse rather than drawing it. See
-[What the diagram's construction
-is](project_diagram-is-cards-and-wires.md).
+[The diagram is cards joined by static SVG
+wires](project_diagram-is-cards-and-wires.md).

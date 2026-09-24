@@ -1,6 +1,6 @@
 ---
 name: "Shape of the hello-workflow demo app"
-description: "Why the demo is triggered over HTTP, split across two binaries, and why its Activity sleeps"
+description: "Why the demo is triggered over HTTP, split across two application binaries, and why its Activity sleeps"
 type: project
 ---
 
@@ -17,18 +17,20 @@ Three choices shape it:
 - **HTTP trigger rather than a CLI starter.** The
   entry point is a running service, so the demo
   looks like an application rather than a script.
-- **Two binaries, `cmd/worker` and `cmd/app`.**
-  Worker-side and Client-side traffic reach the
-  proxy separately and can be pointed at different
-  upstreams independently.
+- **Two application binaries, `cmd/worker` and
+  `cmd/app`.** A Worker and a Client are separate
+  roles in Temporal, so each runs as its own process,
+  deployed and scaled on its own, as a real
+  application would. Both ask for the same Namespace,
+  so they always reach the same upstream.
 - **The Activity sleeps two seconds.** Long enough
   to watch the Execution move through the Temporal
   Web UI while the HTTP call is still in flight.
 
 **Why:** the demo has to be legible while it runs,
-not only after it finishes, and the split makes the
-proxy's per-Namespace routing visible on both sides
-of the wire.
+not only after it finishes, and it has to look like
+an application a team would deploy rather than a
+single process doing both jobs.
 
 **How to apply:** keep the Activity's duration
 perceptible, keep the endpoint the only trigger,

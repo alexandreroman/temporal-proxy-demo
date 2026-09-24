@@ -1,14 +1,14 @@
 # Keep the build context down to what the image actually compiles.
 .git
 .claude
-.env*
-
-# Not part of the build, and the one exclusion that is about more than
-# size: the Temporal Cloud client key lives in k8s/certs/, and the
-# runtime image never copies it in.
-k8s/
 *.md
 Makefile
 LICENSE
 .casper.json
 .DS_Store
+
+# Not part of the build either, and kept out for secrecy as well as size:
+# .env holds the KMS master secret, and k8s/certs/ the Temporal Cloud
+# client key.
+.env*
+k8s/

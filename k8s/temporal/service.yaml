@@ -8,13 +8,9 @@ metadata:
 spec:
   selector:
     app: temporal
-  # A Service carrying more than one port has to name each of them, and each
-  # targetPort reaches its container port by the name the Deployment gives it
-  # rather than by repeating the number.
+  # A Service carrying more than one port has to name each of them.
   ports:
     - name: grpc
       port: 7233
-      targetPort: grpc
     - name: ui
       port: 8233
-      targetPort: ui

@@ -48,4 +48,5 @@ Namespace and the client certificate spelled out.
 `TEMPORAL_ACCOUNT` come from `.env`; the client
 certificate pair lives in `k8s/certs/`. See
 [One environment file](feedback_single-env-file.md) and
-[naming the tenant](feedback_namespace-identifies-the-tenant.md).
+[A shared temporal-proxy means no tenant is called
+default](feedback_namespace-identifies-the-tenant.md).

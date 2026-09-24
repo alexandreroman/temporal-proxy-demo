@@ -29,9 +29,11 @@ func (f *fakeGreeter) greet(_ context.Context, req hello.Request) (helloResponse
 		return helloResponse{}, f.err
 	}
 
-	res := hello.Response{Greeting: "Hello, " + req.Name + "!"}
-	exec := execution{WorkflowID: "hello-" + req.Name, RunID: "run-1"}
-	return helloResponse{res, exec}, nil
+	return helloResponse{
+		Response:   hello.Response{Greeting: "Hello, " + req.Name + "!"},
+		WorkflowID: "hello-" + req.Name,
+		RunID:      "run-1",
+	}, nil
 }
 
 func TestHelloEndpoint(t *testing.T) {

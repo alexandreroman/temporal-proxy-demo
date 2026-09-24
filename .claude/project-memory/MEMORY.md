@@ -23,15 +23,14 @@
 
 - [Demo scope](references/project_demo-scope.md) — what the demo teaches, and what is deliberately out of it
 - [temporal-proxy upstream resources](references/reference_temporal-proxy-upstream.md) — source, docs, examples, image and Helm chart
-- [Shape of the hello-workflow demo app](references/project_hello-workflow-app.md) — HTTP trigger, two binaries, and the two-second Activity
+- [Shape of the hello-workflow demo app](references/project_hello-workflow-app.md) — HTTP trigger, two application binaries, a two-second Activity
 - [Application code stays endpoint-agnostic](references/feedback_agnostic-app-code.md) — no proxy vocabulary in Go code, not even in comments
 - [Casper workspace integration](references/feedback_casper-workspace-integration.md) — where the wiring lives, and what stays neutral
 - [Per-worktree configuration lives on disk](references/feedback_worktree-config-on-disk.md) — a generated kind-config.yaml, and the port read back
 - [Naming the proxy outside the Go code](references/feedback_naming-the-proxy.md) — call it `temporal-proxy`, and how the port variable is named
 - [Outbound TLS rules for a temporal-proxy upstream](references/reference_proxy-outbound-tls.md) — a client certificate also needs a verifying `ca`
-- [Transport security is stated, not inferred](references/reference_proxy-transport-security.md) — an upstream silent about its transport is dialled over TLS
+- [Transport security is stated, not inferred](references/reference_proxy-transport-security.md) — silence means TLS; plaintext is `insecure: true`
 - [One environment file, loaded for every target](references/feedback_single-env-file.md) — a single `.env` for every target, no per-target tier
-- [The API tolerates unknown request fields](references/project_lenient-request-decoding.md) — extra JSON fields are ignored
 - [Local development needs no cluster](references/project_local-development.md) — the Go inner loop runs against an ephemeral Temporal dev server
 - [temporal-proxy encryption constraints](references/reference_proxy-encryption-constraints.md) — what payload encryption must satisfy
 - [temporal-proxy's Helm chart](references/reference_proxy-helm-chart.md) — where it lives, and the behaviours its values file answers to
@@ -46,7 +45,7 @@
 - [Verifying a page change means rendering the template](references/feedback_verifying-a-page-change.md) — render a temp copy, not the deployment
 - [The demo page borrows temporal.io's own design system](references/feedback_page-design-system.md) — palette, typefaces, logos, one colour barred
 - [The Workflow's contract and the API's response are two different types](references/feedback_api-response-envelope.md) — not in `hello.Response`
-- [The page names no upstream](references/project_page-names-no-upstream.md) — the destination station reads `Temporal`; it shows what it dials
+- [The page names no upstream](references/project_page-names-no-upstream.md) — the destination reads `Temporal`; clients show only their Namespace
 - [The key service card names the role, not the transport](references/feedback_kms-card-names-the-role.md) — a role, not a component
 - [The page's error hints name no command](references/project_page-hints-name-no-command.md) — one binary, two places to run it, no command named
 - [Lifecycle targets come in up/down pairs](references/feedback_up-down-target-pairs.md) — symmetric pairs, and a teardown that tolerates absence
@@ -57,8 +56,6 @@
 - [A typographic accent on the page is presentational](references/feedback_typographic-accent-is-presentational.md) — `<strong>` only for meaning
 - [Optical offsets on the rail's wordmark](references/feedback_optical-offsets-need-relative.md) — vertical-align cannot move it
 - [Runtime log messages follow one grammar](references/feedback_log-message-grammar.md) — lowercase, no trailing punctuation, two shapes
-- [CI runs the quality gate only](references/feedback_ci-runs-the-quality-gate-only.md) — `make check`, no image build, no cluster
 - [Deleting every Workflow in the Cloud Namespace](references/reference_deleting-cloud-workflows.md) — batch delete by query; `-y` needs `--query`
 - [Two upstreams, and the one word that selects between them](references/project_two-upstreams-one-word.md) — `routing.default` is the whole switch
-- [A readiness probe for a Temporal Service](references/reference_temporal-readiness-probe.md) — a bare gRPC probe reports Ready from process start
-- [An end-to-end test drives the page in a browser](references/feedback_e2e-means-the-browser.md) — a Workflow run from the page on a live cluster, not curl
+- [An end-to-end test drives the page in a browser](references/feedback_e2e-means-the-browser.md) — a Workflow run from the page, not curl
