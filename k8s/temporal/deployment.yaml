@@ -19,9 +19,9 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: temporal
-          # Pinned like every other version here. This tag carries CLI 1.8.3,
-          # Server 1.31.2 and Web UI 2.50.1.
-          image: temporalio/temporal:1.8.3
+          # Pinned like every other version here. This tag carries CLI 1.9.1,
+          # Server 1.32.0 and Web UI 2.54.1.
+          image: temporalio/temporal:1.9.1
           # The image already entrypoints on the temporal CLI, so the
           # arguments are all this container needs.
           args:
