@@ -52,7 +52,7 @@ choice. `routing.rules` matches on the Namespace a request
 asks for, so serving several upstreams at once is a rule per
 Namespace rather than a second copy of this arrangement. The
 fallback and the rule evaluation are in `internal/router/mux.go`
-(`Mux.Switch`) and `internal/config/routing.go` at v0.6.0. See
+(`Mux.Switch`) and `internal/config/routing.go` at v0.7.0. See
 [Demo scope](project_demo-scope.md),
 [temporal-proxy's Helm chart](reference_proxy-helm-chart.md),
 [Outbound TLS rules](reference_proxy-outbound-tls.md),

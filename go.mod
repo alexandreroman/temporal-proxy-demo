@@ -6,9 +6,9 @@ toolchain go1.27.1
 
 require (
 	github.com/stretchr/testify v1.12.1
-	github.com/temporalio/temporal-proxy v0.6.0
-	go.temporal.io/sdk v1.48.0
-	google.golang.org/grpc v1.83.2
+	github.com/temporalio/temporal-proxy v0.7.0
+	go.temporal.io/sdk v1.49.0
+	google.golang.org/grpc v1.84.0
 )
 
 require (
@@ -25,14 +25,15 @@ require (
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/stretchr/objx v0.5.3 // indirect
-	go.temporal.io/api v1.63.5 // indirect
+	go.temporal.io/api v1.63.6 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260911204522-f61a6ca850bd // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260911204522-f61a6ca850bd // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260921155816-b14227669459 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260921155816-b14227669459 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )

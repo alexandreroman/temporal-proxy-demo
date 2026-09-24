@@ -61,3 +61,4 @@
 - [Deleting every Workflow in the Cloud Namespace](references/reference_deleting-cloud-workflows.md) — batch delete by query; `-y` needs `--query`
 - [Two upstreams, and the one word that selects between them](references/project_two-upstreams-one-word.md) — `routing.default` is the whole switch
 - [A readiness probe for a Temporal Service](references/reference_temporal-readiness-probe.md) — a bare gRPC probe reports Ready from process start
+- [An end-to-end test drives the page in a browser](references/feedback_e2e-means-the-browser.md) — a Workflow run from the page on a live cluster, not curl
