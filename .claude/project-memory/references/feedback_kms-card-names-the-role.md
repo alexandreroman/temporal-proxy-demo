@@ -66,24 +66,20 @@ accurate and sells nothing: a sentence saying the
 extension wraps keys names an operation the audience
 has no reason to care about.
 
-A three-item caption is what sets the cards' shared
-height, and two items is a shape they allow: a card
-with fewer simply leaves that room unused. **This card
-carries two**, because the station's name says the
+**This card carries two caption items**, a shape the
+shared card height allows, because the station's name says the
 role and a line repeating it buys only a possessive —
 which is not worth a line on a diagram read from the
 back of a room.
 
-**Three items line up across the cards on a request's
-path**, so the same slot answers the same question at
-each station: what the station is toward the next hop,
-the state of a payload there, and the Namespace. The
-second slot is what that buys — plaintext at the
-clients, sealed at the endpoint, sealed on arrival
-upstream — the encryption story read straight across
-the diagram, without a line of prose. **This card is
-not on that path.** It is a side call, so its caption
-answers to its own station and not to the slots.
+**The second caption slot lines up across the cards
+on a request's path**: it carries the state of a
+payload at each station — plaintext at both clients,
+sealed at the endpoint, sealed on arrival upstream — so
+the encryption story reads straight across the diagram,
+without a line of prose. **This card is not on that
+path.** It is a side call, so its caption answers to its
+own station and not to that slot.
 
 **Why:** the diagram is watched from the back of a
 room, not read, and each station gets three lines that

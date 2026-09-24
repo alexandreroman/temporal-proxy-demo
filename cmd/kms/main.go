@@ -2,6 +2,10 @@
 // gRPC service implementing api.kms.v1.EncryptionService. Only key material
 // crosses the wire; payload plaintext never reaches it.
 //
+// The keyring derives one key per Namespace, and that is all this command
+// contributes: ext.NewKeyWrapper seals with those keys and frames the result, and
+// ext.Serve checks the bearer token and serves TLS.
+//
 // KMS_API_KEY is the bearer token every call has to present. KMS_MASTER_SECRET is
 // what every Namespace's wrapping key is derived from. Both are required, and the
 // process refuses to start without either.
@@ -10,7 +14,6 @@ package main
 import (
 	"context"
 	"crypto/subtle"
-	"crypto/tls"
 	"os"
 
 	"google.golang.org/grpc"
@@ -40,16 +43,19 @@ func main() {
 		log.Fatal("building the keyring failed", tag.Error(err))
 	}
 
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	// Keys are unversioned, so the Version a request names is ignored and none is reported.
+	wrapper, err := ext.NewKeyWrapper(func(_ context.Context, req ext.KeyRequest) (ext.Key, error) {
+		key, err := keys.Key(req.Namespace)
+		return ext.Key{Bytes: key}, err
+	})
+	if err != nil {
+		log.Fatal("building the key wrapper failed", tag.Error(err))
+	}
+
+	creds, err := credentials.NewServerTLSFromFile(certFile, keyFile)
 	if err != nil {
 		log.Fatal("loading the key pair failed", tag.Error(err))
 	}
-
-	// TLS 1.2 is the floor the caller's dialer enforces; two Go peers negotiate 1.3.
-	creds := credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{cert},
-		MinVersion:   tls.VersionTLS12,
-	})
 
 	if err := ext.Serve(
 		context.Background(),
@@ -57,7 +63,7 @@ func main() {
 		ext.WithServerAuth("authorization", func(token string) bool {
 			return subtle.ConstantTimeCompare([]byte(token), expected) == 1
 		}),
-		ext.WithKMS(keys),
+		ext.WithKMS(wrapper),
 		ext.WithLogger(log),
 		ext.WithServerOption(grpc.Creds(creds)),
 	); err != nil {

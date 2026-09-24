@@ -6,17 +6,18 @@ type: feedback
 
 # A rollout overlaps only where traffic arrives
 
-`k8s/app/deployment-app.yaml` carries
-`strategy.rollingUpdate.maxUnavailable: 0` and a `preStop`
-sleep on the `app` container. Together they make a restart
-overlap: the replacement is Ready, and in the EndpointSlice,
-before the outgoing pod is touched, and the outgoing pod
-keeps answering while Traefik still holds its address.
-`strategy.type` and `maxSurge` stay absent — both are API
-defaults, and the default surge is the one extra pod a
-single replica needs.
+A restart of the API overlaps its outgoing and incoming
+pods, and `k8s/app/deployment-app.yaml` carries no
+`strategy` block to get there. For a single replica the
+RollingUpdate defaults already give the overlap:
+`maxUnavailable` of 25% rounds down to 0 and `maxSurge` of
+25% rounds up to 1, so the replacement is Ready, and in the
+EndpointSlice, before the outgoing pod is touched. The one
+thing the manifest adds is a `preStop` sleep on the `app`
+container, so the outgoing pod keeps answering while
+Traefik still holds its address.
 
-`k8s/app/deployment-worker.yaml` carries neither. The Worker
+`k8s/app/deployment-worker.yaml` carries no `preStop`. The Worker
 takes no inbound traffic, and a gap in its availability only
 delays a Workflow Task, which the demo waits for anyway.
 
@@ -38,4 +39,5 @@ it serves inbound traffic through the Gateway, and leave it
 out otherwise. A readiness probe is not enough on its own —
 it proves the pod can serve, not that the ingress has caught
 up. See
-[Manifests omit defaults](feedback_manifests-omit-defaults.md).
+[Manifests state only what differs from the
+default](feedback_manifests-omit-defaults.md).

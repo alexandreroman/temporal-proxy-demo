@@ -17,7 +17,7 @@ other. It is **pre-release** and evolving quickly.
 - Container image: `temporalio/temporal-proxy` on Docker Hub
 - Helm chart: `temporal-proxy` in <https://go.temporal.io/helm-charts>
 - Worked examples in the upstream repo, under
-  `examples/`: `cloud`, `kms`, `authz`
+  `examples/`: `cloud`, `kms`, `authz`, `listnamespace`
 
 **Why:** the proxy's configuration schema is not
 stable, so the upstream repository — not memory

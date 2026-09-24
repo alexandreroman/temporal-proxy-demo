@@ -8,14 +8,6 @@ spec:
   selector:
     matchLabels:
       app: app
-  # One replica behind the cluster's only route, so a rollout has to
-  # overlap: the replacement is Ready, and in the EndpointSlice,
-  # before the outgoing pod is touched, and the outgoing pod outlives
-  # Traefik's view of it (see preStop below). Without both, Traefik
-  # keeps sending to an address that has gone, and answers 504.
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -46,7 +38,10 @@ spec:
           readinessProbe:
             tcpSocket:
               port: http
-          # The second half of the overlap described above.
+          # One replica behind the cluster's only route: the default rollout
+          # already starts the replacement before touching this pod, and
+          # this sleep keeps the outgoing pod answering while Traefik still
+          # holds its address. Without it, Traefik answers 504.
           lifecycle:
             preStop:
               sleep:

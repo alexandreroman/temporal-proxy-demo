@@ -109,7 +109,10 @@ the team.
   — nor imply a proxy at all — in comments, log
   messages, errors, or identifiers. That neutrality is
   the whole point of the demo; anything that leaks
-  into the code is a bug.
+  into the code is a bug. The embedded page
+  (`cmd/app/templates/index.html`) is exempt: it
+  presents the cluster deployment and names
+  temporal-proxy on purpose.
 - temporal-proxy is **pre-release**. Its chart version
   and its image tag are both pinned explicitly;
   re-check its config schema against the upstream repo

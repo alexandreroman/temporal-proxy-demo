@@ -19,21 +19,17 @@ Everything the demo teaches sits in temporal-proxy's
 configuration, so the Worker and the API are
 byte-identical whatever that configuration says.
 
-Payload encryption wraps a data encryption key per
-payload so temporal-proxy seals every payload before it
-leaves the cluster. A KMS extension server this
-repository runs (`cmd/kms`) wraps that key, because
-temporal-proxy's built-in schemes (`awskms`,
-`azurekeyvault`, `gcpkms`, `testing`) cover only clouds
-this demo does not use, plus a scheme upstream marks
-unfit for anything but local runs. `internal/kms`, the
-package that `cmd/kms` serves, derives that key: one
-AES-256-GCM key per Namespace from a master secret via
-HKDF-SHA256. Per-request selectivity is not in
-temporal-proxy's model: `Encryption.Enabled` is one
-boolean for the whole proxy instance, so a payload is
-sealed or not for everything it forwards, never chosen
-call by call.
+Payload encryption seals every payload before it
+leaves the cluster, under data encryption keys
+temporal-proxy caches and reuses across payloads for
+their configured lifetime. A KMS extension server this
+repository runs (`cmd/kms`) wraps those keys, because
+temporal-proxy's built-in schemes cover only clouds this
+demo does not use. `internal/kms` supplies nothing but
+the key lookup — one AES-256 key per Namespace, derived
+from a master secret via HKDF-SHA256 — and `cmd/kms`
+hands it to temporal-proxy's `ext.NewKeyWrapper`, which
+seals and frames each wrapped key.
 
 Inbound authentication and authorization (static token,
 JWKS, authorizer extension server) are deliberately out of
@@ -48,6 +44,7 @@ written.
 **How to apply:** when adding material, ask whether it
 changes how temporal-proxy is configured. Anything that
 does not belongs in a different repository. See
-[encryption constraints](reference_proxy-encryption-constraints.md)
+[temporal-proxy encryption
+constraints](reference_proxy-encryption-constraints.md)
 and [Two upstreams, and the one
 word](project_two-upstreams-one-word.md).

@@ -28,7 +28,6 @@ spec:
           volumeMounts:
             - name: tls
               mountPath: /etc/kms
-              readOnly: true
           # The TLS listener binds only once cert-manager's Secret is read,
           # so a bound socket is the real "can serve" signal — not a grpc
           # probe, since the kubelet's prober dials in plaintext and this

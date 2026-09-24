@@ -71,7 +71,6 @@ volumes:
 volumeMounts:
   - name: kms-ca
     mountPath: /etc/temporal-proxy/certs/kms
-    readOnly: true
 
 config:
   routing:
@@ -121,10 +120,10 @@ config:
       insecure: true
 
   # The key management backend. temporal-proxy builds this connection when
-  # it builds its key policies, so an unreadable ca file fails startup
-  # rather than the first payload. The chart wires tls and credentials for
-  # the gateway and for upstreams only, never for an extension server, so
-  # both are supplied by hand below.
+  # it builds its key policies, so an unreadable ca file, or a KMS server it
+  # cannot reach, fails startup rather than the first payload. The chart
+  # wires tls and credentials for the gateway and for upstreams only, never
+  # for an extension server, so both are supplied by hand below.
   extensionServers:
     - name: kms
       hostPort: kms.temporal-proxy:9443
@@ -144,13 +143,8 @@ config:
   # decryption is never gated. That makes this flag the whole of what turns
   # encryption off — deleting the block instead would take the vault with it and
   # leave the existing history unreadable.
-  #
-  # cacheSize is a size this demo picks rather than inherits: left out, the DEK
-  # cache falls back to its own default of 100, and an explicit 0 is what
-  # disables it.
   encryption:
     enabled: true
-    cacheSize: 200
     default:
       uri: extension://kms/payloads
       duration: 1h

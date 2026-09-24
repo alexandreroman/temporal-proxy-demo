@@ -39,12 +39,6 @@ spec:
             # `global.checkNewVersion` is Traefik's in
             # `k8s/charts/traefik.yaml`.
             - --ui-disable-news-fetch
-          # The frontend the cluster dials, and the Web UI.
-          ports:
-            - name: grpc
-              containerPort: 7233
-            - name: ui
-              containerPort: 8233
           # A bare grpc probe asks the empty service name, which grpc-go's
           # health server sets to SERVING as soon as it is constructed: it
           # answers before the frontend can serve. Temporal sets a status per

@@ -6,7 +6,7 @@ type: reference
 
 # temporal-proxy encryption constraints
 
-Eleven facts govern payload encryption whose keys come
+Ten facts govern payload encryption whose keys come
 from a KMS temporal-proxy does not implement natively,
 none of them visible from a configuration file alone:
 
@@ -15,29 +15,33 @@ none of them visible from a configuration file alone:
   that list — Vault Transit, for instance — reaches
   temporal-proxy only through an extension server
   implementing `api.kms.v1.EncryptionService`.
-- `ext.KMS` (`Wrap`/`Unwrap`) and `crypto.KEK`
-  (`Encrypt`/`Decrypt` plus `ID()` and `Close()`) are the
-  same pair of operations, so one type serves as both the
-  extension server and a codec server's key.
-- A `crypto.KEKRegistry` selects its decryption key by
-  `ID()`. A key whose `ID()` returns the same identifier
-  temporal-proxy recorded in a payload's
-  `encryption-key-id` metadata resolves with no
-  `KeyFactory` and no scheme registration.
-- `Decrypt` receives only the ciphertext, with no
-  namespace and no context, so `Wrap` has to frame the key
-  identifier into the ciphertext it returns.
+- `ext.KMS.Wrap` receives the Namespace, but `Unwrap`
+  receives only the ciphertext, with no Namespace and no
+  context. Whatever identifies the key has to travel
+  inside what `Wrap` returns, which makes that output a
+  durable format.
+- `pkg/ext` supplies that format, `api.ext.v1.KeyMaterial`,
+  so an extension server writes no framing of its own.
+  `ext.NewKeyWrapper` serves a server that holds key
+  bytes: it takes a `KeyLookup`, seals with AES-256-GCM by
+  default, and authenticates the Namespace, the key
+  version and the cipher as AEAD additional data, so
+  relabelled material fails to open. The lookup reports
+  the version rather than being told it, so a store that
+  rotates keeps old material readable, and an unversioned
+  store ignores the field.
+- `ext.NewSealWrapper` serves a key service that never
+  hands over key bytes — an HSM, a cloud KMS. Its
+  `KeySealer` calls out to that service, and the wrapper
+  frames the result and seals nothing itself, so binding
+  the clear fields is the implementation's job, through
+  `ext.BindingContext` passed as an encryption context.
 - `internal/config/extensions.go` rejects credentials sent
   over an insecure connection, so an extension server that
   authenticates the proxy is dialled over TLS. A plaintext
   in-cluster extension server is the one that carries no
   credentials, and it declares `insecure: true` to get
   there.
-- The Temporal Cloud Web UI calls a codec server from the
-  browser over HTTPS, and the response needs
-  `Access-Control-Allow-Origin: https://cloud.temporal.io`,
-  `Access-Control-Allow-Methods: POST, GET, OPTIONS` and
-  `Access-Control-Allow-Headers: X-Namespace, Content-Type`.
 - `internal/dataplane/dataplane.go` reads
   `cfg.Encryption.Enabled` as one top-level boolean, and
   `KeyPolicy` carries no `enabled` field of its own —
@@ -69,20 +73,20 @@ none of them visible from a configuration file alone:
   cipher that seals the payload itself.
 
 **Why:** these constraints decide the shape of an
-encryption setup before a line of it is built: whether
-one type can serve as both the extension server and a
-codec server's key rather than two, whether an
-in-cluster extension server can skip TLS, and what CORS
-policy a codec server owes a browser calling it from
-Cloud's Web UI. Deriving them from the Helm chart or
-from memory risks a design that cannot start, or a Web
-UI that cannot call it.
+encryption setup before a line of it is built: whether a
+KMS needs an extension server at all, how much
+cryptography that server writes itself, whether an
+in-cluster extension server can skip TLS, and what
+turning sealing off leaves readable. Deriving them from
+the Helm chart or from memory risks a design that cannot
+start.
 
 **How to access:** at temporal-proxy's pinned release tag,
 read `pkg/crypto/keys.go` and its test for
 `DefaultSchemes`, `pkg/ext/kms.go` for the `ext.KMS`
-interface, `pkg/crypto` for `crypto.KEK` and
-`crypto.KEKRegistry`, `internal/config/extensions.go` for
+interface, `pkg/ext/doc.go`, `pkg/ext/keywrap.go` and
+`pkg/ext/sealwrap.go` for the two wrappers and the
+`KeyMaterial` framing, `internal/config/extensions.go` for
 the credentials rule, `internal/dataplane/dataplane.go` for
 the `Enabled` gate and the always-on vault,
 `internal/config/encryption.go` for `DEKCacheSize`,

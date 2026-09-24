@@ -19,35 +19,30 @@ func shownText(body string) string {
 	return whitespace.ReplaceAllString(htmlTag.ReplaceAllString(body, " "), " ")
 }
 
-// No t.Parallel here: these cases set the environment variables pageHandler reads when newMux
+// No t.Parallel here: these cases set the environment variable pageHandler reads when newMux
 // builds it.
 func TestPage(t *testing.T) {
 	tests := []struct {
 		name      string
-		address   string
 		namespace string
 		// Two caption items, not the Namespace alone: "demo" by itself also occurs in the page's
 		// own script.
 		wantCaption string
 	}{
 		{
-			// The address is supplied so the page has one to leak: it puts no host on screen and
-			// says nothing about where it connects beyond the Namespace resolved alongside it.
-			name:        "endpoint supplied",
-			address:     "temporal.example:7233",
+			name:        "namespace supplied",
 			namespace:   "demo",
 			wantCaption: `plaintext namespace "demo"`,
 		},
 		{
-			// Both unset: the fallbacks in the code, which are what a Temporal dev server serves.
-			name:        "endpoint unset",
+			// Unset: the fallback in the code, which is what a Temporal dev server serves.
+			name:        "namespace unset",
 			wantCaption: `plaintext namespace "default"`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("TEMPORAL_ADDRESS", tt.address)
 			t.Setenv("TEMPORAL_NAMESPACE", tt.namespace)
 
 			var fake fakeGreeter
@@ -62,10 +57,6 @@ func TestPage(t *testing.T) {
 			}
 			if !strings.Contains(shownText(rec.Body.String()), tt.wantCaption) {
 				t.Errorf("body does not show the endpoint caption %q", tt.wantCaption)
-			}
-			// The guard is required: strings.Contains reports true for an empty substring.
-			if tt.address != "" && strings.Contains(rec.Body.String(), tt.address) {
-				t.Errorf("body shows the address %q, want no host on the page", tt.address)
 			}
 		})
 	}

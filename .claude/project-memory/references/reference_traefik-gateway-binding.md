@@ -20,7 +20,7 @@ chart's shape suggests:
   `namespaceOverride` or the install namespace, which is
   what `gateway.namespace` overrides. That, not the name,
   is what an `HTTPRoute`'s `parentRefs` couples to.
-- `parentRefs` is optional in the Gateway API v1.6.1
+- `parentRefs` is optional in the Gateway API v1.6.2
   standard CRD, but omitting it attaches the route to
   nothing rather than to a default, and a `parentRefs`
   naming an absent Gateway fails the same silent way: a 404
@@ -28,7 +28,7 @@ chart's shape suggests:
 - A cluster-default Gateway is **not available**. GEP-3793
   adds `Gateway.spec.defaultScope` and
   `HTTPRoute.spec.useDefaultGateways`, but both are
-  experimental-channel only in v1.6.1, and Traefik v3.7.x
+  experimental-channel only in v1.6.2, and Traefik v3.7.x
   never reads either field — its provider package does not
   reference them. The chart does expose
   `gateway.defaultScope`, so setting it writes the field and
