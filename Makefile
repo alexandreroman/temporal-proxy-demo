@@ -137,7 +137,7 @@ cluster-up: cluster-create ## Create the cluster and install its platform compon
 	kubectl --context kind-$(CLUSTER) apply -f \
 		https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml
 	helm --kube-context kind-$(CLUSTER) upgrade --install traefik traefik \
-		--repo https://traefik.github.io/charts --version 41.6.0 \
+		--repo https://traefik.github.io/charts --version 41.6.1 \
 		--namespace traefik --create-namespace \
 		-f k8s/charts/traefik.yaml --hide-notes --wait
 	helm --kube-context kind-$(CLUSTER) upgrade --install cert-manager cert-manager \

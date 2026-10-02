@@ -9,7 +9,7 @@
 # The chart would otherwise default to its own appVersion, which
 # trails the image releases.
 image:
-  tag: v0.7.0
+  tag: v0.8.0
 
 # Also becomes the gateway's listen address, since the chart derives
 # config.hostPort from this port.
