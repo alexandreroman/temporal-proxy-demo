@@ -6,7 +6,7 @@ toolchain go1.27.1
 
 require (
 	github.com/stretchr/testify v1.12.1
-	github.com/temporalio/temporal-proxy v0.7.0
+	github.com/temporalio/temporal-proxy v0.8.0
 	go.temporal.io/sdk v1.49.0
 	google.golang.org/grpc v1.84.0
 )

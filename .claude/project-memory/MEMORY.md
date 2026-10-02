@@ -59,3 +59,4 @@
 - [Deleting every Workflow in the Cloud Namespace](references/reference_deleting-cloud-workflows.md) — batch delete by query; `-y` needs `--query`
 - [Two upstreams, and the one word that selects between them](references/project_two-upstreams-one-word.md) — `routing.default` is the whole switch
 - [An end-to-end test drives the page in a browser](references/feedback_e2e-means-the-browser.md) — a Workflow run from the page, not curl
+- [A codec server serves both Web UIs from loopback](references/project_codec-server-design.md) — the candidate design: loopback, port-forward, no auth
