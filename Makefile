@@ -67,10 +67,17 @@ demo: ## Trigger one Workflow through the HTTP API
 			-H 'Content-Type: application/json' \
 			-d '{"name": "$(NAME)"}'
 
+# Succeeds when Deployment $(2) exists in namespace $(1), and fails quietly
+# otherwise, a missing cluster included.
+deployed = $(kubectl) -n $(1) get deploy $(2) >/dev/null 2>&1
+
 # Markdown on stdout, so the answer to "where is this worktree listening?" can
-# be read in a terminal or piped into `casper info set`. The Cloud link is built
-# from the two Cloud values, so without them that row names what to set instead
-# of linking to a Namespace nothing can name.
+# be read in a terminal or piped into `casper info set`. An in-cluster address
+# is listed only while the Deployment behind it exists, so after `app-down` the
+# rows it removed are gone, and with the cluster down only the Cloud row is
+# left. That row is always printed, since Cloud is not in the cluster. Its link
+# is built from the two Cloud values, so without them it names what to set
+# instead of linking to a Namespace nothing can name.
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
 	@port=$(traefik-port); \
@@ -79,12 +86,17 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 	else \
 		web_ui='Set TEMPORAL_CLOUD_NAMESPACE and TEMPORAL_ACCOUNT in .env'; \
 	fi; \
-	printf '%s\n' '# Temporal Proxy Demo' '' \
-		'| Service | Address |' '| --- | --- |' \
-		"| Demo App | <http://$(DEMO_HOST):$$port> |" \
-		"| Temporal Web UI (Cloud) | $$web_ui |" \
-		"| Temporal Web UI (self-hosted) | <http://temporal.127-0-0-1.nip.io:$$port> |" \
-		"| Temporal Web UI (through temporal-proxy) | <http://temporal-webui.127-0-0-1.nip.io:$$port> |"
+	printf '%s\n' '# Temporal Proxy Demo' '' '| Service | Address |' '| --- | --- |'; \
+	if $(call deployed,hello,app); then \
+		echo "| Demo App | <http://$(DEMO_HOST):$$port> |"; \
+	fi; \
+	echo "| Temporal Web UI (Cloud) | $$web_ui |"; \
+	if $(call deployed,temporal,temporal); then \
+		echo "| Temporal Web UI (self-hosted) | <http://temporal.127-0-0-1.nip.io:$$port> |"; \
+	fi; \
+	if $(call deployed,temporal-ui,ui); then \
+		echo "| Temporal Web UI (through temporal-proxy) | <http://temporal-webui.127-0-0-1.nip.io:$$port> |"; \
+	fi
 
 # The workspace info panel mirrors `make endpoints`, so whichever command
 # brought the stack up or down leaves it telling the truth. The CLI is on PATH
@@ -248,19 +260,24 @@ app-up: require-setup cluster-up image apply ## Bring up the cluster and everyth
 	$(kubectl) -n hello rollout status deploy/worker --timeout=120s
 	@$(publish-endpoints)
 
-# A teardown never fails over something already being gone, which takes two
-# guards: `--ignore-not-found` for a resource the kustomization names, and the
-# `kind get clusters` test for the cluster itself, whose absence kubectl
-# reports as an unknown context. No require-setup guard either: a teardown
-# needs none of those values.
+# Removes the stateless clients of temporal-proxy, the application and the Web
+# UI reading through it, and leaves the platform, the KMS server and the
+# self-hosted Temporal Service up, so `app-up` returns quickly. The panel is
+# republished rather than cleared: `make endpoints` then lists only what still
+# answers. A teardown never fails over something already being gone, which
+# takes two guards: `--ignore-not-found` for a resource a kustomization names,
+# and the `kind get clusters` test for the cluster itself, whose absence
+# kubectl reports as an unknown context. No require-setup guard either: a
+# teardown needs none of those values.
 .PHONY: app-down
-app-down: ## Remove the application, leaving the cluster and everything else up
+app-down: ## Remove the Worker, the API and the Web UI reading through temporal-proxy
 	@if kind get clusters 2>/dev/null | grep -qx '$(CLUSTER)'; then \
-		$(kubectl) delete -k k8s/app --ignore-not-found; \
+		$(kubectl) delete -k k8s/app --ignore-not-found && \
+		$(kubectl) delete -k k8s/ui --ignore-not-found; \
 	else \
 		echo 'No cluster named $(CLUSTER), so the application is already gone'; \
 	fi
-	@$(clear-endpoints)
+	@$(publish-endpoints)
 
 # Listed last, because the help listing follows this file's own order and the
 # demo's commands should reach a reader before its plumbing does.

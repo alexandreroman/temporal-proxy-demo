@@ -28,12 +28,14 @@ tests both `CASPER_WORKSPACE_ID` and the presence of the
 `.casper.json` is read by Casper alone, so a check for the
 CLI there is noise.
 
-The info panel mirrors what the stack publishes: `app-up`
-publishes `make endpoints` once the rollout is up, and both
-`app-down` and `cluster-down` clear the panel once the
-address it advertises stops answering. Targets in between,
-such as `cluster-up` and `apply`, touch neither the panel
-nor `make endpoints`.
+The info panel mirrors what the stack publishes, and `make
+endpoints` lists an in-cluster address only while its
+Deployment exists. `app-up` publishes the panel once the
+rollout is up; `app-down` removes the application and the
+Web UI reading through temporal-proxy, then republishes it
+with the rows still answering; `cluster-down` clears it.
+Targets in between, such as `cluster-up` and `apply`, touch
+neither the panel nor `make endpoints`.
 
 **Why:** the demo has to read as an ordinary Temporal demo
 to someone who has never heard of the workspace tool, and

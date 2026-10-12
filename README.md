@@ -197,10 +197,10 @@ pick up the API's new Pod — it applies cluster changes at most once
 every two seconds — so the very first `make demo` can answer `503`. Run
 it again.
 
-Run `make` to list every target. `make app-down` removes the Worker and
-the API and leaves everything else standing, so `make app-up` puts the
-demo back without recreating the cluster; `make cluster-down` deletes
-everything.
+Run `make` to list every target. `make app-down` removes the Worker, the
+API and the Web UI that reads through temporal-proxy, and leaves
+everything else standing, so `make app-up` puts the demo back without
+recreating the cluster; `make cluster-down` deletes everything.
 
 ## What runs where
 
