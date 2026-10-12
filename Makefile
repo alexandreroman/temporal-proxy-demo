@@ -20,6 +20,11 @@ NAME ?= John Doe
 # worktrees never share a cluster.
 CLUSTER ?= $(notdir $(CURDIR))
 
+# Every recipe addresses this cluster by name, never whichever context
+# happens to be current.
+kubectl = kubectl --context kind-$(CLUSTER)
+helm = helm --kube-context kind-$(CLUSTER)
+
 # The single host port this cluster publishes, into Traefik. It reaches Kind
 # through k8s/kind-config.yaml, generated at this default by `cluster-create`
 # and overwritten by `worktree-init` to pin a port per worktree.
@@ -136,19 +141,19 @@ cluster-create:
 # the Gateway API CRDs this recipe has already applied.
 .PHONY: cluster-up
 cluster-up: cluster-create ## Create the cluster and install its platform components
-	kubectl --context kind-$(CLUSTER) apply -f \
+	$(kubectl) apply -f \
 		https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml
-	helm --kube-context kind-$(CLUSTER) upgrade --install traefik traefik \
+	$(helm) upgrade --install traefik traefik \
 		--repo https://traefik.github.io/charts --version 41.6.1 \
 		--namespace traefik --create-namespace \
 		-f k8s/charts/traefik.yaml --hide-notes --wait
-	helm --kube-context kind-$(CLUSTER) upgrade --install cert-manager cert-manager \
+	$(helm) upgrade --install cert-manager cert-manager \
 		--repo https://charts.jetstack.io --version v1.21.2 \
 		--namespace cert-manager --create-namespace \
 		-f k8s/charts/cert-manager.yaml --hide-notes --wait
-	kubectl --context kind-$(CLUSTER) apply -f \
+	$(kubectl) apply -f \
 		https://github.com/carvel-dev/secretgen-controller/releases/download/v0.21.3/release.yml
-	kubectl --context kind-$(CLUSTER) -n secretgen-controller rollout status \
+	$(kubectl) -n secretgen-controller rollout status \
 		deploy/secretgen-controller --timeout=120s
 
 # Paired with cluster-up.
@@ -199,8 +204,8 @@ require-setup:
 # builds is generic and belongs to temporal-proxy's namespace, so both are part
 # of this shared shape; each call supplies only the name and the sources.
 define apply-secret
-kubectl --context kind-$(CLUSTER) -n temporal-proxy create secret generic $(1) \
-	--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
+$(kubectl) -n temporal-proxy create secret generic $(1) \
+	--dry-run=client -o yaml | $(kubectl) apply -f -
 endef
 
 # The Namespaces are applied first, because every Secret has to land in one of
@@ -209,7 +214,7 @@ endef
 # pick up a configuration schema this repository has not been checked against.
 .PHONY: apply
 apply: require-setup ## Deploy the demo's workloads into the cluster (after image)
-	kubectl --context kind-$(CLUSTER) apply -f k8s/namespaces.yaml
+	$(kubectl) apply -f k8s/namespaces.yaml
 	$(call apply-secret,temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
 		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)')
@@ -221,11 +226,11 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 		--from-literal=TEMPORAL_CLOUD_API_KEY='$(TEMPORAL_CLOUD_API_KEY)')
 	@$(call apply-secret,kms-master-secret \
 		--from-literal=KMS_MASTER_SECRET='$(KMS_MASTER_SECRET)')
-	kubectl --context kind-$(CLUSTER) apply -k k8s/kms
+	$(kubectl) apply -k k8s/kms
 # Unconditional, because the KMS server reads its image, its master secret and
 # its token only at startup, and none of them changes its pod template.
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout restart deploy/kms
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/kms --timeout=120s
+	$(kubectl) -n temporal-proxy rollout restart deploy/kms
+	$(kubectl) -n temporal-proxy rollout status deploy/kms --timeout=120s
 # The self-hosted Temporal Service, the demo's second upstream, has to be up
 # before temporal-proxy starts, as does the KMS server above: temporal-proxy
 # dials every upstream it declares, and its extension server, at startup, and
@@ -233,9 +238,9 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 # image pulled from a public registry is pulled cold after a `cluster-down`;
 # Helm's `--wait` covers Traefik's and cert-manager's, and a `rollout status`
 # every other one. This one's is the longest, for a whole Temporal Service.
-	kubectl --context kind-$(CLUSTER) apply -k k8s/temporal
-	kubectl --context kind-$(CLUSTER) -n temporal rollout status deploy/temporal --timeout=300s
-	helm --kube-context kind-$(CLUSTER) upgrade --install temporal-proxy temporal-proxy \
+	$(kubectl) apply -k k8s/temporal
+	$(kubectl) -n temporal rollout status deploy/temporal --timeout=300s
+	$(helm) upgrade --install temporal-proxy temporal-proxy \
 		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
 		--namespace temporal-proxy \
 		-f k8s/charts/temporal-proxy.yaml --hide-notes
@@ -244,10 +249,10 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 # what makes `make apply` a working key rotation. The wait paired with it keeps
 # a proxy that refuses to start from being reported as a success. A key Cloud
 # rejects still lets it start: it fails the first request, not the startup.
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout restart deploy/temporal-proxy
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
-	kubectl --context kind-$(CLUSTER) apply -k k8s/app
-	kubectl --context kind-$(CLUSTER) apply -k k8s/ui
+	$(kubectl) -n temporal-proxy rollout restart deploy/temporal-proxy
+	$(kubectl) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
+	$(kubectl) apply -k k8s/app
+	$(kubectl) apply -k k8s/ui
 
 # The image tag is fixed, so a rebuild is invisible to Kubernetes
 # until the pods are told to restart. `apply` has already restarted
@@ -255,9 +260,9 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 # blind to a changed configuration or API key.
 .PHONY: app-up
 app-up: require-setup cluster-up image apply ## Bring up the cluster and everything the demo runs on
-	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
-	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
-	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
+	$(kubectl) -n hello rollout restart deploy/app deploy/worker
+	$(kubectl) -n hello rollout status deploy/app --timeout=120s
+	$(kubectl) -n hello rollout status deploy/worker --timeout=120s
 	@$(publish-endpoints)
 
 # A teardown never fails over something already being gone, which takes two
@@ -268,7 +273,7 @@ app-up: require-setup cluster-up image apply ## Bring up the cluster and everyth
 .PHONY: app-down
 app-down: ## Remove the application, leaving the cluster and everything else up
 	@if kind get clusters 2>/dev/null | grep -qx '$(CLUSTER)'; then \
-		kubectl --context kind-$(CLUSTER) delete -k k8s/app --ignore-not-found; \
+		$(kubectl) delete -k k8s/app --ignore-not-found; \
 	else \
 		echo 'No cluster named $(CLUSTER), so the application is already gone'; \
 	fi
