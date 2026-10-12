@@ -128,11 +128,11 @@ config:
       hostPort: temporal.temporal:7233
       insecure: true
 
-  # The key management backend. temporal-proxy builds this connection when
-  # it builds its key policies, so an unreadable ca file, or a KMS server it
-  # cannot reach, fails startup rather than the first payload. The chart
-  # wires tls and credentials for the gateway and for upstreams only, never
-  # for an extension server, so both are supplied by hand below.
+  # The key management backend. temporal-proxy connects to every extension
+  # server at startup, so an unreadable ca file, or a KMS server it cannot
+  # reach, fails startup rather than the first payload. The chart wires tls
+  # and credentials for the gateway and for upstreams only, never for an
+  # extension server, so both are supplied by hand below.
   extensionServers:
     - name: kms
       hostPort: kms.temporal-proxy:9443
@@ -143,9 +143,10 @@ config:
           apiKey: ${KMS_API_KEY}
 
   # Envelope encryption. Each data encryption key is wrapped by the key
-  # addressed here: "kms" names the server above, and "payloads" is a
-  # local key name recorded in every sealed payload so the same key is
-  # chosen to open it.
+  # addressed here: "kms" names the server above, and the whole URI is the
+  # key's identity, recorded with each wrapped data key so the same key is
+  # chosen to open it. The KMS server never sees the URI: it picks its own
+  # key by Namespace.
   #
   # `enabled: false` stops sealing new payloads while leaving everything sealed
   # earlier readable, because the key below is what builds the vault and inbound
