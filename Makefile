@@ -127,7 +127,6 @@ cluster-create:
 	@kind get clusters | grep -qx '$(CLUSTER)' || \
 		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml \
 			--image kindest/node:v1.37.0
-	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
 
 # Gateway API CRDs are not shipped by the Traefik chart, so they come from the
 # pinned upstream release, applied before it: an HTTPRoute or a Gateway has no
@@ -225,8 +224,6 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 	@$(call apply-secret,kms-master-secret \
 		--from-literal=KMS_MASTER_SECRET='$(KMS_MASTER_SECRET)')
 	kubectl --context kind-$(CLUSTER) apply -k k8s/kms
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy wait --for=condition=Ready \
-		certificate/kms-tls --timeout=120s
 # Unconditional, because the KMS server reads its image, its master secret and
 # its token only at startup, and none of them changes its pod template.
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout restart deploy/kms
