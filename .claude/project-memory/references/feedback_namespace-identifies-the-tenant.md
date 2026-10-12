@@ -15,13 +15,6 @@ Cloud Namespace. `default` names no tenant, and would
 collide with every other application behind the same
 proxy.
 
-`internal/temporalclient` falls back to `default` when
-`TEMPORAL_NAMESPACE` is unset. That fallback matches what
-the local dev-server loop serves and never reaches
-temporal-proxy — the deployment always sets the variable.
-See
-[Local development needs no cluster](project_local-development.md).
-
 **Why:** a shared proxy can only route on a name that says
 which application is asking; `default` says "whatever this
 endpoint happens to serve" and gives temporal-proxy nothing
@@ -33,6 +26,9 @@ component that knows both.
 **How to apply:** give each application its own short
 Namespace name, and add one override per application under
 the upstream's `namespaces.rules`. The fully-qualified name
-stays out of the application in every case — see
+stays out of the application in every case. The
+`default` fallback in `internal/temporalclient` serves
+only the local dev-server loop — see
+[Local development needs no cluster](project_local-development.md),
 [Application code stays endpoint-agnostic](feedback_agnostic-app-code.md) and
 [temporal-proxy's Helm chart](reference_proxy-helm-chart.md).

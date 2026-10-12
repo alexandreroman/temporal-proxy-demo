@@ -8,7 +8,7 @@ type: reference
 
 Clearing the demo's Temporal Cloud Namespace is one
 batch operation, driven by a query rather than by a
-list of Workflow Ids:
+list of Workflow IDs:
 
 ```bash
 temporal workflow delete \
@@ -24,7 +24,7 @@ unattended:
 - `-y` is accepted **only** alongside `--query`.
   The per-execution form, `--workflow-id`, always
   prompts and has no way to skip the prompt, so
-  deleting a namespace one Id at a time stalls.
+  clearing a Namespace one ID at a time stalls.
 - `WorkflowId != ""` matches every execution
   whatever its status, which a filter on
   `WorkflowType` or `ExecutionStatus` does not.

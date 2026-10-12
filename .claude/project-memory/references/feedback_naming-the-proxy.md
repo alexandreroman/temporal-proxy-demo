@@ -20,18 +20,16 @@ the one place that names nothing at all: see
 "the temporal-proxy validates". Where repeating the name
 weighs a sentence down, recast the sentence.
 
-Make variables holding a host port are qualified by what
-they publish: `TRAEFIK_PORT`, the one port this deployment
-publishes, named for what it publishes rather than left
-bare.
+A Make variable holding a host port is named for what it
+publishes: `TRAEFIK_PORT` is the one port this deployment
+publishes.
 
 **Why:** the component's own name is precise and
 searchable, and a demo built to show temporal-proxy should
-say what it is showing. Qualifying `TRAEFIK_PORT` by what
-it publishes keeps it readable next to the application's
-own `PORT` environment variable — a separate, unqualified
-contract that `cmd/app` reads directly for its listen
-address, and that no Make variable needs to mirror.
+say what it is showing. Naming `TRAEFIK_PORT` for what it
+publishes keeps it readable next to the application's own
+`PORT` environment variable, a separate contract that
+`cmd/app` reads directly for its listen address.
 
 **How to apply:** name the component in documentation, in
 Makefile, manifest and values comments, and in target

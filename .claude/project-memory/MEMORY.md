@@ -29,7 +29,7 @@
 - [Per-worktree configuration lives on disk](references/feedback_worktree-config-on-disk.md) — a generated kind-config.yaml, and the port read back
 - [Naming the proxy outside the Go code](references/feedback_naming-the-proxy.md) — call it `temporal-proxy`, and how the port variable is named
 - [Transport security is stated, not inferred](references/reference_proxy-transport-security.md) — silence means TLS; plaintext is `insecure: true`
-- [One environment file, loaded for every target](references/feedback_single-env-file.md) — a single `.env` for every target, no per-target tier
+- [One environment file, loaded for every target](references/feedback_single-env-file.md) — every target reads the same `.env`
 - [Local development needs no cluster](references/project_local-development.md) — the Go inner loop runs against an ephemeral Temporal dev server
 - [temporal-proxy encryption constraints](references/reference_proxy-encryption-constraints.md) — what payload encryption must satisfy
 - [temporal-proxy's Helm chart](references/reference_proxy-helm-chart.md) — where it lives, and the behaviours its values file answers to
@@ -37,13 +37,11 @@
 - [Pinned versions are literals in the recipe](references/feedback_pinned-versions-inline.md) — no `make` variable, and where the rationale lives
 - [Manifests state only what differs from the default](references/feedback_manifests-omit-defaults.md) — no restated API defaults
 - [The Makefile's help listing is its public surface](references/feedback_help-is-the-public-surface.md) — `##` marks a target a reader types
-- [A template placeholder appears exactly once](references/feedback_template-placeholder-appears-once.md) — on the `hostPort:` line, never in prose
 - [How an HTTPRoute binds to the Traefik chart's Gateway](references/reference_traefik-gateway-binding.md) — no default Gateway is available
 - [A rollout overlaps only where traffic arrives](references/feedback_overlapping-rollout.md) — the API needs it, the Worker does not
 - [The demo page is read from the back of a room](references/feedback_page-projection-legibility.md) — the 1440x950 budget and the scale's floor
 - [Verifying a page change means rendering the template](references/feedback_verifying-a-page-change.md) — render a temp copy, not the deployment
 - [The demo page borrows temporal.io's own design system](references/feedback_page-design-system.md) — palette, typefaces, logos, one colour barred
-- [The Workflow's contract and the API's response are two different types](references/feedback_api-response-envelope.md) — not in `hello.Response`
 - [The page names no upstream](references/project_page-names-no-upstream.md) — the destination reads `Temporal`; clients show only their Namespace
 - [The key service card names the role, not the transport](references/feedback_kms-card-names-the-role.md) — a role, not a component
 - [The page's error hints name no command](references/project_page-hints-name-no-command.md) — one binary, two places to run it, no command named
@@ -53,11 +51,10 @@
 - [What the diagram's motion means](references/project_diagram-motion-language.md) — no arrowheads, violet out, mint home
 - [The pulse durations are declared once, in the parse-time stylesheet](references/project_pulse-durations-single-source.md) — one value read twice
 - [A typographic accent on the page is presentational](references/feedback_typographic-accent-is-presentational.md) — `<strong>` only for meaning
-- [Optical offsets on the rail's wordmark](references/feedback_optical-offsets-need-relative.md) — vertical-align cannot move it
-- [Runtime log messages follow one grammar](references/feedback_log-message-grammar.md) — lowercase, no trailing punctuation, two shapes
+- [Runtime log messages follow one grammar](references/feedback_log-message-grammar.md) — lowercase, no trailing punctuation, constant per call site
 - [Deleting every Workflow in the Cloud Namespace](references/reference_deleting-cloud-workflows.md) — batch delete by query; `-y` needs `--query`
 - [Two upstreams, and the one word that selects between them](references/project_two-upstreams-one-word.md) — `routing.default` is the whole switch
 - [An end-to-end test drives the page in a browser](references/feedback_e2e-means-the-browser.md) — a Workflow run from the page, not curl
 - [A standalone Web UI reads through temporal-proxy](references/project_web-ui-through-proxy.md) — cleartext, follows `routing.default`
 - [The Cloud Namespace accepts API keys only](references/reference_cloud-api-key-namespace.md) — scoped service-account key; both-methods fails
-- [A codec server serves the two sealed Web UIs](references/project_codec-server-design.md) — loopback, port-forward, no auth
+- [Codec server candidate: loopback, port-forward, no auth](references/project_codec-server-design.md) — not shipped; the one design that serves both sealed Web UIs

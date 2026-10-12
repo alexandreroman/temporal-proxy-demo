@@ -30,9 +30,10 @@ chart's shape suggests:
   `HTTPRoute.spec.useDefaultGateways`, but both are
   experimental-channel only in v1.6.2, and Traefik v3.7.x
   never reads either field — its provider package does not
-  reference them. The chart does expose
-  `gateway.defaultScope`, so setting it writes the field and
-  changes nothing, which is worse than leaving it unset.
+  reference them. The chart exposes `gateway.defaultScope`
+  but refuses to render it unless
+  `providers.kubernetesGateway.experimentalChannel` is on,
+  and Traefik then ignores the field it writes.
 
 **Why:** naming the Gateway in a route looks like a coupling
 to the release name and is not, so the mitigation people

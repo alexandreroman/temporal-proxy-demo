@@ -15,9 +15,8 @@ straight into the Make variable Traefik's published port
 is built from, so that variable name is a contract between
 the two files. `.casper.json` also copies `.env` into a
 fresh workspace, and a workspace deploys the whole demo as
-soon as `.env` holds valid Temporal Cloud values, a
-`TEMPORAL_CLOUD_API_KEY` and a `KMS_MASTER_SECRET`. A copied
-`.env` missing any one of those values stops at
+soon as `.env` holds the four values `.env.example` lists. A
+copied `.env` missing any one of them stops at
 `require-setup`.
 
 The Make targets it calls are neutral: they are named for

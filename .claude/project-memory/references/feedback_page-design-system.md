@@ -32,12 +32,13 @@ Fonts, and the page preconnects to both.
 Every icon is an inline `<symbol>` filled or
 stroked with `currentColor`, declared once and
 reused, so each one inherits the brightness of the
-text beside it. The Temporal lockup is the official
-white asset from
+text beside it: Lucide (ISC) for the interface,
+Simple Icons (CC0) for the Kubernetes mark. The
+Temporal lockup is inlined once, in its card: the
+official white asset from
 `https://temporal.io/images/logos/logo-temporal-with-copy-white-text.svg`
-with its `fill="white"` swapped for `currentColor`;
-the interface symbols are Lucide, ISC-licensed. The
-page carries them in the binary rather than
+with its `fill="white"` swapped for `currentColor`.
+The page carries them in the binary rather than
 fetching them, so no runtime dependency on anyone's
 CDN is added for artwork.
 
