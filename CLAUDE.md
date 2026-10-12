@@ -36,8 +36,8 @@ make check          # tests and static checks
 make cluster-down   # delete the cluster
 ```
 
-`.env` needs the four values `.env.example` lists;
-`require-setup` refuses to deploy without any of them.
+`.env` needs the four values `.env.example` documents;
+`require-setup` refuses to deploy while any one is missing.
 
 ## Modules
 

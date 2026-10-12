@@ -154,8 +154,9 @@ cluster-down: ## Delete the Kind cluster
 IMAGE = docker.io/library/temporal-proxy-demo:dev
 
 # `kind load docker-image` always shells out to docker, so the image travels as
-# an archive saved by CONTAINER_TOOL instead. kind takes a path and opens it once
-# per node, so the archive is a temporary file rather than a pipe.
+# an archive saved by CONTAINER_TOOL instead. kind opens the path itself, once
+# per node, so a pipe would break as soon as a node is added: the archive is a
+# temporary file.
 .PHONY: image
 image: ## Build the image and load it into the cluster (after cluster-up)
 	$(CONTAINER_TOOL) build -t $(IMAGE) .
@@ -210,17 +211,18 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 	@$(call apply-secret,kms-master-secret \
 		--from-literal=KMS_MASTER_SECRET='$(KMS_MASTER_SECRET)')
 	$(kubectl) apply -k k8s/kms
-# Unconditional, because the KMS server reads its image, its master secret and
-# its token only at startup, and none of them changes its pod template.
+# Unconditional, because a rebuilt image or a changed KMS_MASTER_SECRET reaches
+# the KMS server only through a restart, and neither changes its pod template.
 	$(kubectl) -n temporal-proxy rollout restart deploy/kms
 	$(kubectl) -n temporal-proxy rollout status deploy/kms --timeout=120s
 # The self-hosted Temporal Service, the demo's second upstream, has to be up
 # before temporal-proxy starts, as does the KMS server above: temporal-proxy
-# dials every upstream it declares, and its extension server, at startup, and
-# refuses to start if one is unreachable. A Kind node is a container, so every
-# image pulled from a public registry is pulled cold after a `cluster-down`;
-# Helm's `--wait` covers Traefik's and cert-manager's, and a `rollout status`
-# every other one. This one's is the longest, for a whole Temporal Service.
+# dials every upstream with a fixed address, and every extension server, at
+# startup, and refuses to start if one is unreachable. A Kind node is a
+# container, so every image pulled from a public registry is pulled cold after
+# a `cluster-down`; Helm's `--wait` covers Traefik's and cert-manager's, and a
+# `rollout status` every other one. This one's is the longest, for a whole
+# Temporal Service.
 	$(kubectl) apply -k k8s/temporal
 	$(kubectl) -n temporal rollout status deploy/temporal --timeout=300s
 	$(helm) upgrade --install temporal-proxy temporal-proxy \

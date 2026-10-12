@@ -161,7 +161,8 @@ Copy the environment template and fill in the three Temporal Cloud
 values — the short Namespace name and the account id, the two halves of
 a fully-qualified Cloud Namespace (`quickstart.a1b2c` is `quickstart`
 plus `a1b2c`), and the API key — then generate the payload key's master
-secret. `.env` is git-ignored, so neither leaves this machine:
+secret. `.env` is git-ignored, so none of these values reaches version
+control:
 
 ```bash
 cp .env.example .env
