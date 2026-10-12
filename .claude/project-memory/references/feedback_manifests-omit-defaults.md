@@ -6,8 +6,8 @@ type: feedback
 
 # Manifests state only what differs from the default
 
-A Kubernetes manifest under `k8s/app/`, `k8s/kms/` or
-`k8s/temporal/`, `k8s/namespaces.yaml`, and the Kind
+A Kubernetes manifest under `k8s/app/`, `k8s/kms/`,
+`k8s/temporal/` or `k8s/ui/`, `k8s/namespaces.yaml`, and the Kind
 cluster template carry a field only when its value
 differs from the API's own default. `replicas`,
 `imagePullPolicy` on a tag other than `latest`, an

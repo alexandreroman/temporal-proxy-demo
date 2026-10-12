@@ -25,8 +25,8 @@ error, and guards on the cluster existing at all
 before addressing a kubeconfig context, because
 `kubectl --context` fails on a context that is not
 there. Teardown also carries no setup guard: it
-needs no Cloud Namespace, no account id, no master
-secret and no certificate, and demanding them would
+needs no Cloud Namespace, no account id, no API key
+and no master secret, and demanding them would
 fail in exactly the situation where someone wants to
 tear down.
 

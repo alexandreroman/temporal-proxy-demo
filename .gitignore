@@ -1,10 +1,6 @@
 # Local environment — never commit credentials
 .env
 
-# Temporal Cloud client certificate — never commit key material
-/k8s/certs/*
-!/k8s/certs/.gitkeep
-
 # Per-worktree cluster config — written by `make worktree-init`
 /k8s/kind-config.yaml
 

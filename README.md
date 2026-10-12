@@ -5,10 +5,9 @@
 
 Runs Temporal Workers that know nothing about the
 [Temporal Service][temporal] they talk to. [temporal-proxy][proxy] sits
-in front of them and owns the upstream address, TLS, the client
-certificate and the Namespace names, so the Worker and the API carry no
-upstream connection, TLS, credential or Namespace configuration of their
-own.
+in front of them and owns the upstream address, TLS, the API key and
+the Namespace names, so the Worker and the API carry no upstream
+connection, TLS, credential or Namespace configuration of their own.
 
 Connection details are only the first thing it takes over. Payload
 encryption is another: temporal-proxy seals every payload before it
@@ -45,36 +44,44 @@ flowchart TB
         end
 
         subgraph ns_proxy["namespace: temporal-proxy"]
-            proxy["temporal-proxy<br/>upstream address, TLS,<br/>Namespace rewrite, payload sealing"]
+            proxy["temporal-proxy<br/>upstream address, TLS, API key,<br/>Namespace rewrite, payload sealing"]
             kms["KMS server — cmd/kms"]
-            cert[("Secret<br/>temporal-cloud-client")]
+            apikey[("Secret<br/>temporal-cloud-api-key")]
             master[("Secret<br/>kms-master-secret")]
         end
 
         subgraph ns_temporal["namespace: temporal"]
             selfhosted["Self-hosted Temporal<br/>one container, in memory"]
         end
+
+        subgraph ns_ui["namespace: temporal-ui"]
+            ui["Temporal Web UI<br/>reads through temporal-proxy"]
+        end
     end
 
     client -->|HTTP| traefik
     traefik -->|HTTPRoute| api
     traefik -->|HTTPRoute| selfhosted
+    traefik -->|HTTPRoute| ui
     api --> proxy
     worker --> proxy
+    ui --> proxy
     proxy -->|"gRPC, TLS, API key"| kms
-    proxy -->|"gRPC, mTLS"| cloud
+    proxy -->|"gRPC, TLS, API key"| cloud
     proxy -->|"gRPC, plaintext"| selfhosted
-    cert -.-> proxy
+    apikey -.-> proxy
     master -.-> kms
 ```
 
-Solid arrows carry traffic, dotted ones are Secrets mounted into a Pod.
-Both arrows into temporal-proxy leave the application: the Worker's is a
-long poll on its Task Queue, so a Workflow reaches the Worker over a
-connection the Worker itself opened, and nothing outside the cluster
-ever dials in. Only Traefik's web entrypoint is published — the two
-arrows that cross the cluster boundary are the browser's and
-temporal-proxy's.
+Solid arrows carry traffic, dotted ones are Secrets a Pod reads. The
+Worker's and the API's arrows into temporal-proxy both leave the
+application: the Worker's is a long poll on its Task Queue, so a
+Workflow reaches the Worker over a connection the Worker itself opened,
+and nothing outside the cluster ever dials in. The third arrow into
+temporal-proxy is a Web UI's,
+[described below](#a-web-ui-that-reads-through-temporal-proxy). Only
+Traefik's web entrypoint is published — the two arrows that cross the
+cluster boundary are the browser's and temporal-proxy's.
 
 temporal-proxy has two upstreams and forwards to one of them. Temporal
 Cloud is the one the demo ships routed at; the self-hosted Service sits
@@ -91,64 +98,78 @@ there until the configuration says otherwise, which is
   temporal-proxy all come from their upstream charts, each pinned to an
   explicit version
 - Go 1.27 or later
-- A Temporal Cloud Namespace whose accepted client CA signed the
-  certificate in `k8s/certs/`
+- A Temporal Cloud Namespace that accepts API keys only, and the API key
+  of a service account scoped to it, with Write
 
 The image is built locally and loaded straight into the cluster's nodes,
 so there is no registry and nothing to push.
 
-### Generating the client certificate
+### Creating the Namespace and the API key
 
-Temporal Cloud authenticates temporal-proxy with mTLS, so it needs a
-client certificate signed by a CA the Namespace accepts.
-[`tcld`][tcld] generates both halves. Keep the CA outside this
-repository — only the client pair belongs in `k8s/certs/`:
-
-```bash
-tcld generate-certificates certificate-authority-certificate \
-  --organization "my-org" \
-  --validity-period 365d \
-  --ca-certificate-file ca.pem \
-  --ca-key-file ca.key
-
-tcld generate-certificates end-entity-certificate \
-  --organization "my-org" \
-  --ca-certificate-file ca.pem \
-  --ca-key-file ca.key \
-  --certificate-file k8s/certs/client.pem \
-  --key-file k8s/certs/client.key
-```
-
-Then register the CA on the Namespace, so Cloud accepts certificates it
-signed. `--namespace` takes the fully-qualified name, and the command
-talks to Cloud, so authenticate first:
+Temporal Cloud authenticates temporal-proxy with an API key, so the
+demo needs a Namespace that accepts API keys and nothing else. Pick API
+keys as the authentication method when creating it in the Cloud UI, or
+create it with [`tcld`][tcld], which talks to Cloud, so authenticate
+first:
 
 ```bash
 tcld login
-tcld namespace accepted-client-ca add \
-  --namespace "quickstart.a1b2c" \
-  --ca-certificate-file ca.pem
+tcld namespace create \
+  --namespace "quickstart" \
+  --region "aws-us-east-1" \
+  --retention-days 1 \
+  --auth-method api_key
 ```
 
-`k8s/certs/` is git-ignored apart from its `.gitkeep`, so the client
-pair stays out of version control. `make` reads the two files from there
-to build the Secret temporal-proxy mounts. See [Authenticate with mTLS
-certificates][mtls] for the Cloud side.
+A Namespace that allows both API keys and mTLS will not do. Its own
+endpoint, `NAMESPACE.ACCOUNT.tmprl.cloud:7233`, refuses an API key and
+demands a client certificate. The regional endpoint accepts the key, but
+it finds the Namespace in a `temporal-namespace` request header, and the
+Web UI that reads through temporal-proxy
+([below](#a-web-ui-that-reads-through-temporal-proxy)) never sends one.
+
+Then create the key's owner, a service account scoped to that one
+Namespace, and the key itself:
+
+```bash
+tcld service-account create-scoped \
+  --name "temporal-proxy-demo" \
+  --namespace-permission "quickstart.a1b2c=Write"
+tcld apikey create \
+  --name "temporal-proxy-demo" \
+  --duration 90d \
+  --service-account-id "<service account id>"
+```
+
+`tcld service-account list` shows the service account's id, and
+`tcld apikey create` prints the key's secret once. In the Cloud UI, the
+Namespace page's Generate API Key button also creates a scoped service
+account, but with Admin on the Namespace; Write is enough.
+
+Write covers what the Worker and the API need, and the Read the Web UI
+needs: all three go through temporal-proxy, so they share its one key.
+The scope keeps that key from reaching the rest of the account. A user's
+key would reach every Namespace the user can see, and the standalone
+Web UI would list them all. See [API keys][api-keys] and
+[service accounts][service-accounts] for the Cloud side.
+
+The key goes in `.env`, as `TEMPORAL_CLOUD_API_KEY`. `.env` is
+git-ignored, so the key stays out of version control.
 
 ## Quick start
 
-Copy the environment template and fill in the two Temporal Cloud
+Copy the environment template and fill in the three Temporal Cloud
 values — the short Namespace name and the account id, the two halves of
 a fully-qualified Cloud Namespace (`quickstart.a1b2c` is `quickstart`
-plus `a1b2c`) — then generate the payload key's master secret:
+plus `a1b2c`), and the API key — then generate the payload key's master
+secret:
 
 ```bash
 cp .env.example .env
 echo "KMS_MASTER_SECRET=$(openssl rand -base64 32)" >> .env
 ```
 
-Put the client certificate in `k8s/certs/` as `client.pem` and
-`client.key`, then bring the demo up and trigger a Workflow:
+Then bring the demo up and trigger a Workflow:
 
 ```bash
 make app-up
@@ -176,10 +197,10 @@ moment after the rollout finishes, so the very first `make demo` can
 answer `503`. Run it again.
 
 Run `make` to list every target. `make app-down` removes the Worker and
-the API and leaves the cluster, Traefik, temporal-proxy, the KMS server
-and the self-hosted Temporal Service standing, so `make app-up` puts the
-demo back without rebuilding any of that; `make cluster-down` deletes
-everything.
+the API and leaves the cluster, Traefik, temporal-proxy, the KMS server,
+the self-hosted Temporal Service and the Web UI in `temporal-ui`
+standing, so `make app-up` puts the demo back without rebuilding any of
+that; `make cluster-down` deletes everything.
 
 ## What runs where
 
@@ -189,40 +210,50 @@ everything.
 | `temporal-proxy` | temporal-proxy and the KMS server, plus what they read |
 | `temporal`       | The self-hosted Temporal Service, the second upstream  |
 | `hello`          | The Worker and the API, with Service and route         |
+| `temporal-ui`    | The Web UI that reads through temporal-proxy           |
 
 `make cluster-up` also creates a `cert-manager` and a
 `secretgen-controller` namespace, for the two controllers that issue the
 KMS server's certificate and generate its bearer token.
 
-Traefik's web entrypoint is the single published port, and the two
-routes behind it are the API and the self-hosted Web UI. Everything else
-is reachable only from inside the cluster, temporal-proxy included.
+Traefik's web entrypoint is the single published port, and the three
+routes behind it are the API and the two Web UIs, the self-hosted one
+and the one reading through temporal-proxy. Everything else is
+reachable only from inside the cluster, temporal-proxy included.
 
 Traefik, cert-manager and temporal-proxy come from their upstream Helm
 charts, each pinned to an explicit version, with the values this demo
 needs in `k8s/charts/`. The Worker and the API come from the manifests
-under `k8s/app`, and the self-hosted Temporal Service from
-`k8s/temporal`, both applied with Kustomize.
+under `k8s/app`, the self-hosted Temporal Service from `k8s/temporal`,
+and the Web UI reading through temporal-proxy from `k8s/ui`, all
+applied with Kustomize.
 
-## How the certificate travels
+## How the API key travels
 
-The certificate never appears in a manifest. `make apply` reads it from
-the working directory and builds the Secret the chart mounts:
+The API key never appears in a manifest, nor in the ConfigMap the chart
+renders. `make apply` reads it from `.env` and builds the Secret the
+chart references:
 
 ```text
-k8s/certs/client.pem + client.key
-  → Secret temporal-cloud-client (keys tls.crt and tls.key)
-  → the upstream's tls.secretName in k8s/charts/temporal-proxy.yaml
-  → mounted by the chart at /etc/temporal-proxy/certs/upstream-cloud
-  → the cert and key paths in the rendered configuration
+TEMPORAL_CLOUD_API_KEY in .env
+  → Secret temporal-cloud-api-key
+  → the upstream's credentials.static.apiKey in k8s/charts/temporal-proxy.yaml
+  → an environment variable the chart adds, TP_UPSTREAM_CLOUD_API_KEY
+  → ${TP_UPSTREAM_CLOUD_API_KEY} in the rendered configuration
 ```
 
-What the chart mounts is an ordinary Kubernetes Secret, and nothing
+temporal-proxy expands that reference at startup and sends the key with
+every request to Cloud, over TLS verified against the public roots —
+the Cloud upstream carries no `tls` block, because that default is
+already the right one.
+
+What the chart references is an ordinary Kubernetes Secret, and nothing
 assumes where that Secret came from. `make` fills it here so the demo
 stays self-contained, but whatever else populates a Secret works just
 as well — the Vault Secrets Operator, the External Secrets Operator
 syncing from a cloud secret manager, a sealed-secret controller — and
-`tls.secretName` is the only line that has to agree with it.
+the `secretKeyRef` under `apiKey` is the only place that has to agree
+with it.
 
 ## How the payload key travels
 
@@ -266,7 +297,7 @@ config:
   upstreams:
     - name: cloud
       hostPort: ${TEMPORAL_CLOUD_NAMESPACE}.${TEMPORAL_ACCOUNT}.tmprl.cloud:7233
-      # ... TLS, the client certificate, the Namespace rewrite
+      # ... the API key, the Namespace rewrite
     - name: selfhosted
       hostPort: temporal.temporal:7233
       insecure: true
@@ -277,8 +308,8 @@ make apply
 make demo
 ```
 
-The Temporal Cloud values and the client certificate stay required even
-when the Workers are routed at the self-hosted Service, and not only by
+The Temporal Cloud values and the API key stay required even when the
+Workers are routed at the self-hosted Service, and not only by
 `make apply`'s setup guard: temporal-proxy itself needs them, because the
 Cloud upstream is still declared and so still dialled at startup.
 
@@ -324,6 +355,35 @@ Namespace from Cloud, with neither application aware of the split.
 temporal-proxy's own [documentation][proxy-docs] covers everything it does
 beyond what this demo shows.
 
+## A Web UI that reads through temporal-proxy
+
+The cluster runs a third Web UI, a standalone one in the `temporal-ui`
+namespace, at `http://temporal-webui.127-0-0-1.nip.io:<port>` —
+`make endpoints` prints it with this worktree's port. Its frontend is
+temporal-proxy, dialled exactly as the Worker and the API dial it, so it
+reads whichever upstream `routing.default` selects, and follows the
+switch above with nothing of its own to change.
+
+It shows payloads in cleartext. temporal-proxy opens every payload on
+its way back, for this UI as for the Worker, so an Execution the Cloud
+and self-hosted Web UIs show sealed reads here in the clear.
+
+On a Cloud upstream, a few of the calls the UI makes — `ListNamespaces`
+and `ListSearchAttributes` among them — are not answered by a Namespace
+endpoint. temporal-proxy translates them onto Cloud's control plane, the
+[Cloud Ops API][cloud-ops], which accepts an API key and never a
+certificate. It reuses the Cloud upstream's own key there, so the
+Namespace picker and the search attribute lists work with nothing more
+configured. The Namespaces page lists `demo` alone, because the key's
+service account is scoped to that one Namespace.
+
+The UI is read-only: its own server refuses every call that would change
+state.
+
+Nothing in front of this UI asks who is reading, and everything it shows
+is decrypted. Keep it on this machine: Traefik's port must never be
+reachable from beyond it.
+
 ## What the application does not carry
 
 The Worker and the API each get the same two environment variables, and
@@ -336,8 +396,8 @@ neither describes an upstream:
 
 Those two are a cluster-local address, dialled in plaintext, and a short
 Namespace name. Nothing else is needed because everything else lives in
-temporal-proxy's configuration: the Cloud host name, the TLS material,
-and the rewrite from `demo` to the fully-qualified Cloud Namespace.
+temporal-proxy's configuration: the Cloud endpoint, the API key, and
+the rewrite from `demo` to the fully-qualified Cloud Namespace.
 `TEMPORAL_NAMESPACE` says which Namespace the application asks for, not
 which upstream serves it — picking an upstream is not something the
 application can do.
@@ -362,5 +422,7 @@ temporal-proxy itself is a separate project, licensed under MIT.
 [proxy-docs]: https://docs.temporal.io/production-deployment/temporal-proxy
 [kind]: https://kind.sigs.k8s.io
 [helm]: https://helm.sh
-[mtls]: https://docs.temporal.io/cloud/certificates
+[api-keys]: https://docs.temporal.io/cloud/api-keys
+[service-accounts]: https://docs.temporal.io/cloud/service-accounts
+[cloud-ops]: https://docs.temporal.io/ops
 [tcld]: https://docs.temporal.io/cloud/tcld

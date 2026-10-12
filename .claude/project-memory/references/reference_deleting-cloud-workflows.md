@@ -14,8 +14,7 @@ list of Workflow Ids:
 temporal workflow delete \
   --address "$TEMPORAL_CLOUD_NAMESPACE.$TEMPORAL_ACCOUNT.tmprl.cloud:7233" \
   --namespace "$TEMPORAL_CLOUD_NAMESPACE.$TEMPORAL_ACCOUNT" \
-  --tls-cert-path k8s/certs/client.pem \
-  --tls-key-path k8s/certs/client.key \
+  --api-key "$TEMPORAL_CLOUD_API_KEY" \
   --query 'WorkflowId != ""' --reason 'demo cleanup' -y
 ```
 
@@ -42,11 +41,12 @@ unattended:
 own — the Namespace is fully qualified here, unlike
 the short name the application dials — so every
 invocation needs the address, the qualified
-Namespace and the client certificate spelled out.
+Namespace and the API key spelled out. `--api-key` turns
+TLS on by itself, so no `--tls` flag goes with it.
 
-**How to access:** `TEMPORAL_CLOUD_NAMESPACE` and
-`TEMPORAL_ACCOUNT` come from `.env`; the client
-certificate pair lives in `k8s/certs/`. See
+**How to access:** `TEMPORAL_CLOUD_NAMESPACE`,
+`TEMPORAL_ACCOUNT` and `TEMPORAL_CLOUD_API_KEY` come from
+`.env`. See
 [One environment file](feedback_single-env-file.md) and
 [A shared temporal-proxy means no tenant is called
 default](feedback_namespace-identifies-the-tenant.md).

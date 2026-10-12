@@ -5,8 +5,7 @@
 #
 # The container image and the cluster stay out of it. The image exists to be
 # loaded into the local Kind cluster by `make image`, and standing that cluster
-# up needs Temporal Cloud credentials and a client certificate CI does not
-# have.
+# up needs Temporal Cloud credentials CI does not have.
 name: CI
 
 on:

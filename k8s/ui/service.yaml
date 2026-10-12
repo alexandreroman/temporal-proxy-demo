@@ -1,0 +1,10 @@
+# The backend `httproute.yaml` sends the Web UI's host name to.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ui
+spec:
+  selector:
+    app: ui
+  ports:
+    - port: 8080

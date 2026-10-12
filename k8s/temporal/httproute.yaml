@@ -1,5 +1,5 @@
 # The second published host name: the self-hosted Web UI. Traefik's port is
-# the single port this cluster publishes, and both host names arrive on it.
+# the single port this cluster publishes, and every host name arrives on it.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

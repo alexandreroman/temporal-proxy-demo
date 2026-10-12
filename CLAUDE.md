@@ -13,14 +13,15 @@ See [README.md](README.md) for full documentation.
 - Tailwind CSS and Alpine.js — the embedded page, both from a CDN
 - temporal-proxy — one gRPC endpoint in front of every upstream
 - Kubernetes on Kind — the local cluster the demo runs in
-- Kustomize — the Worker, the API, the KMS server and the
-  self-hosted Temporal Service
+- Kustomize — the Worker, the API, the KMS server, the
+  self-hosted Temporal Service and the Web UI reading through
+  temporal-proxy
 - Helm — Traefik, cert-manager and temporal-proxy, from their upstream charts
 - cert-manager — issues the KMS server's certificate
 - secretgen-controller — generates the KMS server's bearer token
 - Traefik — the cluster's only published entrypoint
 - Temporal Cloud — the upstream the demo ships routed at
-  (TLS + client certificate)
+  (TLS + API key, on a Namespace that allows API keys only)
 - Temporal Service — self-hosted in the cluster, the second upstream
 
 ## Build & run
@@ -34,8 +35,9 @@ make check          # tests and static checks
 make cluster-down   # delete the cluster
 ```
 
-`.env` also needs `KMS_MASTER_SECRET`; `require-setup`
-refuses to deploy without it.
+`.env` also needs `TEMPORAL_CLOUD_API_KEY` and
+`KMS_MASTER_SECRET`; `require-setup` refuses to deploy
+without them.
 
 ## Modules
 
@@ -48,8 +50,8 @@ refuses to deploy without it.
 - `internal/kms` — derives one AES-256-GCM key per Namespace
 - `k8s` — the cluster configuration: the application's manifests in
   `app`, the KMS server's in `kms`, the self-hosted Temporal Service's
-  in `temporal`, the charts' values in `charts`, the client certificate
-  in `certs`, plus `namespaces.yaml`, applied on its own, and
+  in `temporal`, the standalone Web UI's in `ui`, the charts' values in
+  `charts`, plus `namespaces.yaml`, applied on its own, and
   `kind-config.yaml.in`, the template `worktree-init` renders
 
 ## Agents

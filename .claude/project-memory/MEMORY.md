@@ -28,7 +28,6 @@
 - [Casper workspace integration](references/feedback_casper-workspace-integration.md) — where the wiring lives, and what stays neutral
 - [Per-worktree configuration lives on disk](references/feedback_worktree-config-on-disk.md) — a generated kind-config.yaml, and the port read back
 - [Naming the proxy outside the Go code](references/feedback_naming-the-proxy.md) — call it `temporal-proxy`, and how the port variable is named
-- [Outbound TLS rules for a temporal-proxy upstream](references/reference_proxy-outbound-tls.md) — a client certificate also needs a verifying `ca`
 - [Transport security is stated, not inferred](references/reference_proxy-transport-security.md) — silence means TLS; plaintext is `insecure: true`
 - [One environment file, loaded for every target](references/feedback_single-env-file.md) — a single `.env` for every target, no per-target tier
 - [Local development needs no cluster](references/project_local-development.md) — the Go inner loop runs against an ephemeral Temporal dev server
@@ -59,4 +58,6 @@
 - [Deleting every Workflow in the Cloud Namespace](references/reference_deleting-cloud-workflows.md) — batch delete by query; `-y` needs `--query`
 - [Two upstreams, and the one word that selects between them](references/project_two-upstreams-one-word.md) — `routing.default` is the whole switch
 - [An end-to-end test drives the page in a browser](references/feedback_e2e-means-the-browser.md) — a Workflow run from the page, not curl
-- [A codec server serves both Web UIs from loopback](references/project_codec-server-design.md) — the candidate design: loopback, port-forward, no auth
+- [A standalone Web UI reads through temporal-proxy](references/project_web-ui-through-proxy.md) — cleartext, follows `routing.default`
+- [The Cloud Namespace accepts API keys only](references/reference_cloud-api-key-namespace.md) — scoped service-account key; both-methods fails
+- [A codec server serves the two sealed Web UIs](references/project_codec-server-design.md) — loopback, port-forward, no auth

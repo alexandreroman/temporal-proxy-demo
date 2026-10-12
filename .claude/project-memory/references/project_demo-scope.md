@@ -10,7 +10,7 @@ The project is a teaching demo, not a product: it shows
 how a Temporal Worker and HTTP API run against
 temporal-proxy on Kubernetes while carrying no upstream
 connection details of their own. It declares two upstreams:
-Temporal Cloud, reached with a client certificate mounted
+Temporal Cloud, reached with an API key temporal-proxy reads
 from a Kubernetes Secret, is the one the demo ships routed
 at, and a self-hosted Temporal Service in the cluster's
 `temporal` namespace is the second.

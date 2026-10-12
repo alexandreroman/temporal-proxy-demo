@@ -13,6 +13,9 @@ and each extension server — and it reads differently by direction:
 - **Anything the proxy dials defaults to TLS.** An upstream or an
   extension server with no `tls` block is dialled over TLS and verified
   against the system root pool. Silence asks for TLS.
+- **A `tls.ca` replaces the system roots.** The pool is built from that
+  file alone, so a target given a private `ca`, such as the KMS
+  extension server, trusts nothing else.
 - **Plaintext is a field.** `insecure: true` is the only way to dial a
   cleartext endpoint, so an in-cluster frontend that serves no TLS has to
   say so on the upstream that names it.
@@ -37,7 +40,6 @@ upstream.
 `internal/config/extensions.go` for the `insecureRule` each applies and
 for the credentials rule that rides on it. See
 [temporal-proxy upstream resources](reference_temporal-proxy-upstream.md),
-[Outbound TLS rules](reference_proxy-outbound-tls.md),
 [temporal-proxy encryption
 constraints](reference_proxy-encryption-constraints.md)
 and [Two upstreams](project_two-upstreams-one-word.md).

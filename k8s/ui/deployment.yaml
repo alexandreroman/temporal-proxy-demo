@@ -1,0 +1,58 @@
+# The open-source Web UI server, dialling temporal-proxy like the application
+# does, so it reads whichever upstream `routing.default` in
+# `k8s/charts/temporal-proxy.yaml` selects. temporal-proxy opens payloads on
+# the way back, so they show in cleartext: keep Traefik's port on this machine.
+# README.md explains the whole picture.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ui
+spec:
+  selector:
+    matchLabels:
+      app: ui
+  template:
+    metadata:
+      labels:
+        app: ui
+    spec:
+      # The UI server never calls the Kubernetes API.
+      automountServiceAccountToken: false
+      containers:
+        - name: ui
+          # Pinned like every other version here.
+          image: temporalio/ui:2.55.0
+          # The image renders its configuration from these variables at
+          # startup.
+          env:
+            # Plaintext, the UI server's default whenever no TLS file is set.
+            - name: TEMPORAL_ADDRESS
+              value: temporal-proxy.temporal-proxy:7233
+            # The UI opens on `default` otherwise, which no upstream here
+            # serves: `demo` is the Namespace the application asks for.
+            - name: TEMPORAL_DEFAULT_NAMESPACE
+              value: demo
+            # The one default that would make an outbound call, as
+            # `--ui-disable-news-fetch` is for the self-hosted Web UI.
+            - name: TEMPORAL_DISABLE_NEWS_FETCH
+              value: "true"
+            # Read-only at the UI server: every non-GET call under `/api/v1`
+            # gets a 405, Queries excepted. temporal-proxy's key can still
+            # write, for the Worker, but Traefik does not publish its gRPC port.
+            - name: TEMPORAL_DISABLE_WRITE_ACTIONS
+              value: "true"
+            # The page is plain HTTP, where the browser drops a `Secure` CSRF
+            # cookie: every POST, Queries included, would then lack its token.
+            - name: TEMPORAL_CSRF_COOKIE_INSECURE
+              value: "true"
+          # Keeps Traefik from routing to a pod that is not listening yet.
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
