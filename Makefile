@@ -31,8 +31,9 @@ helm = helm --kube-context kind-$(CLUSTER)
 # and overwritten by `worktree-init` to pin a port per worktree.
 TRAEFIK_PORT ?= 8080
 
-# Kind reads no environment variable of its own, so the host port is frozen into
-# k8s/kind-config.yaml, rendered from its template.
+# kind's config file cannot read environment variables and no kind flag sets a
+# port mapping, so the host port is frozen into k8s/kind-config.yaml, rendered
+# from k8s/kind-config.yaml.in.
 render-kind-config = sed '/hostPort:/s/@TRAEFIK_PORT@/$(TRAEFIK_PORT)/' k8s/kind-config.yaml.in > k8s/kind-config.yaml
 
 # The host name the demo answers on, matched by k8s/app/httproute.yaml. A
