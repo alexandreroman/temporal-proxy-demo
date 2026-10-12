@@ -27,7 +27,7 @@ TRAEFIK_PORT ?= 8080
 
 # Kind reads no environment variable of its own, so the host port is frozen into
 # k8s/kind-config.yaml, rendered from its template.
-render-kind-config = sed 's/@TRAEFIK_PORT@/$(TRAEFIK_PORT)/' k8s/kind-config.yaml.in > k8s/kind-config.yaml
+render-kind-config = sed '/hostPort:/s/@TRAEFIK_PORT@/$(TRAEFIK_PORT)/' k8s/kind-config.yaml.in > k8s/kind-config.yaml
 
 # The host name the demo answers on, matched by k8s/app/httproute.yaml. A
 # manifest cannot read a make variable, so that file spells it out too.
