@@ -42,21 +42,16 @@ readinessProbe:
   grpc:
     port: 7233
 
-# The Namespace and account identifiers, which the configuration
-# references as ${VAR} and the binary expands from this environment
-# at startup. `make apply` builds this Secret from .env.
+# The variables the configuration references as ${VAR}, which the binary
+# expands from this environment at startup: the Namespace and account
+# identifiers, which `make apply` builds from .env, and the KMS server's
+# bearer token, generated in the cluster. Each Secret holds only what this
+# container needs, so the neighbouring kms-master-secret never reaches it.
 envFrom:
   - secretRef:
       name: temporal-cloud-config
-
-# One key from the Secret, not the whole of it: the master secret in the
-# neighbouring kms-master-secret Secret never reaches this container.
-env:
-  - name: KMS_API_KEY
-    valueFrom:
-      secretKeyRef:
-        name: kms-api-key
-        key: KMS_API_KEY
+  - secretRef:
+      name: kms-api-key
 
 # One key of the Secret, so the KMS server's private key never reaches this
 # container — only its self-signed certificate, which is what the extension
