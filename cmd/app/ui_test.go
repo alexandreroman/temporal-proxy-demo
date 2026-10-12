@@ -35,8 +35,8 @@ func TestPage(t *testing.T) {
 			wantCaption: `plaintext namespace "demo"`,
 		},
 		{
-			// Unset: the fallback in the code, which is what a Temporal dev server serves.
-			name:        "namespace unset",
+			// Empty reads as unset, so the code falls back to what a Temporal dev server serves.
+			name:        "namespace empty",
 			wantCaption: `plaintext namespace "default"`,
 		},
 	}
