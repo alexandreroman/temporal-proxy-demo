@@ -4,11 +4,13 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
-  # Workloads run on the worker, never on the control-plane.
+  # One node: kind lets workloads run on a lone control-plane node.
   - role: control-plane
-  - role: worker
     # The only port this cluster publishes. Traefik answers on NodePort
     # 30080; everything the demo exposes goes through it.
     extraPortMappings:
       - containerPort: 30080
         hostPort: @TRAEFIK_PORT@
+        # kind publishes on 0.0.0.0 otherwise, and the Web UI reading through
+        # temporal-proxy shows payloads in cleartext: keep it on this machine.
+        listenAddress: 127.0.0.1

@@ -52,7 +52,7 @@ CONTAINER_TOOL ?= docker
 # empty answer means the cluster is down, and TRAEFIK_PORT is then the right
 # default. Once the cluster is up that is all it is: an explicit TRAEFIK_PORT=
 # on a later command line does not move an already-published port.
-traefik-port = $$(p=$$($(CONTAINER_TOOL) port '$(CLUSTER)-worker' 30080 2>/dev/null | \
+traefik-port = $$(p=$$($(CONTAINER_TOOL) port '$(CLUSTER)-control-plane' 30080 2>/dev/null | \
     awk -F: 'NR==1 {print $$NF}'); echo $${p:-$(TRAEFIK_PORT)})
 
 ##@ Develop
