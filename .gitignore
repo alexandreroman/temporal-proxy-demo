@@ -1,7 +1,8 @@
 # Local environment — never commit credentials
 .env
 
-# Per-worktree cluster config — written by `make worktree-init`
+# Per-worktree cluster config — rendered by `make worktree-init`, or by
+# `make cluster-create` when absent
 /k8s/kind-config.yaml
 
 # Go
