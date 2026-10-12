@@ -1,16 +1,17 @@
 ---
-name: "A codec server serves both Web UIs from loopback"
-description: "The candidate design for reading sealed payloads in both Web UIs: a loopback codec server reached by port-forward, with no auth"
+name: "A codec server serves the two sealed Web UIs from loopback"
+description: "The candidate design for reading sealed payloads in the Cloud and self-hosted Web UIs: a loopback codec server reached by port-forward, with no auth"
 type: project
 ---
 
-# A codec server serves both Web UIs from loopback
+# A codec server serves the two sealed Web UIs from loopback
 
 The demo ships no codec server. temporal-proxy has one built
 in (`codecServer`, from v0.8.0), and adding it is an open,
 unscheduled candidate. Any version of it supports both the
 Temporal Cloud Web UI and the self-hosted Web UI: one UI
-alone does not qualify.
+alone does not qualify. The Web UI in `k8s/ui` reads through
+temporal-proxy, sees cleartext, and needs no codec server.
 
 The design that meets that requirement:
 

@@ -37,6 +37,10 @@ DEMO_HOST = hello.127-0-0-1.nip.io
 # k8s/temporal/httproute.yaml, which spells it out too for the same reason.
 TEMPORAL_UI_HOST = temporal.127-0-0-1.nip.io
 
+# The host name the Web UI reading through temporal-proxy answers on, matched
+# by k8s/ui/httproute.yaml, which spells it out too for the same reason.
+TEMPORAL_PROXY_UI_HOST = temporal-webui.127-0-0-1.nip.io
+
 # The CLI that builds the image and runs the cluster's nodes. A Podman user
 # overrides this one variable; kind detects Podman on its own, and needs
 # KIND_EXPERIMENTAL_PROVIDER=podman only when a docker CLI is on PATH too,
@@ -85,7 +89,8 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 		'| Service | Address |' '| --- | --- |' \
 		"| Demo App | <http://$(DEMO_HOST):$$port> |" \
 		"| Temporal Web UI (Cloud) | $$web_ui |" \
-		"| Temporal Web UI (self-hosted) | <http://$(TEMPORAL_UI_HOST):$$port> |"
+		"| Temporal Web UI (self-hosted) | <http://$(TEMPORAL_UI_HOST):$$port> |" \
+		"| Temporal Web UI (through temporal-proxy) | <http://$(TEMPORAL_PROXY_UI_HOST):$$port> |"
 
 # The workspace info panel mirrors `make endpoints`, so whichever command
 # brought the stack up or down leaves it telling the truth. The CLI is on PATH
@@ -178,13 +183,11 @@ require-setup:
 	@missing=''; \
 	[ -n '$(TEMPORAL_CLOUD_NAMESPACE)' ] || missing="$$missing TEMPORAL_CLOUD_NAMESPACE"; \
 	[ -n '$(TEMPORAL_ACCOUNT)' ] || missing="$$missing TEMPORAL_ACCOUNT"; \
-	[ -f k8s/certs/client.pem ] || missing="$$missing k8s/certs/client.pem"; \
-	[ -f k8s/certs/client.key ] || missing="$$missing k8s/certs/client.key"; \
+	[ -n '$(TEMPORAL_CLOUD_API_KEY)' ] || missing="$$missing TEMPORAL_CLOUD_API_KEY"; \
 	[ -n '$(KMS_MASTER_SECRET)' ] || missing="$$missing KMS_MASTER_SECRET"; \
 	if [ -n "$$missing" ]; then \
 	  echo "Cannot deploy, these are missing:$$missing"; \
-	  echo "The values go in .env (copy .env.example); the certificate goes in"; \
-	  echo "k8s/certs/ as client.pem and client.key. Then run the command again."; \
+	  echo "They go in .env (copy .env.example). Then run the command again."; \
 	  exit 1; \
 	fi
 
@@ -208,11 +211,12 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 	$(call apply-secret,generic temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
 		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)')
-	$(call apply-secret,tls temporal-cloud-client \
-		--cert=k8s/certs/client.pem --key=k8s/certs/client.key)
-# Silenced with @, unlike its two neighbours above: this recipe line expands to
-# the master secret itself, and make echoes a recipe line it does not run
-# quietly.
+# A Secret of its own: temporal-cloud-config above is loaded whole with envFrom,
+# so a key there would reach the container a second time. This line and the
+# next are silenced with @: each expands to a secret, and make echoes every
+# recipe line not prefixed with @.
+	@$(call apply-secret,generic temporal-cloud-api-key \
+		--from-literal=TEMPORAL_CLOUD_API_KEY='$(TEMPORAL_CLOUD_API_KEY)')
 	@$(call apply-secret,generic kms-master-secret \
 		--from-literal=KMS_MASTER_SECRET='$(KMS_MASTER_SECRET)')
 	kubectl --context kind-$(CLUSTER) apply -k k8s/kms
@@ -233,17 +237,19 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 		--namespace temporal-proxy \
 		-f k8s/charts/temporal-proxy.yaml --hide-notes
 # Unconditional, because nothing above changes the pod template: temporal-proxy
-# reads its configuration and its certificate only at startup, so this restart
-# is what makes `make apply` a working certificate rotation. The wait paired
-# with it keeps a rejected certificate from being reported as a success.
+# reads its configuration and its API key only at startup, so this restart is
+# what makes `make apply` a working key rotation. The wait paired with it keeps
+# a proxy that refuses to start from being reported as a success. A key Cloud
+# rejects still lets it start: it fails the first request, not the startup.
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout restart deploy/temporal-proxy
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
 	kubectl --context kind-$(CLUSTER) apply -k k8s/app
+	kubectl --context kind-$(CLUSTER) apply -k k8s/ui
 
 # The image tag is fixed, so a rebuild is invisible to Kubernetes
 # until the pods are told to restart. `apply` has already restarted
 # temporal-proxy and waited for it, its pod template being just as
-# blind to a changed configuration or certificate.
+# blind to a changed configuration or API key.
 .PHONY: app-up
 app-up: require-setup cluster-up image apply ## Bring up the cluster and everything the demo runs on
 	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker

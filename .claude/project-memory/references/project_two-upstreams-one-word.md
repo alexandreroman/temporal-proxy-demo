@@ -38,7 +38,7 @@ Four properties make that possible:
   over TLS. It carries no `namespaces.rules`, because its
   Service registers the Namespace under `demo` — the same
   string the application asks for, so there is nothing to
-  rewrite. The Cloud upstream needs a `tls` block and the
+  rewrite. The Cloud upstream needs an API key and the
   rules both.
 - Payload encryption is orthogonal to the choice:
   temporal-proxy seals every payload whichever upstream it
@@ -62,7 +62,6 @@ the startup connection check is in
 `internal/dataplane/lifecycle.go`. See
 [Demo scope](project_demo-scope.md),
 [temporal-proxy's Helm chart](reference_proxy-helm-chart.md),
-[Outbound TLS rules](reference_proxy-outbound-tls.md),
 [Transport security is stated, not
 inferred](reference_proxy-transport-security.md) and
 [A shared temporal-proxy means no tenant is called

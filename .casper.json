@@ -1,6 +1,6 @@
 {
   "workspace": {
-    "copyFiles": [".env", "client.pem", "client.key"],
+    "copyFiles": [".env"],
     "scripts": {
       "setup": "make worktree-init TRAEFIK_PORT=$CASPER_PORT",
       "run": "make app-up",

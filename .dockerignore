@@ -6,9 +6,8 @@ Makefile
 LICENSE
 .casper.json
 .DS_Store
+k8s/
 
 # Not part of the build either, and kept out for secrecy as well as size:
-# .env holds the KMS master secret, and k8s/certs/ the Temporal Cloud
-# client key.
+# .env holds the Temporal Cloud API key and the KMS master secret.
 .env*
-k8s/

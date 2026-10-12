@@ -27,30 +27,30 @@ to say:
 - `service.port` sets the Service's port and, unless
   `config.hostPort` says otherwise, the gateway's listen
   address — one number for both.
-- An upstream's `tls.secretName` mounts that Secret at
-  `/etc/temporal-proxy/certs/upstream-<name>` and writes
-  `cert` and `key` into the rendered config, from the keys
-  `tls.crt` and `tls.key`. `ca` is written only from a
-  `caKey`, and an explicit `ca` survives alongside
-  `secretName` — which is how an upstream takes its client
-  pair from a Secret and its trust anchor from a file the
-  image already carries.
+- An upstream's `credentials.static.apiKey.secretKeyRef`
+  adds the env var `TP_UPSTREAM_<NAME>_API_KEY` from that
+  Secret and writes `${TP_UPSTREAM_<NAME>_API_KEY}` into the
+  rendered config, so the key never sits in the ConfigMap.
+  The chart wires this for upstreams and the gateway only,
+  never for an extension server.
 - The chart's default probes are `httpGet` on `/`. Helm
   merges maps, so a `grpc` probe has to set `httpGet: null`
   in the same block. Otherwise the rendered probe carries
   two handlers, which `helm template` prints without
   complaint and the API server rejects.
 - The pod template carries no checksum of the ConfigMap, and
-  the ConfigMap and the mounted Secrets have fixed names, so
-  editing a configuration or replacing a certificate leaves
+  the ConfigMap and the Secrets it reads have fixed names, so
+  editing the configuration or rotating the API key leaves
   the template untouched and nothing rolls on its own.
   temporal-proxy reads both once, at startup, so the restart
   is `make apply`'s to issue.
 
-**Why:** the first four turn a values file that looks valid
-into a proxy that refuses to start or a Service nothing can
-reach; the last one leaves a pod serving a configuration
-that is not the one on disk.
+**Why:** the API key rule names a variable the chart
+invents, so a hand-written `${VAR}` for the same key does
+not match it. The last rule leaves a pod serving a
+configuration that is not the one on disk. Each of the
+others turns a values file that looks valid into a proxy
+that refuses to start or a Service nothing can reach.
 
 **How to access:** read the value tree with `helm show values
 temporal-proxy --repo https://go.temporal.io/helm-charts
@@ -58,5 +58,4 @@ temporal-proxy --repo https://go.temporal.io/helm-charts
 config-supply model — from `helm pull --untar`. Render with
 `helm template ... -f k8s/charts/temporal-proxy.yaml` and
 read the output before applying it. See
-[temporal-proxy upstream resources](reference_temporal-proxy-upstream.md) and
-[Outbound TLS rules](reference_proxy-outbound-tls.md).
+[temporal-proxy upstream resources](reference_temporal-proxy-upstream.md).
