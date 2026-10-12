@@ -1,32 +1,12 @@
-# The KMS server's certificate, issued in the cluster. A self-signed
-# issuer signs one CA, and that CA signs the server certificate — the
-# two-tier shape that fills ca.crt in the leaf's Secret, which is the
-# file temporal-proxy verifies against.
+# The KMS server's certificate, issued in the cluster by a self-signed
+# issuer. Its Secret's ca.crt is therefore the certificate itself, which is
+# the file temporal-proxy verifies against.
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: selfsigned
 spec:
   selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: kms-ca
-spec:
-  isCA: true
-  commonName: kms-ca
-  secretName: kms-ca
-  issuerRef:
-    name: selfsigned
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: kms-ca
-spec:
-  ca:
-    secretName: kms-ca
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -38,4 +18,4 @@ spec:
   dnsNames:
     - kms.temporal-proxy
   issuerRef:
-    name: kms-ca
+    name: selfsigned

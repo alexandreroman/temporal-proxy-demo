@@ -58,9 +58,9 @@ env:
         name: kms-api-key
         key: KMS_API_KEY
 
-# One key here too, so the KMS server's private key never reaches this
-# container either — only the certificate authority that signed it, which
-# is what the extension server's tls.ca is set to below.
+# One key of the Secret, so the KMS server's private key never reaches this
+# container — only its self-signed certificate, which is what the extension
+# server's tls.ca is set to below.
 volumes:
   - name: kms-ca
     secret:
