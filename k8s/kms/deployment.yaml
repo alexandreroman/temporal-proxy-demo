@@ -18,7 +18,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: kms
-          image: temporal-proxy-demo:dev
+          image: docker.io/library/temporal-proxy-demo:dev
           command: ["/app/kms"]
           envFrom:
             - secretRef:

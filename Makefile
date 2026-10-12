@@ -162,12 +162,8 @@ cluster-down: ## Delete the Kind cluster
 	kind delete cluster --name '$(CLUSTER)'
 	@$(clear-endpoints)
 
-# Tagged with the registry Kubernetes assumes for an unqualified name,
-# so the Deployments' plain `temporal-proxy-demo:dev` resolves to the
-# image this target built rather than triggering a pull. Building with
-# a container tool whose default namespace differs from that assumption
-# (podman tags an unqualified build `localhost/...`) would otherwise
-# load a name the cluster never looks up.
+# Fully qualified, as the manifests write it: podman tags an unqualified build
+# `localhost/...`, a name the cluster never looks up.
 IMAGE = docker.io/library/temporal-proxy-demo:dev
 
 # `kind load docker-image` always shells out to docker, so the image travels as

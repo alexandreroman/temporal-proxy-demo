@@ -18,8 +18,8 @@ spec:
       containers:
         - name: app
           # Built by `make image` and loaded straight into the cluster's
-          # nodes, so there is no registry and nothing to pull.
-          image: temporal-proxy-demo:dev
+          # node, so there is no registry and nothing to pull.
+          image: docker.io/library/temporal-proxy-demo:dev
           command: ["/app/app"]
           env:
             # A local endpoint, in plaintext, with the application's
