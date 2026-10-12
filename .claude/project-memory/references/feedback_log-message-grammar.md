@@ -40,8 +40,8 @@ way as any other detail: `cmd/kms` logs
 `required variable not set` with the variable's
 name in a field.
 
-A fatal message names the component that is
-stopping, matching the surviving process's
+The message a binary logs when it stops names the
+component, matching the surviving process's
 vocabulary: `cmd/kms` logs `kms stopped` where
 `cmd/app` logs `app stopped` and `cmd/worker` logs
 `worker stopped`. All three carry the error as a
@@ -60,7 +60,7 @@ stream scannable, and a constant message per call
 site is what makes a line greppable and groupable.
 
 **How to apply:** when adding a log call, pick one
-of the two shapes and put every variable part in a
+of the shapes above and put every variable part in a
 field. To audit the tree:
 
 ```sh

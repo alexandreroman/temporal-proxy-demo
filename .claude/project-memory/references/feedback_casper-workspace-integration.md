@@ -15,7 +15,7 @@ straight into the Make variable Traefik's published port
 is built from, so that variable name is a contract between
 the two files. `.casper.json` also copies `.env` into a
 fresh workspace, and a workspace deploys the whole demo as
-soon as `.env` holds the four values `.env.example` lists. A
+soon as `.env` holds the four values `.env.example` documents. A
 copied `.env` missing any one of them stops at
 `require-setup`.
 
