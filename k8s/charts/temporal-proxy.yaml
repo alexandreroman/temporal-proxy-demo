@@ -1,11 +1,8 @@
-# temporal-proxy is the only workload that knows where Temporal is.
-# These values feed its upstream chart; `config:` below is
-# temporal-proxy's own configuration file. The chart carries it into a
-# ConfigMap and points the binary at it, filling in the listen address
-# and the Temporal Cloud API key's reference on the way, but it never
-# runs the block through Helm's templating — which is why the ${VAR}
-# references survive into the rendered config and this file stays
-# committable.
+# temporal-proxy is the only workload that knows where Temporal is. These
+# values feed its upstream chart, and `config:` below is temporal-proxy's own
+# configuration file, copied into a ConfigMap without Helm's templating: each
+# ${VAR} survives, and temporal-proxy expands it from its environment at
+# startup, which keeps this file committable and account-agnostic.
 
 # The chart would otherwise default to its own appVersion, which
 # trails the image releases.
@@ -77,19 +74,12 @@ config:
     default: cloud
   upstreams:
     - name: cloud
-      # ${VAR} references stay literal here and in the ConfigMap built
-      # from this file: the chart never templates them, and
-      # temporal-proxy expands them from its own environment. That is
-      # what keeps this file committable and account-agnostic.
-      #
       # The Namespace endpoint takes an API key only on a Namespace whose sole
       # auth method is API keys. The regional endpoint is no substitute: the
       # Web UI sends no `temporal-namespace` header.
       hostPort: ${TEMPORAL_CLOUD_NAMESPACE}.${TEMPORAL_ACCOUNT}.tmprl.cloud:7233
-      # No `tls` block, because silence already says the right thing: an
-      # upstream that states nothing about its transport is dialled over TLS
-      # and verified against the system roots, and Cloud's certificate is
-      # publicly signed. The API key is the whole of the authentication.
+      # No `tls` block: Cloud's certificate is publicly signed, and the API key
+      # is the whole of the authentication.
       credentials:
         static:
           # The chart turns this reference into an environment variable on

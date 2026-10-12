@@ -1,4 +1,4 @@
-# Traefik's port is the single published port, and this route fronts the API.
+# Sends the demo's host name to the API, which serves the demo page too.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
