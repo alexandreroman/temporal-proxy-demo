@@ -15,8 +15,8 @@ var greetDelay = 2 * time.Second
 func Greet(ctx context.Context, req Request) (Response, error) {
 	activity.GetLogger(ctx).Info("greet activity started", "name", req.Name)
 
-	// Honour cancellation: a bare time.Sleep would keep the Worker busy after the
-	// Workflow gave up on this Activity.
+	// Honour the context: it ends when the StartToCloseTimeout passes or the Worker stops,
+	// and a bare time.Sleep would ignore both.
 	select {
 	case <-time.After(greetDelay):
 		return Response{Greeting: fmt.Sprintf("Hello, %s!", req.Name)}, nil

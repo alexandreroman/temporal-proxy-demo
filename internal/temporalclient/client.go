@@ -1,7 +1,7 @@
 // Package temporalclient builds the Temporal client shared by the Worker and the HTTP API.
 //
-// What is absent here is the point of the demo: no TLS material, no API key, no host name of
-// its own, no fully-qualified Namespace. The client dials a local Temporal endpoint in plaintext
+// What is absent here is the point of the demo: no TLS material, no API key, no remote host
+// name, no fully-qualified Namespace. The client dials a local Temporal endpoint in plaintext
 // with a short Namespace name, and stays unaware of what backs that endpoint.
 package temporalclient
 

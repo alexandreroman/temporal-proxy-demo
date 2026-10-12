@@ -2,8 +2,7 @@
 //
 // GET / renders the page, embedded in the binary. POST /hello takes a JSON body naming who to
 // greet, starts one Workflow Execution, waits for its result and writes the greeting back as
-// JSON, alongside the identifiers of the Execution that produced it. Like the Worker, it only
-// knows a plaintext local Temporal endpoint.
+// JSON, alongside the identifiers of the Execution that produced it.
 package main
 
 import (
@@ -11,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -46,15 +46,21 @@ func run() error {
 	defer c.Close()
 
 	srv := &http.Server{
-		// No host in front of the port: net/http then listens on every interface, IPv4 and IPv6.
+		// No host in front of the port: net.Listen then listens on every interface, IPv4 and IPv6.
 		Addr:              ":" + cmp.Or(os.Getenv("PORT"), defaultPort),
 		Handler:           newMux(startHelloWorkflow(c)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	serveErr := make(chan error, 1)
-	go func() { serveErr <- srv.ListenAndServe() }()
+	// Bound before "app started" is logged, so the line means the port accepts connections.
+	ln, err := net.Listen("tcp", srv.Addr)
+	if err != nil {
+		return fmt.Errorf("listen on %s: %w", srv.Addr, err)
+	}
 	slog.Info("app started", "address", srv.Addr)
+
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.Serve(ln) }()
 
 	select {
 	case err := <-serveErr:

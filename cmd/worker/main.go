@@ -1,7 +1,6 @@
 // Command worker runs the Temporal Worker of the hello-workflow demo.
 //
-// It polls the hello-workflow task queue over a plaintext local Temporal endpoint: no
-// credential, no TLS material and no fully-qualified Namespace live in this binary.
+// It polls the hello-workflow Task Queue.
 package main
 
 import (

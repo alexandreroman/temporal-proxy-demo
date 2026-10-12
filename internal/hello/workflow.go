@@ -2,7 +2,6 @@
 package hello
 
 import (
-	"fmt"
 	"time"
 
 	"go.temporal.io/sdk/temporal"
@@ -28,8 +27,8 @@ func HelloWorkflow(ctx workflow.Context, req Request) (Response, error) {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		// Comfortably above the Activity's own delay, so a slow Activity is not a timeout.
 		StartToCloseTimeout: 10 * time.Second,
-		// Temporal retries forever by default. A demo bounds it: after three attempts the
-		// failure surfaces instead of leaving the caller waiting.
+		// Activities retry without limit by default. A demo bounds it: after three attempts the
+		// Activity's failure fails the Workflow.
 		RetryPolicy: &temporal.RetryPolicy{MaximumAttempts: 3},
 	})
 
@@ -37,7 +36,7 @@ func HelloWorkflow(ctx workflow.Context, req Request) (Response, error) {
 
 	var res Response
 	if err := workflow.ExecuteActivity(ctx, Greet, req).Get(ctx, &res); err != nil {
-		return Response{}, fmt.Errorf("execute Greet activity: %w", err)
+		return Response{}, err
 	}
 	return res, nil
 }

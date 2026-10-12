@@ -2,9 +2,10 @@
 // gRPC service implementing api.kms.v1.EncryptionService. Only key material
 // crosses the wire; payload plaintext never reaches it.
 //
-// The keyring derives one key per Namespace, and that is all this command
-// contributes: ext.NewKeyWrapper seals with those keys and frames the result, and
-// ext.Serve checks the bearer token and serves TLS.
+// The keyring, which derives one key per Namespace, is all the cryptography this
+// command contributes: ext.NewKeyWrapper seals with those keys and frames the
+// result, and ext.Serve runs the gRPC server behind the bearer-token check and the
+// TLS key pair this command loads.
 //
 // KMS_API_KEY is the bearer token every call has to present. KMS_MASTER_SECRET is
 // what every Namespace's wrapping key is derived from. Both are required, and the
@@ -75,7 +76,7 @@ func main() {
 func requireEnv(name string, log logger.Logger) string {
 	v := os.Getenv(name)
 	if v == "" {
-		log.Fatal(name + " is required")
+		log.Fatal("required variable not set", tag.String("variable", name))
 	}
 
 	return v
