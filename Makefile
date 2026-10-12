@@ -222,6 +222,9 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 	kubectl --context kind-$(CLUSTER) apply -k k8s/kms
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy wait --for=condition=Ready \
 		certificate/kms-tls --timeout=120s
+# Unconditional, because the KMS server reads its image, its master secret and
+# its token only at startup, and none of them changes its pod template.
+	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout restart deploy/kms
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/kms --timeout=120s
 # The self-hosted Temporal Service, the demo's second upstream, has to be up
 # before temporal-proxy starts, as does the KMS server above: temporal-proxy
