@@ -157,5 +157,6 @@ config:
     enabled: true
     default:
       uri: extension://kms/payloads
+      # How long one Namespace's data key seals new payloads before a fresh
+      # one takes over. Payloads it sealed stay readable.
       duration: 1h
-      renewBefore: 15m
