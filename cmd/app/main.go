@@ -6,7 +6,6 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
@@ -21,7 +20,8 @@ import (
 )
 
 const (
-	defaultPort     = "8080"
+	// No host in front of the port: net.Listen then listens on every interface, IPv4 and IPv6.
+	listenAddr      = ":8080"
 	shutdownTimeout = 10 * time.Second
 )
 
@@ -46,8 +46,7 @@ func run() error {
 	defer c.Close()
 
 	srv := &http.Server{
-		// No host in front of the port: net.Listen then listens on every interface, IPv4 and IPv6.
-		Addr:              ":" + cmp.Or(os.Getenv("PORT"), defaultPort),
+		Addr:              listenAddr,
 		Handler:           newMux(startHelloWorkflow(c)),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

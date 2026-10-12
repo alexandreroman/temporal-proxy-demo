@@ -27,9 +27,8 @@ publishes.
 **Why:** the component's own name is precise and
 searchable, and a demo built to show temporal-proxy should
 say what it is showing. Naming `TRAEFIK_PORT` for what it
-publishes keeps it readable next to the application's own
-`PORT` environment variable, a separate contract that
-`cmd/app` reads directly for its listen address.
+publishes keeps it distinct from the ports the workloads
+listen on inside the cluster.
 
 **How to apply:** name the component in documentation, in
 Makefile, manifest and values comments, and in target
