@@ -59,11 +59,9 @@ traefik-port = $$(p=$$($(CONTAINER_TOOL) port '$(CLUSTER)-worker' 30080 2>/dev/n
 
 # CLUSTER, the directory name, keeps two worktrees from sharing a cluster,
 # and the Kind config rendered at TRAEFIK_PORT keeps them from sharing a host
-# port. The module download rides along as a convenience, to warm the build
-# cache.
+# port.
 .PHONY: worktree-init
-worktree-init: ## Fetch dependencies and pin this worktree's port (overwrites k8s/kind-config.yaml)
-	go mod download
+worktree-init: ## Pin this worktree's port (overwrites k8s/kind-config.yaml)
 	$(render-kind-config)
 
 .PHONY: demo
