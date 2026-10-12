@@ -31,8 +31,10 @@ to say:
   adds the env var `TP_UPSTREAM_<NAME>_API_KEY` from that
   Secret and writes `${TP_UPSTREAM_<NAME>_API_KEY}` into the
   rendered config, so the key never sits in the ConfigMap.
-  The chart wires this for upstreams and the gateway only,
-  never for an extension server.
+  The chart wires this for upstreams, the gateway and
+  `auth.staticToken` only, never for an extension server,
+  whose CA and token reach the container through the
+  chart's top-level `volumes`, `volumeMounts` and `envFrom`.
 - The chart's default probes are `httpGet` on `/`. Helm
   merges maps, so a `grpc` probe has to set `httpGet: null`
   in the same block. Otherwise the rendered probe carries
@@ -45,12 +47,12 @@ to say:
   temporal-proxy reads both once, at startup, so the restart
   is `make apply`'s to issue.
 
-**Why:** the API key rule names a variable the chart
-invents, so a hand-written `${VAR}` for the same key does
-not match it. The last rule leaves a pod serving a
-configuration that is not the one on disk. Each of the
-others turns a values file that looks valid into a proxy
-that refuses to start or a Service nothing can reach.
+**Why:** each of these turns a values file that looks
+valid into a proxy that refuses to start, a Service nothing
+can reach, or a pod serving a configuration that is not the
+one on disk. The values file comments each key with the
+rule it answers to; this note is where the rules are
+sourced.
 
 **How to access:** read the value tree with `helm show values
 temporal-proxy --repo https://go.temporal.io/helm-charts

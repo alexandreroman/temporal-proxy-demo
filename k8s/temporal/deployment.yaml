@@ -49,7 +49,7 @@ spec:
               port: 7233
               service: temporal.api.workflowservice.v1.WorkflowService
           # A whole Temporal Service needs more room than the demo's own
-          # workloads, which sit at 20m and 32Mi.
+          # workloads.
           resources:
             requests:
               cpu: 100m

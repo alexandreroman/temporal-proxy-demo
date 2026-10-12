@@ -25,7 +25,7 @@
     <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://api.fontshare.com/v2/css?f[]=general-sans@400,600,700&display=swap"
+      href="https://api.fontshare.com/v2/css?f[]=general-sans@400,700&display=swap"
     />
     <link
       rel="stylesheet"
@@ -36,7 +36,7 @@
 
     <style type="text/tailwindcss">
       @theme {
-        /* temporal.io's own palette. No colour outside this list appears on the page. */
+        /* temporal.io's own palette. Every hue on the page comes from this list. */
         --color-ink: #141414;
         --color-surface: #1B1B1B;
         --color-hairline: #2A2A2A;
@@ -61,7 +61,7 @@
                                      key service
 
          Only the upstream column flexes, because its wire is horizontal: an x-only stretch would
-         thin a slanted stroke, and non-scaling-stroke would break the pulse's dash. */
+         thicken a slanted stroke, and non-scaling-stroke would break the pulse's dash. */
       .rail {
         /* One width for a card and for the column it stands in, declared once so the two cannot
            disagree. */
@@ -80,8 +80,6 @@
         /* Two 17px outlines overhang this gutter, so much less than this reads as one dashed box; at
            1440x950 it is also the last of the vertical budget before the page starts scrolling. */
         row-gap: 3.75rem;
-        align-items: center;
-        width: 100%;
         /* The floor is three card columns plus 4.5rem and 3.5rem of connector, stated rather than
            derived so that it cannot drift with an intrinsic measurement. */
         min-width: calc(3 * var(--rail-card-width) + 8rem);
@@ -121,7 +119,6 @@
 
         display: flex;
         flex-direction: column;
-        align-items: flex-start;
         gap: 0.375rem;
         width: var(--rail-card-width);
         height: 8rem;
@@ -176,7 +173,6 @@
          hover. */
       .rail-connector {
         position: relative; /* the containing block the svg below is taken out of flow against */
-        align-self: stretch;
         pointer-events: none;
         /* Above every group outline, whichever is written first, so a wire crosses an outline
            unbroken. The wires lift rather than the groups sink: the backdrop layers sit at index 0. */
@@ -255,7 +251,6 @@
          row gap and the band's inline padding are each sized to hold that overhang. */
       .rail-persona {
         position: relative;
-        align-self: stretch;
         /* The margin cancels the padding and the border, so the content box is exactly the cell. */
         margin: calc(-1rem - 1px);
         padding: 1rem;
@@ -287,7 +282,6 @@
         flex-direction: column;
         justify-content: space-between;
         height: 100%;
-        list-style: none;
       }
 
       /* The name sits astride the stroke, the way a fieldset's legend does: it costs no height, and
@@ -307,11 +301,7 @@
          the name starts. It stays a list for anything reading the page aloud; it shows no markers. */
       .rail-detail {
         @apply font-mono text-xs leading-relaxed text-muted;
-        list-style: none;
         padding-left: var(--rail-mark-column);
-        /* The card packs its children to the start, so the list would otherwise be as wide as its
-           longest item. Stretching it gives every item a column to be truncated against. */
-        align-self: stretch;
       }
 
       /* One line per item, truncated rather than wrapped: the cards share one fixed height that a
@@ -327,7 +317,7 @@
       .rail-scroll {
         overflow-x: auto;
         /* An axis beside overflow-x: auto cannot stay visible, so this padding is the room the clip
-           would cut: a group's outline below, its name chip above, with 8.5px of slack for a fallback
+           would cut: a group's outline below, its name chip above, with 8px of slack for a fallback
            face's taller metrics. The inline padding is exactly the leftmost outline's 17px overhang. */
         overflow-y: hidden;
         padding-block: 2rem 1.5rem;
@@ -363,8 +353,7 @@
       /* The names set the band the captions hang from, so each needs room for the lockup's 0.475em
          descent, which the type's own line-height does not leave. All five share the value. */
       .rail-name {
-        @apply font-mono text-sm text-fg lg:text-base;
-        line-height: 1.625;
+        @apply font-mono text-sm leading-relaxed text-fg lg:text-base;
       }
 
       /* The markup carries no space after the mark: this margin is the space. */
@@ -385,22 +374,26 @@
         display: inline-block;
         position: relative;
         top: -0.069em;
-        width: auto;
         height: 1.65em;
         vertical-align: -0.475em;
       }
 
       /* The backdrop, in temporal.io's own vocabulary, drawn in CSS so the binary carries no image.
-         Every layer is fixed at z-index 0 with main above it in the same stacking level; a negative
-         index would paint it behind the body's own background, which is nowhere. */
+         Every layer is fixed at z-index 0 with main above it in the same stacking level. */
       body {
-        /* bg-ink stays the base colour; these two only tint it. Indigo has no business under text
-           at 3.01:1, and every reason to be here, where contrast carries no meaning. */
-        --bloom-violet: color-mix(in oklab, var(--color-violet) 18%, transparent);
-        --bloom-indigo: color-mix(in oklab, var(--color-indigo) 17%, transparent);
+        /* bg-ink stays the base colour; these two blooms only tint it. Indigo has no business under
+           text at 3.01:1, and every reason to be here, where contrast carries no meaning. */
         background-image:
-          radial-gradient(1300px 900px at 72% -8%, var(--bloom-violet), transparent 60%),
-          radial-gradient(1000px 1000px at 8% 0%, var(--bloom-indigo), transparent 55%);
+          radial-gradient(
+            1300px 900px at 72% -8%,
+            color-mix(in oklab, var(--color-violet) 18%, transparent),
+            transparent 60%
+          ),
+          radial-gradient(
+            1000px 1000px at 8% 0%,
+            color-mix(in oklab, var(--color-indigo) 17%, transparent),
+            transparent 55%
+          );
         background-attachment: fixed;
       }
 
@@ -442,7 +435,7 @@
       }
 
       /* The headline's sweep. First and last stops are the same colour so the loop closes without a
-         seam. Indigo stays out of it: at 3.0:1 it sits exactly on the floor large text needs. */
+         seam. Indigo stays out of it, as it stays out of all text. */
       .title-sweep {
         background-image: linear-gradient(
           90deg,
@@ -590,8 +583,8 @@
     <div class="grid-overlay" aria-hidden="true"></div>
 
     <!-- The page's symbols, declared once and drawn with <use>. The sprite itself is never rendered;
-         an inline style hides it from the first paint, before any stylesheet has loaded. -->
-    <svg style="display: none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+         an inline style hides it from the first paint, whatever Tailwind has compiled by then. -->
+    <svg style="display: none" aria-hidden="true">
       <!-- kubernetes from Simple Icons (CC0): simpleicons.org/?q=kubernetes. The mark itself is a
            trademark of The Linux Foundation. -->
       <symbol id="kubernetes-mark" viewBox="0 0 24 24">
@@ -642,13 +635,13 @@
         </h1>
 
         <!-- The two columns are centred on each other rather than on a shared baseline, so the form
-             tracks whatever height the paragraph turns out to be. The form's own items-end stays —
-             that is what keeps the arrow level with the field. -->
+             tracks whatever height the paragraph turns out to be. The form's own items-end is what
+             keeps the arrow level with the field. -->
         <div class="flex flex-col gap-8 md:flex-row md:items-center md:justify-between md:gap-10">
           <!-- min-w-0 lets the intro give way to the form: a flex item's own min-width: auto would
                hold it at its longest unbreakable content. -->
           <p class="min-w-0 max-w-[44rem] text-base text-muted lg:text-lg">
-            The application dials one plaintext endpoint and knows nothing about what serves it.
+            Your code dials one plaintext endpoint and knows nothing about what serves it.
             <strong>temporal-proxy</strong> owns the upstream, the TLS, the credentials, the Namespace rewrite and the
             payload encryption. Your keys stay where they already are —
             a cloud KMS, an on-prem HSM —
@@ -666,7 +659,6 @@
                    until x-model takes over. -->
               <input
                 id="name"
-                name="name"
                 value="John Doe"
                 autocomplete="off"
                 x-model="name"
@@ -678,10 +670,12 @@
               />
             </div>
             <!-- The symbol carries no text, so the button states its name for a screen reader. It is
-                 sized to the field's own line height at each breakpoint, so the two match in height. -->
+                 sized to the field's own line height at each breakpoint, so the two match in height.
+                 A blank field is not a name: "" and "   " are refused alike, and a disabled button is
+                 also what keeps Enter in the field from starting a run. -->
             <button
               type="submit"
-              :disabled="status === 'running' || !hasName"
+              :disabled="status === 'running' || !name.trim()"
               aria-label="Run a Workflow"
               class="btn-run inline-flex cursor-pointer items-center justify-center rounded-md
                      border border-transparent bg-violet p-3 text-ink focus-visible:outline-2
@@ -759,16 +753,15 @@
             </ul>
           </li>
 
-          <!-- Wires of their own that never meet: each phase lights exactly one path, so a lit wire
-               always says whose traffic is on it. -->
           <li class="rail-connector rail-at-converge" aria-hidden="true">
             <svg viewBox="0 0 72 316">
               <!-- Each wire declared once and drawn twice: the shaft, and the pulse that travels it.
-                   The box is the two 8rem rows and their gap; the wires land apart, at y 64 and y 100,
-                   so a lit wire always says whose traffic is on it. -->
+                   Like every wire, each is drawn from the endpoint outward. The box is the two 8rem
+                   rows and their gap; the wires land apart, at y 64 and y 100, so a lit wire always
+                   says whose traffic is on it. -->
               <defs>
-                <path id="rail-wire-application" pathLength="100" d="M0 64 72 64" />
-                <path id="rail-wire-worker" pathLength="100" d="M0 252 C36 252 36 100 72 100" />
+                <path id="rail-wire-application" pathLength="100" d="M72 64 0 64" />
+                <path id="rail-wire-worker" pathLength="100" d="M72 100 C36 100 36 252 0 252" />
               </defs>
               <g :class="legClass('application')">
                 <use class="rail-path" href="#rail-wire-application" />
@@ -818,7 +811,7 @@
                 <ul class="rail-detail" role="list">
                   <li>one endpoint</li>
                   <li>payloads are sealed here</li>
-                  <li>authentication happens here</li>
+                  <li>credentials are attached here</li>
                 </ul>
               </li>
             </ul>
@@ -834,8 +827,8 @@
               >security operator
             </span>
             <span class="sr-only rail-persona-note">
-              Owns the keys payloads are sealed with. Runs the kms extension, or points
-              temporal-proxy at the key service already in use.
+              Owns the keys that wrap each payload's data key. Runs a key service behind
+              temporal-proxy's kms extension, or points temporal-proxy at a cloud KMS already in use.
             </span>
             <ul class="rail-persona-stations" role="list">
               <li class="rail-station" :class="stationClass('kms')">
@@ -878,25 +871,24 @@
               <svg
                 class="rail-logo"
                 viewBox="0 0 172 44"
-                fill="none"
+                fill="currentColor"
                 role="img"
                 aria-label="Temporal"
-                xmlns="http://www.w3.org/2000/svg"
               >
-                  <path d="M55.6612 13.0643V15.1644H61.7724V31.3341H64.0737V15.1644H70.1849V13.0643H55.6612Z" fill="currentColor" />
-                  <path d="M70.6607 24.746C70.6607 28.7353 73.3059 31.4916 77.353 31.4916C80.3676 31.4916 82.8029 29.6287 83.3319 26.9511H81.1364C80.6868 28.6836 78.9921 29.5753 77.1943 29.5753C74.6814 29.5753 73.0149 27.8428 72.9355 25.3498V25.166H83.4104C83.4369 24.851 83.4633 24.536 83.4633 24.2472C83.3575 20.2833 80.7644 17.8945 77.062 17.8945C73.2529 17.8945 70.6607 20.6246 70.6607 24.746ZM73.0678 23.3809C73.2794 21.2021 75.1046 19.7846 77.0885 19.7846C79.2302 19.7846 80.924 21.0709 81.1356 23.3809H73.0678Z" fill="currentColor" />
-                  <path d="M102.384 17.8945C99.977 17.8945 98.5221 18.997 97.7021 20.4408C96.935 18.7345 95.3214 17.8945 93.4434 17.8945C91.3537 17.8945 90.2163 18.9183 89.5021 19.8896L89.3177 18.052H87.333V31.3341H89.5021V24.3785C89.5021 21.7009 90.8511 19.8633 93.0731 19.8633C95.1363 19.8633 96.3266 21.2284 96.3266 23.8535V31.3341H98.4957V24.2735C98.4957 21.5434 99.8712 19.8633 102.12 19.8633C104.156 19.8633 105.32 21.2284 105.32 23.8535V31.3341H107.489V23.7222C107.489 19.4958 105.188 17.8945 102.384 17.8945Z" fill="currentColor" />
-                  <path d="M118.256 17.8945C115.981 17.8945 114.526 18.9708 113.627 20.2046L113.443 18.052H111.458V36.5843H113.627V29.2866C114.447 30.5729 115.981 31.4916 118.256 31.4916C121.879 31.4916 124.737 28.7353 124.737 24.746C124.737 20.3883 121.879 17.8945 118.256 17.8945ZM118.044 29.5753C115.399 29.5753 113.6 27.5277 113.6 24.6935C113.6 21.8321 115.399 19.8108 118.044 19.8108C120.609 19.8108 122.515 21.8321 122.515 24.746C122.515 27.554 120.609 29.5753 118.044 29.5753Z" fill="currentColor" />
-                  <path d="M134.504 31.4916C138.445 31.4916 141.196 28.709 141.196 24.746C141.196 20.6771 138.445 17.8945 134.504 17.8945C130.562 17.8945 127.811 20.6771 127.811 24.746C127.811 28.709 130.562 31.4916 134.504 31.4916ZM134.504 29.5753C131.832 29.5753 130.033 27.5015 130.033 24.746C130.033 21.8846 131.832 19.8108 134.504 19.8108C137.175 19.8108 138.974 21.8846 138.974 24.746C138.974 27.5015 137.175 29.5753 134.504 29.5753Z" fill="currentColor" />
-                  <path d="M150.998 18.052C148.591 18.052 147.346 19.0495 146.711 20.0733L146.527 18.052H144.542V31.3341H146.711V24.6147C146.711 22.4884 147.691 20.1521 150.522 20.1521H151.606V18.052H150.998Z" fill="currentColor" />
-                  <path d="M166.092 29.2595C165.537 29.2595 165.193 29.0503 165.193 28.394V22.7247C165.193 19.6008 163.316 17.8945 159.877 17.8945C156.623 17.8945 154.481 19.4433 154.163 22.0684H156.332C156.597 20.7034 157.867 19.8108 159.771 19.8108C161.887 19.8108 163.024 20.8609 163.024 22.5934V23.5122H159.163C155.618 23.5122 153.74 24.9027 153.74 27.5802C153.74 30.0216 155.75 31.4916 158.713 31.4916C161.041 31.4916 162.283 30.4679 163.13 29.2603C163.156 30.5729 163.765 31.3341 165.563 31.3341H166.754V29.2595H166.092ZM163.024 25.8739C163.024 28.1053 161.57 29.6541 158.872 29.6541C157.073 29.6541 155.936 28.7615 155.936 27.449C155.936 25.9264 157.02 25.3235 158.951 25.3235H163.024V25.8739Z" fill="currentColor" />
-                  <path d="M169.831 13.0643V31.3341H172V13.0643H169.831Z" fill="currentColor" />
-                  <path d="M29.261 14.4612C28.2363 6.85604 25.6521 0.5 21.6645 0.5C17.6881 0.5 15.0928 6.85604 14.068 14.4612C6.40468 15.4782 0 18.0427 0 22C0 25.9463 6.40468 28.5218 14.068 29.5388C15.0928 37.144 17.6769 43.5 21.6645 43.5C25.641 43.5 28.2363 37.144 29.261 29.5388C36.9244 28.5218 43.3291 25.9573 43.3291 22C43.3291 18.0427 36.9244 15.4671 29.261 14.4612ZM13.823 27.3059C6.48265 26.2558 2.19429 23.846 2.19429 21.9889C2.19429 20.1319 6.47151 17.7221 13.823 16.672C13.6559 18.4296 13.5779 20.2203 13.5779 21.9889C13.5779 23.7576 13.6559 25.5594 13.823 27.3059ZM21.6645 2.66658C23.5358 2.66658 25.964 6.91131 27.0222 14.2069C25.2511 14.0411 23.4467 13.9638 21.6645 13.9638C19.8824 13.9638 18.0779 14.0522 16.3069 14.2069C17.365 6.92237 19.7932 2.66658 21.6645 2.66658ZM29.5061 27.3059C29.1496 27.3612 27.6571 27.527 27.2895 27.5712C27.2561 27.947 27.0779 29.4172 27.0222 29.771C25.964 37.0555 23.5358 41.3113 21.6645 41.3113C19.7932 41.3113 17.365 37.0666 16.3069 29.771C16.2512 29.4172 16.0841 27.936 16.0395 27.5712C15.8725 25.8468 15.7611 23.9897 15.7611 21.9889C15.7611 19.9882 15.8613 18.1422 16.0395 16.4067C17.7772 16.2409 19.6484 16.1303 21.6645 16.1303C23.6806 16.1303 25.5408 16.2298 27.2895 16.4067C27.6682 16.4398 29.1496 16.6167 29.5061 16.672C36.8464 17.7221 41.1348 20.1319 41.1348 21.9889C41.1348 23.846 36.8464 26.2558 29.5061 27.3059Z" fill="currentColor" />
+                <path d="M55.6612 13.0643V15.1644H61.7724V31.3341H64.0737V15.1644H70.1849V13.0643H55.6612Z" />
+                <path d="M70.6607 24.746C70.6607 28.7353 73.3059 31.4916 77.353 31.4916C80.3676 31.4916 82.8029 29.6287 83.3319 26.9511H81.1364C80.6868 28.6836 78.9921 29.5753 77.1943 29.5753C74.6814 29.5753 73.0149 27.8428 72.9355 25.3498V25.166H83.4104C83.4369 24.851 83.4633 24.536 83.4633 24.2472C83.3575 20.2833 80.7644 17.8945 77.062 17.8945C73.2529 17.8945 70.6607 20.6246 70.6607 24.746ZM73.0678 23.3809C73.2794 21.2021 75.1046 19.7846 77.0885 19.7846C79.2302 19.7846 80.924 21.0709 81.1356 23.3809H73.0678Z" />
+                <path d="M102.384 17.8945C99.977 17.8945 98.5221 18.997 97.7021 20.4408C96.935 18.7345 95.3214 17.8945 93.4434 17.8945C91.3537 17.8945 90.2163 18.9183 89.5021 19.8896L89.3177 18.052H87.333V31.3341H89.5021V24.3785C89.5021 21.7009 90.8511 19.8633 93.0731 19.8633C95.1363 19.8633 96.3266 21.2284 96.3266 23.8535V31.3341H98.4957V24.2735C98.4957 21.5434 99.8712 19.8633 102.12 19.8633C104.156 19.8633 105.32 21.2284 105.32 23.8535V31.3341H107.489V23.7222C107.489 19.4958 105.188 17.8945 102.384 17.8945Z" />
+                <path d="M118.256 17.8945C115.981 17.8945 114.526 18.9708 113.627 20.2046L113.443 18.052H111.458V36.5843H113.627V29.2866C114.447 30.5729 115.981 31.4916 118.256 31.4916C121.879 31.4916 124.737 28.7353 124.737 24.746C124.737 20.3883 121.879 17.8945 118.256 17.8945ZM118.044 29.5753C115.399 29.5753 113.6 27.5277 113.6 24.6935C113.6 21.8321 115.399 19.8108 118.044 19.8108C120.609 19.8108 122.515 21.8321 122.515 24.746C122.515 27.554 120.609 29.5753 118.044 29.5753Z" />
+                <path d="M134.504 31.4916C138.445 31.4916 141.196 28.709 141.196 24.746C141.196 20.6771 138.445 17.8945 134.504 17.8945C130.562 17.8945 127.811 20.6771 127.811 24.746C127.811 28.709 130.562 31.4916 134.504 31.4916ZM134.504 29.5753C131.832 29.5753 130.033 27.5015 130.033 24.746C130.033 21.8846 131.832 19.8108 134.504 19.8108C137.175 19.8108 138.974 21.8846 138.974 24.746C138.974 27.5015 137.175 29.5753 134.504 29.5753Z" />
+                <path d="M150.998 18.052C148.591 18.052 147.346 19.0495 146.711 20.0733L146.527 18.052H144.542V31.3341H146.711V24.6147C146.711 22.4884 147.691 20.1521 150.522 20.1521H151.606V18.052H150.998Z" />
+                <path d="M166.092 29.2595C165.537 29.2595 165.193 29.0503 165.193 28.394V22.7247C165.193 19.6008 163.316 17.8945 159.877 17.8945C156.623 17.8945 154.481 19.4433 154.163 22.0684H156.332C156.597 20.7034 157.867 19.8108 159.771 19.8108C161.887 19.8108 163.024 20.8609 163.024 22.5934V23.5122H159.163C155.618 23.5122 153.74 24.9027 153.74 27.5802C153.74 30.0216 155.75 31.4916 158.713 31.4916C161.041 31.4916 162.283 30.4679 163.13 29.2603C163.156 30.5729 163.765 31.3341 165.563 31.3341H166.754V29.2595H166.092ZM163.024 25.8739C163.024 28.1053 161.57 29.6541 158.872 29.6541C157.073 29.6541 155.936 28.7615 155.936 27.449C155.936 25.9264 157.02 25.3235 158.951 25.3235H163.024V25.8739Z" />
+                <path d="M169.831 13.0643V31.3341H172V13.0643H169.831Z" />
+                <path d="M29.261 14.4612C28.2363 6.85604 25.6521 0.5 21.6645 0.5C17.6881 0.5 15.0928 6.85604 14.068 14.4612C6.40468 15.4782 0 18.0427 0 22C0 25.9463 6.40468 28.5218 14.068 29.5388C15.0928 37.144 17.6769 43.5 21.6645 43.5C25.641 43.5 28.2363 37.144 29.261 29.5388C36.9244 28.5218 43.3291 25.9573 43.3291 22C43.3291 18.0427 36.9244 15.4671 29.261 14.4612ZM13.823 27.3059C6.48265 26.2558 2.19429 23.846 2.19429 21.9889C2.19429 20.1319 6.47151 17.7221 13.823 16.672C13.6559 18.4296 13.5779 20.2203 13.5779 21.9889C13.5779 23.7576 13.6559 25.5594 13.823 27.3059ZM21.6645 2.66658C23.5358 2.66658 25.964 6.91131 27.0222 14.2069C25.2511 14.0411 23.4467 13.9638 21.6645 13.9638C19.8824 13.9638 18.0779 14.0522 16.3069 14.2069C17.365 6.92237 19.7932 2.66658 21.6645 2.66658ZM29.5061 27.3059C29.1496 27.3612 27.6571 27.527 27.2895 27.5712C27.2561 27.947 27.0779 29.4172 27.0222 29.771C25.964 37.0555 23.5358 41.3113 21.6645 41.3113C19.7932 41.3113 17.365 37.0666 16.3069 29.771C16.2512 29.4172 16.0841 27.936 16.0395 27.5712C15.8725 25.8468 15.7611 23.9897 15.7611 21.9889C15.7611 19.9882 15.8613 18.1422 16.0395 16.4067C17.7772 16.2409 19.6484 16.1303 21.6645 16.1303C23.6806 16.1303 25.5408 16.2298 27.2895 16.4067C27.6682 16.4398 29.1496 16.6167 29.5061 16.672C36.8464 17.7221 41.1348 20.1319 41.1348 21.9889C41.1348 23.846 36.8464 26.2558 29.5061 27.3059Z" />
               </svg>
             </p>
             <ul class="rail-detail" role="list">
               <li>unknown to the app</li>
-              <li>every payload arrives sealed</li>
+              <li>payloads arrive sealed</li>
               <li>namespace set by temporal-proxy</li>
             </ul>
           </li>
@@ -989,26 +981,15 @@
       const OUTBOUND_LEG_MS = parseFloat(railStyle.getPropertyValue("--rail-out-ms"));
       const RETURN_LEG_MS = parseFloat(railStyle.getPropertyValue("--rail-back-ms"));
 
-      // Four legs, each named for the station at its far end from the endpoint. LEG_TAIL is the
-      // station a leg is drawn from: a movement that ends there runs against the drawing, in reverse.
-      const LEG_TAIL = {
-        application: "application",
-        worker: "worker",
-        temporal: "proxy",
-        kms: "proxy",
-      };
-
-      // The four movements of a run. Each calls the key service in its middle, because every payload
-      // is sealed on its way out and unsealed on its way in; `answer` marks the journey home, in mint.
+      // The four movements of a run. Each detours through the key service in its middle, to show
+      // where the keys behind sealing come from; temporal-proxy calls there only when it needs a new
+      // data key or one it has not unwrapped yet. `answer` marks the journey home, in mint.
       const WALKS = {
         start: { path: ["application", "proxy", "kms", "proxy", "temporal"] },
         deliver: { path: ["temporal", "proxy", "kms", "proxy", "worker"] },
         report: { path: ["worker", "proxy", "kms", "proxy", "temporal"], answer: true },
         finish: { path: ["temporal", "proxy", "kms", "proxy", "application"], answer: true },
       };
-
-      // Between `deliver` and `report` the rail dwells here, for as long as the Activity sleeps.
-      const DWELL_STATION = "worker";
 
       // The dwell lasts as long as the Workflow takes, but never less than this, so a short round
       // trip still shows the phase. The floor delays the result; the reported duration is unaffected.
@@ -1018,11 +999,6 @@
       // ANSWER on the way home. Only the answer is ever asked for by name.
       const ANSWER = "answer";
 
-      // The panel keeps all four states in the document, so every binding evaluates in every state.
-      // These are what a result and an error read as before a run has produced either.
-      const NO_RESULT = { greeting: "", workflowId: "" };
-      const NO_ERROR = { title: "", hint: "" };
-
       // The tip's box in pixels, for turning it away from an edge: the width restates .rail-tip's, and
       // the height is a ceiling that covers the longest of the three notes.
       const TIP_WIDTH = 320;
@@ -1031,9 +1007,10 @@
 
       // The hop between two neighbouring stations: the leg it crosses is whichever end is not the
       // endpoint. It carries the phase it belongs to, so the rail reads a colour off the hop itself.
+      // Every wire is drawn from the endpoint outward, so a hop toward it runs in reverse.
       function hop(from, to, phase) {
         const leg = from === "proxy" ? to : from;
-        return { leg, to, phase, reverse: to === LEG_TAIL[leg] };
+        return { leg, to, phase, reverse: to === "proxy" };
       }
 
       const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1048,25 +1025,22 @@
           crossed: {},
           moving: null, // the hop the pulse is crossing right now
           dwellAt: null, // the station the rail is dwelling on
-          result: NO_RESULT,
+          // The panel keeps all four states in the document, so every binding evaluates in every
+          // state. These are what a result and an error read as before a run has produced either.
+          result: { greeting: "", workflowId: "" },
           durationMs: 0, // the round trip, timed around the fetch
-          error: NO_ERROR,
+          error: { title: "", hint: "" },
           tip: "", // the prose of the group under the pointer, empty when it is over none of them
           tipName: "", // the role's name, read back off that group's chip
           tipMark: "", // the symbol that chip carries
           tipX: 0,
           tipY: 0,
 
-          // A blank field is not a name: "" and "   " are refused alike. The button and run() both
-          // answer to this one rule.
-          get hasName() {
-            return this.name.trim() !== "";
-          },
-
           async run() {
-            if (this.status === "running" || !this.hasName) return;
-
-            this.reset();
+            // Only the rail starts over. The panel's last result or error stays until a new one
+            // replaces it, so the state fading out does not blank on its way.
+            this.visited = {};
+            this.crossed = {};
             this.status = "running";
 
             // The request leaving and its response arriving are the only real events. Between them
@@ -1076,7 +1050,7 @@
             await this.play(WALKS.start);
             await this.play(WALKS.deliver);
 
-            this.dwellAt = DWELL_STATION;
+            this.dwellAt = "worker";
             const [outcome] = await Promise.all([request, sleep(DWELL_FLOOR_MS)]);
             this.dwellAt = null;
 
@@ -1091,16 +1065,6 @@
             this.result = outcome.body;
             this.durationMs = outcome.durationMs;
             this.status = "done";
-          },
-
-          reset() {
-            this.visited = {};
-            this.crossed = {};
-            this.moving = null;
-            this.dwellAt = null;
-            this.result = NO_RESULT;
-            this.durationMs = 0;
-            this.error = NO_ERROR;
           },
 
           // One movement: the pulse crosses the walk's hops in turn, leaving every station and leg
@@ -1155,14 +1119,15 @@
           },
 
           // 500 is the only status the API answers a failed greeting with, including when no Worker
-          // picks the Workflow up in time. Any other status did not come from the API.
+          // picks the Workflow up in time. The page never sends a body the API refuses, so any other
+          // status did not come from it.
           serverError(httpStatus, message) {
             if (httpStatus === 500) {
               return {
                 title: "The API answered 500: " + message + ".",
                 hint:
                   "The Workflow Execution did not return a greeting. Check that a Worker is " +
-                  "running and polling the task queue, then read the app log.",
+                  "running and polling its Task Queue, then read the app log.",
               };
             }
             return {
@@ -1221,8 +1186,6 @@
 
           hideTip() {
             this.tip = "";
-            this.tipName = "";
-            this.tipMark = "";
           },
         }));
       });

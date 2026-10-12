@@ -14,36 +14,23 @@ the switch: the Worker and the API are not rebuilt, not
 restarted and not reconfigured, and their pods keep the same
 names and the same Deployment revision across it.
 
-Four properties make that possible:
+`routing.system` is omitted, so a request carrying no
+Namespace — the `GetSystemInfo` a Client sends on connect —
+falls through to `routing.default` and there is only one
+name to change. This is safe because the `cloud` upstream's
+`hostPort` is statically expanded from the environment; the
+upstream chart's own example pairs `system` with a dedicated
+upstream only because its `hostPort` is templated on the
+remote Namespace, which cannot resolve for a Namespace-less
+request.
 
-- `routing.system` is omitted, so a request carrying no
-  Namespace — the `GetSystemInfo` a Client sends on
-  connect — falls through to `routing.default` and there is
-  only one name to change. This is safe because the `cloud`
-  upstream's `hostPort` is statically expanded from the
-  environment; the upstream chart's own example pairs
-  `system` with a dedicated upstream only because its
-  `hostPort` is templated on the remote Namespace, which
-  cannot resolve for a Namespace-less request.
-- Both upstreams stay up whichever one serves.
-  temporal-proxy opens a connection to every static
-  upstream at startup and refuses to start while one is
-  unreachable, so the self-hosted Temporal Service runs
-  even while Cloud serves every request. The switch
-  changes where requests go, never what the proxy
-  connects to.
-- The self-hosted upstream sets `insecure: true`, because
-  its endpoint is dialled in plaintext inside the cluster
-  and an upstream silent about its transport is dialled
-  over TLS. It carries no `namespaces.rules`, because its
-  Service registers the Namespace under `demo` — the same
-  string the application asks for, so there is nothing to
-  rewrite. The Cloud upstream needs an API key and the
-  rules both.
-- Payload encryption is orthogonal to the choice:
-  temporal-proxy seals every payload whichever upstream it
-  forwards to, so the self-hosted Web UI shows sealed
-  payloads exactly as Temporal Cloud does.
+The rest of the arrangement is in the README's routing
+section and in the values file's comments: both upstreams
+stay up whichever one serves, because temporal-proxy
+refuses to start while a static upstream is unreachable;
+the self-hosted one is dialled with `insecure: true` and
+needs no Namespace rewrite; and payloads are sealed
+whichever upstream they go to.
 
 **Why:** the demo's claim is that the application is
 untouched by where Temporal lives, and a switch that costs

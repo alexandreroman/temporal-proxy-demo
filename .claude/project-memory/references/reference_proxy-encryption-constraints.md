@@ -6,7 +6,7 @@ type: reference
 
 # temporal-proxy encryption constraints
 
-Ten facts govern payload encryption whose keys come
+Nine facts govern payload encryption whose keys come
 from a KMS temporal-proxy does not implement natively,
 none of them visible from a configuration file alone:
 
@@ -42,29 +42,25 @@ none of them visible from a configuration file alone:
   in-cluster extension server is the one that carries no
   credentials, and it declares `insecure: true` to get
   there.
-- `internal/dataplane/dataplane.go` reads
-  `cfg.Encryption.Enabled` as one top-level boolean, and
+- `internal/dataplane/dataplane.go` passes
+  `cfg.Encryption.Enabled` on as one global boolean, and
   `KeyPolicy` carries no `enabled` field of its own —
   `encryption.overrides` selects which key seals a
   Namespace's payloads, never whether they are sealed, so
   per-request selectivity is not expressible.
-- The same file gates only sealing on `Enabled`; a vault is
-  built whenever `encryption.default` names a key. A proxy
-  configured with a key but `enabled: false` stops sealing
-  new payloads while everything sealed under that key stays
-  readable.
+- `internal/proxy/codec.go` (`NewCodecs`) gates only
+  sealing on `Enabled` and always opens inbound payloads,
+  and `internal/kms/fx.go` builds the vault whenever
+  `encryption.default` names a key, running key rotation
+  only while `enabled` is on. A proxy configured with a key
+  but `enabled: false` stops sealing new payloads while
+  everything sealed under that key stays readable.
 - `Encryption.CacheSize` is a `*int`, so the config
   distinguishes an operator who wrote nothing from one who
   wrote zero. `Encryption.DEKCacheSize()` answers an absent
   field with `crypto.DefaultCacheSize` (100) and a written
   `0` with no cache at all, which is what makes disabling
   the DEK cache something spelled out rather than inherited.
-- The temporal-proxy Helm chart's `_helpers.tpl` wires TLS
-  Secrets and rewrites `secretKeyRef` credentials for the
-  gateway, the upstreams, and `auth.staticToken` — never for
-  an extension server. Its CA and API key reach the
-  container through the chart's own top-level `volumes`,
-  `volumeMounts` and `env` values instead.
 - `pkg/crypto/dek.go` fixes the payload cipher: a 256-bit
   key, `cipher.NewGCM`, and a random nonce prefixed to the
   ciphertext. An extension server's `Wrap`/`Unwrap` pair
@@ -87,13 +83,12 @@ read `pkg/crypto/keys.go` and its test for
 interface, `pkg/ext/doc.go`, `pkg/ext/keywrap.go` and
 `pkg/ext/sealwrap.go` for the two wrappers and the
 `KeyMaterial` framing, `internal/config/extensions.go` for
-the credentials rule, `internal/dataplane/dataplane.go` for
-the `Enabled` gate and the always-on vault,
+the credentials rule, `internal/proxy/codec.go` for the
+`Enabled` gate, `internal/kms/fx.go` for the always-on vault,
 `internal/config/encryption.go` for `DEKCacheSize`,
-`pkg/crypto/dek.go` for the fixed cipher, and the
-temporal-proxy chart's `_helpers.tpl`
-(`go.temporal.io/helm-charts`) for what it wires and what
-it leaves to `env`/`volumes`/`volumeMounts`. See
+and `pkg/crypto/dek.go` for the fixed cipher. What the Helm
+chart wires for an extension server is in [temporal-proxy's
+Helm chart](reference_proxy-helm-chart.md). See
 [temporal-proxy upstream resources](reference_temporal-proxy-upstream.md),
 [Transport security is stated, not
 inferred](reference_proxy-transport-security.md)

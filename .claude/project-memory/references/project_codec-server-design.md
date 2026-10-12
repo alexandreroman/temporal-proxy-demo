@@ -1,10 +1,10 @@
 ---
-name: "A codec server serves the two sealed Web UIs from loopback"
+name: "Codec server candidate: loopback, port-forward, no auth"
 description: "The candidate design for reading sealed payloads in the Cloud and self-hosted Web UIs: a loopback codec server reached by port-forward, with no auth"
 type: project
 ---
 
-# A codec server serves the two sealed Web UIs from loopback
+# Codec server candidate: loopback, port-forward, no auth
 
 The demo ships no codec server. temporal-proxy has one built
 in (`codecServer`, from v0.8.0), and adding it is an open,

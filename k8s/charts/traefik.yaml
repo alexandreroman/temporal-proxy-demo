@@ -1,7 +1,7 @@
 # Traefik is the cluster's only ingress controller, and its web
 # entrypoint is the only thing this cluster publishes.
 
-# NodePort, so the Kind port mapping on the worker node reaches it.
+# NodePort, so the Kind port mapping on the node reaches it.
 service:
   spec:
     type: NodePort

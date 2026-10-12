@@ -13,35 +13,34 @@ ifneq (,$(wildcard .env))
 include .env
 endif
 
-# Who `make demo` greets.
+# Who `make demo` greets. Plain text only, with no quotes: the recipe pastes it
+# into a JSON string that sits inside single quotes.
 NAME ?= John Doe
 
 # The Kind cluster name is this worktree's directory name, so two
 # worktrees never share a cluster.
 CLUSTER ?= $(notdir $(CURDIR))
 
-# The single host port this cluster publishes, into Traefik. It reaches Kind
-# through k8s/kind-config.yaml, generated at this default by `cluster-create`
-# and overwritten by `worktree-init` to pin a port per worktree.
+# Every recipe addresses this cluster by name, never whichever context
+# happens to be current.
+kubectl = kubectl --context kind-$(CLUSTER)
+helm = helm --kube-context kind-$(CLUSTER)
+
+# The single host port this cluster publishes, into Traefik.
 TRAEFIK_PORT ?= 8080
 
-# Kind reads no environment variable of its own, so the host port is frozen into
-# k8s/kind-config.yaml, rendered from its template.
-render-kind-config = sed 's/@TRAEFIK_PORT@/$(TRAEFIK_PORT)/' k8s/kind-config.yaml.in > k8s/kind-config.yaml
+# kind's config file cannot read environment variables and no kind flag sets a
+# port mapping, so the host port is frozen into k8s/kind-config.yaml, rendered
+# from k8s/kind-config.yaml.in. `worktree-init` overwrites it to pin this
+# worktree's own port. `cluster-create` renders it at the default only when it
+# is absent, so `make app-up` works on a fresh clone and a pinned port stays.
+render-kind-config = sed '/hostPort:/s/@TRAEFIK_PORT@/$(TRAEFIK_PORT)/' k8s/kind-config.yaml.in > k8s/kind-config.yaml
 
-# The host name the demo answers on, matched by k8s/app/httproute.yaml. A
-# manifest cannot read a make variable, so that file spells it out too.
+# The host name the demo answers on. Every host name in this file matches the
+# `hostnames:` of a k8s/*/httproute.yaml, which cannot read a make variable.
 DEMO_HOST = hello.127-0-0-1.nip.io
 
-# The host name the self-hosted Web UI answers on, matched by
-# k8s/temporal/httproute.yaml, which spells it out too for the same reason.
-TEMPORAL_UI_HOST = temporal.127-0-0-1.nip.io
-
-# The host name the Web UI reading through temporal-proxy answers on, matched
-# by k8s/ui/httproute.yaml, which spells it out too for the same reason.
-TEMPORAL_PROXY_UI_HOST = temporal-webui.127-0-0-1.nip.io
-
-# The CLI that builds the image and runs the cluster's nodes. A Podman user
+# The CLI that builds the image and runs the cluster's node. A Podman user
 # overrides this one variable; kind detects Podman on its own, and needs
 # KIND_EXPERIMENTAL_PROVIDER=podman only when a docker CLI is on PATH too,
 # which kind would otherwise pick.
@@ -52,18 +51,13 @@ CONTAINER_TOOL ?= docker
 # empty answer means the cluster is down, and TRAEFIK_PORT is then the right
 # default. Once the cluster is up that is all it is: an explicit TRAEFIK_PORT=
 # on a later command line does not move an already-published port.
-traefik-port = $$(p=$$($(CONTAINER_TOOL) port '$(CLUSTER)-worker' 30080 2>/dev/null | \
+traefik-port = $$(p=$$($(CONTAINER_TOOL) port '$(CLUSTER)-control-plane' 30080 2>/dev/null | \
     awk -F: 'NR==1 {print $$NF}'); echo $${p:-$(TRAEFIK_PORT)})
 
 ##@ Develop
 
-# CLUSTER, the directory name, keeps two worktrees from sharing a cluster,
-# and the Kind config rendered at TRAEFIK_PORT keeps them from sharing a host
-# port. The module download rides along as a convenience, to warm the build
-# cache.
 .PHONY: worktree-init
-worktree-init: ## Fetch dependencies and pin this worktree's port (overwrites k8s/kind-config.yaml)
-	go mod download
+worktree-init: ## Pin this worktree's port (overwrites k8s/kind-config.yaml)
 	$(render-kind-config)
 
 .PHONY: demo
@@ -73,10 +67,17 @@ demo: ## Trigger one Workflow through the HTTP API
 			-H 'Content-Type: application/json' \
 			-d '{"name": "$(NAME)"}'
 
+# Succeeds when Deployment $(2) exists in namespace $(1), and fails quietly
+# otherwise, a missing cluster included.
+deployed = $(kubectl) -n $(1) get deploy $(2) >/dev/null 2>&1
+
 # Markdown on stdout, so the answer to "where is this worktree listening?" can
-# be read in a terminal or piped into `casper info set`. The Cloud link is built
-# from the two Cloud values, so without them that row names what to set instead
-# of linking to a Namespace nothing can name.
+# be read in a terminal or piped into `casper info set`. An in-cluster address
+# is listed only while the Deployment behind it exists, so after `app-down` the
+# rows it removed are gone, and with the cluster down only the Cloud row is
+# left. That row is always printed, since Cloud is not in the cluster. Its link
+# is built from the two Cloud values, so without them it names what to set
+# instead of linking to a Namespace nothing can name.
 .PHONY: endpoints
 endpoints: ## Print this worktree's published endpoints as Markdown
 	@port=$(traefik-port); \
@@ -85,12 +86,17 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 	else \
 		web_ui='Set TEMPORAL_CLOUD_NAMESPACE and TEMPORAL_ACCOUNT in .env'; \
 	fi; \
-	printf '%s\n' '# Temporal Proxy Demo' '' \
-		'| Service | Address |' '| --- | --- |' \
-		"| Demo App | <http://$(DEMO_HOST):$$port> |" \
-		"| Temporal Web UI (Cloud) | $$web_ui |" \
-		"| Temporal Web UI (self-hosted) | <http://$(TEMPORAL_UI_HOST):$$port> |" \
-		"| Temporal Web UI (through temporal-proxy) | <http://$(TEMPORAL_PROXY_UI_HOST):$$port> |"
+	printf '%s\n' '# Temporal Proxy Demo' '' '| Service | Address |' '| --- | --- |'; \
+	if $(call deployed,hello,app); then \
+		echo "| Demo App | <http://$(DEMO_HOST):$$port> |"; \
+	fi; \
+	echo "| Temporal Web UI (Cloud) | $$web_ui |"; \
+	if $(call deployed,temporal,temporal); then \
+		echo "| Temporal Web UI (self-hosted) | <http://temporal.127-0-0-1.nip.io:$$port> |"; \
+	fi; \
+	if $(call deployed,temporal-ui,ui); then \
+		echo "| Temporal Web UI (through temporal-proxy) | <http://temporal-webui.127-0-0-1.nip.io:$$port> |"; \
+	fi
 
 # The workspace info panel mirrors `make endpoints`, so whichever command
 # brought the stack up or down leaves it telling the truth. The CLI is on PATH
@@ -114,20 +120,15 @@ check: ## Run tests and static checks
 # The node image is pinned like every other version here, because the
 # application's preStop lifecycle sleep needs a recent Kubernetes: an older
 # node drops that field silently and takes the overlapping rollout with it.
-# The Kind config is rendered here at the default TRAEFIK_PORT when it is
-# absent: `make app-up` then works on a fresh clone with no preliminary
-# step. An existing file is left alone, because it holds the port a running
-# worktree already published. The cluster this target creates carries no
-# ingress until cluster-up has finished with it, so cluster-up is the name a
-# reader types and this one exists only as its prerequisite, without a help
-# description.
+# The cluster this target creates carries no ingress until cluster-up has
+# finished with it, so cluster-up is the name a reader types and this one
+# exists only as its prerequisite, without a help description.
 .PHONY: cluster-create
 cluster-create:
 	@test -f k8s/kind-config.yaml || $(render-kind-config)
 	@kind get clusters | grep -qx '$(CLUSTER)' || \
 		kind create cluster --name '$(CLUSTER)' --config k8s/kind-config.yaml \
 			--image kindest/node:v1.37.0
-	kubectl --context kind-$(CLUSTER) wait --for=condition=Ready nodes --all --timeout=120s
 
 # Gateway API CRDs are not shipped by the Traefik chart, so they come from the
 # pinned upstream release, applied before it: an HTTPRoute or a Gateway has no
@@ -139,19 +140,19 @@ cluster-create:
 # the Gateway API CRDs this recipe has already applied.
 .PHONY: cluster-up
 cluster-up: cluster-create ## Create the cluster and install its platform components
-	kubectl --context kind-$(CLUSTER) apply -f \
+	$(kubectl) apply -f \
 		https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml
-	helm --kube-context kind-$(CLUSTER) upgrade --install traefik traefik \
+	$(helm) upgrade --install traefik traefik \
 		--repo https://traefik.github.io/charts --version 41.6.1 \
 		--namespace traefik --create-namespace \
 		-f k8s/charts/traefik.yaml --hide-notes --wait
-	helm --kube-context kind-$(CLUSTER) upgrade --install cert-manager cert-manager \
+	$(helm) upgrade --install cert-manager cert-manager \
 		--repo https://charts.jetstack.io --version v1.21.2 \
 		--namespace cert-manager --create-namespace \
 		-f k8s/charts/cert-manager.yaml --hide-notes --wait
-	kubectl --context kind-$(CLUSTER) apply -f \
+	$(kubectl) apply -f \
 		https://github.com/carvel-dev/secretgen-controller/releases/download/v0.21.3/release.yml
-	kubectl --context kind-$(CLUSTER) -n secretgen-controller rollout status \
+	$(kubectl) -n secretgen-controller rollout status \
 		deploy/secretgen-controller --timeout=120s
 
 # Paired with cluster-up.
@@ -160,18 +161,20 @@ cluster-down: ## Delete the Kind cluster
 	kind delete cluster --name '$(CLUSTER)'
 	@$(clear-endpoints)
 
-# Tagged with the registry Kubernetes assumes for an unqualified name,
-# so the Deployments' plain `temporal-proxy-demo:dev` resolves to the
-# image this target built rather than triggering a pull. Building with
-# a container tool whose default namespace differs from that assumption
-# (podman tags an unqualified build `localhost/...`) would otherwise
-# load a name the cluster never looks up.
+# Fully qualified, as the manifests write it: podman tags an unqualified build
+# `localhost/...`, a name the cluster never looks up.
 IMAGE = docker.io/library/temporal-proxy-demo:dev
 
+# `kind load docker-image` always shells out to docker, so the image travels as
+# an archive saved by CONTAINER_TOOL instead. kind opens the path itself, once
+# per node, so a pipe would break as soon as a node is added: the archive is a
+# temporary file.
 .PHONY: image
 image: ## Build the image and load it into the cluster (after cluster-up)
 	$(CONTAINER_TOOL) build -t $(IMAGE) .
-	kind load docker-image $(IMAGE) --name '$(CLUSTER)'
+	archive=$$(mktemp) && trap 'rm -f "$$archive"' EXIT && \
+		$(CONTAINER_TOOL) save -o "$$archive" $(IMAGE) && \
+		kind load image-archive "$$archive" --name '$(CLUSTER)'
 
 # temporal-proxy and the KMS server both validate their configuration on
 # startup, so anything missing here crash-loops far from the command that
@@ -194,11 +197,11 @@ require-setup:
 # `kubectl create secret` refuses to overwrite a Secret that already exists, so
 # every one of them is rendered client-side and piped into `apply` instead:
 # that is what makes `make apply` runnable a second time. Every Secret this
-# builds belongs to temporal-proxy's namespace, so it is part of this shared
-# shape; each call supplies only the kind, the name and the sources.
+# builds is generic and belongs to temporal-proxy's namespace, so both are part
+# of this shared shape; each call supplies only the name and the sources.
 define apply-secret
-kubectl --context kind-$(CLUSTER) -n temporal-proxy create secret $(1) \
-	--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
+$(kubectl) -n temporal-proxy create secret generic $(1) \
+	--dry-run=client -o yaml | $(kubectl) apply -f -
 endef
 
 # The Namespaces are applied first, because every Secret has to land in one of
@@ -207,32 +210,34 @@ endef
 # pick up a configuration schema this repository has not been checked against.
 .PHONY: apply
 apply: require-setup ## Deploy the demo's workloads into the cluster (after image)
-	kubectl --context kind-$(CLUSTER) apply -f k8s/namespaces.yaml
-	$(call apply-secret,generic temporal-cloud-config \
+	$(kubectl) apply -f k8s/namespaces.yaml
+	$(call apply-secret,temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
 		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)')
 # A Secret of its own: temporal-cloud-config above is loaded whole with envFrom,
 # so a key there would reach the container a second time. This line and the
 # next are silenced with @: each expands to a secret, and make echoes every
 # recipe line not prefixed with @.
-	@$(call apply-secret,generic temporal-cloud-api-key \
+	@$(call apply-secret,temporal-cloud-api-key \
 		--from-literal=TEMPORAL_CLOUD_API_KEY='$(TEMPORAL_CLOUD_API_KEY)')
-	@$(call apply-secret,generic kms-master-secret \
+	@$(call apply-secret,kms-master-secret \
 		--from-literal=KMS_MASTER_SECRET='$(KMS_MASTER_SECRET)')
-	kubectl --context kind-$(CLUSTER) apply -k k8s/kms
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy wait --for=condition=Ready \
-		certificate/kms-tls --timeout=120s
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/kms --timeout=120s
+	$(kubectl) apply -k k8s/kms
+# Unconditional, because a rebuilt image or a changed KMS_MASTER_SECRET reaches
+# the KMS server only through a restart, and neither changes its pod template.
+	$(kubectl) -n temporal-proxy rollout restart deploy/kms
+	$(kubectl) -n temporal-proxy rollout status deploy/kms --timeout=120s
 # The self-hosted Temporal Service, the demo's second upstream, has to be up
 # before temporal-proxy starts, as does the KMS server above: temporal-proxy
-# dials every upstream it declares, and its extension server, at startup, and
-# refuses to start if one is unreachable. A Kind node is a container, so every
-# image pulled from a public registry is pulled cold after a `cluster-down`;
-# Helm's `--wait` covers Traefik's and cert-manager's, and a `rollout status`
-# every other one. This one's is the longest, for a whole Temporal Service.
-	kubectl --context kind-$(CLUSTER) apply -k k8s/temporal
-	kubectl --context kind-$(CLUSTER) -n temporal rollout status deploy/temporal --timeout=300s
-	helm --kube-context kind-$(CLUSTER) upgrade --install temporal-proxy temporal-proxy \
+# dials every upstream with a fixed address, and every extension server, at
+# startup, and refuses to start if one is unreachable. A Kind node is a
+# container, so every image pulled from a public registry is pulled cold after
+# a `cluster-down`; Helm's `--wait` covers Traefik's and cert-manager's, and a
+# `rollout status` every other one. This one's is the longest, for a whole
+# Temporal Service.
+	$(kubectl) apply -k k8s/temporal
+	$(kubectl) -n temporal rollout status deploy/temporal --timeout=300s
+	$(helm) upgrade --install temporal-proxy temporal-proxy \
 		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
 		--namespace temporal-proxy \
 		-f k8s/charts/temporal-proxy.yaml --hide-notes
@@ -241,35 +246,38 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 # what makes `make apply` a working key rotation. The wait paired with it keeps
 # a proxy that refuses to start from being reported as a success. A key Cloud
 # rejects still lets it start: it fails the first request, not the startup.
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout restart deploy/temporal-proxy
-	kubectl --context kind-$(CLUSTER) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
-	kubectl --context kind-$(CLUSTER) apply -k k8s/app
-	kubectl --context kind-$(CLUSTER) apply -k k8s/ui
+	$(kubectl) -n temporal-proxy rollout restart deploy/temporal-proxy
+	$(kubectl) -n temporal-proxy rollout status deploy/temporal-proxy --timeout=120s
+	$(kubectl) apply -k k8s/app
+	$(kubectl) apply -k k8s/ui
 
 # The image tag is fixed, so a rebuild is invisible to Kubernetes
-# until the pods are told to restart. `apply` has already restarted
-# temporal-proxy and waited for it, its pod template being just as
-# blind to a changed configuration or API key.
+# until the pods are told to restart.
 .PHONY: app-up
 app-up: require-setup cluster-up image apply ## Bring up the cluster and everything the demo runs on
-	kubectl --context kind-$(CLUSTER) -n hello rollout restart deploy/app deploy/worker
-	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/app --timeout=120s
-	kubectl --context kind-$(CLUSTER) -n hello rollout status deploy/worker --timeout=120s
+	$(kubectl) -n hello rollout restart deploy/app deploy/worker
+	$(kubectl) -n hello rollout status deploy/app --timeout=120s
+	$(kubectl) -n hello rollout status deploy/worker --timeout=120s
 	@$(publish-endpoints)
 
-# A teardown never fails over something already being gone, which takes two
-# guards: `--ignore-not-found` for a resource the kustomization names, and the
-# `kind get clusters` test for the cluster itself, whose absence kubectl
-# reports as an unknown context. No require-setup guard either: a teardown
-# needs none of those values.
+# Removes the stateless clients of temporal-proxy, the application and the Web
+# UI reading through it, and leaves the platform, the KMS server and the
+# self-hosted Temporal Service up, so `app-up` returns quickly. The panel is
+# republished rather than cleared: `make endpoints` then lists only what still
+# answers. A teardown never fails over something already being gone, which
+# takes two guards: `--ignore-not-found` for a resource a kustomization names,
+# and the `kind get clusters` test for the cluster itself, whose absence
+# kubectl reports as an unknown context. No require-setup guard either: a
+# teardown needs none of those values.
 .PHONY: app-down
-app-down: ## Remove the application, leaving the cluster and everything else up
+app-down: ## Remove the Worker, the API and the Web UI reading through temporal-proxy
 	@if kind get clusters 2>/dev/null | grep -qx '$(CLUSTER)'; then \
-		kubectl --context kind-$(CLUSTER) delete -k k8s/app --ignore-not-found; \
+		$(kubectl) delete -k k8s/app --ignore-not-found && \
+		$(kubectl) delete -k k8s/ui --ignore-not-found; \
 	else \
 		echo 'No cluster named $(CLUSTER), so the application is already gone'; \
 	fi
-	@$(clear-endpoints)
+	@$(publish-endpoints)
 
 # Listed last, because the help listing follows this file's own order and the
 # demo's commands should reach a reader before its plumbing does.

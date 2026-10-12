@@ -31,9 +31,12 @@ fail in exactly the situation where someone wants to
 tear down.
 
 The asymmetry between the pairs is deliberate:
-`app-down` stops short of the platform layer so that
-`app-up` returns quickly, which leaves `cluster-down`
-as the only way to remove everything.
+`app-down` removes the stateless clients of
+temporal-proxy — the application and the Web UI
+reading through it — and stops short of the platform
+layer, the KMS server and the self-hosted Temporal
+Service, so that `app-up` returns quickly. That leaves
+`cluster-down` as the only way to remove everything.
 
 **Why:** the commands are the demo's interface, and
 a reader typing them under time pressure should not

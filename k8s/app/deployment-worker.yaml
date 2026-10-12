@@ -16,7 +16,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: worker
-          image: temporal-proxy-demo:dev
+          image: docker.io/library/temporal-proxy-demo:dev
           command: ["/app/worker"]
           env:
             - name: TEMPORAL_ADDRESS

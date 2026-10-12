@@ -7,22 +7,23 @@ Runs Temporal Workers that know nothing about the
 [Temporal Service][temporal] they talk to. [temporal-proxy][proxy] sits
 in front of them and owns the upstream address, TLS, the API key and
 the Namespace names, so the Worker and the API carry no upstream
-connection, TLS, credential or Namespace configuration of their own.
+address, TLS, credential or fully-qualified Namespace of their own.
 
 Connection details are only the first thing it takes over. Payload
-encryption is another: temporal-proxy seals every payload before it
-leaves the cluster and unseals it on the way back, so the Worker and
-the API send plain payloads and hold no key material either. That
-happens in the proxy, below whichever SDK a Worker is written with —
-this demo uses Go, and nothing about it is specific to Go.
+encryption is another: temporal-proxy seals payloads — Workflow and
+Activity inputs and results among them — before they leave the cluster,
+and unseals them on the way back, so the Worker and the API send plain
+payloads and hold no key material either. Search Attribute values are
+the exception: they stay in the clear, so the Temporal Service can
+still index them. All of this happens in temporal-proxy, below whichever
+SDK a Worker is written with — this demo uses Go, and nothing about it
+is specific to Go.
 
 https://github.com/user-attachments/assets/a35beca7-2195-40da-917f-2e213daa0cd6
 
 The whole demo runs on a local Kubernetes cluster: Traefik publishes the
 API, and temporal-proxy is the only workload that knows where Temporal
-is. That cluster also holds a self-hosted Temporal Service, a second
-upstream the Worker and the API can be routed at without a line of
-either of them changing.
+is.
 
 ## Architecture
 
@@ -40,11 +41,11 @@ flowchart TB
 
         subgraph ns_hello["namespace: hello"]
             api["API — cmd/app<br/>dials Namespace demo, plaintext"]
-            worker["Worker — cmd/worker<br/>long-polls Namespace demo, plaintext"]
+            worker["Worker — cmd/worker<br/>polls Namespace demo, plaintext"]
         end
 
         subgraph ns_proxy["namespace: temporal-proxy"]
-            proxy["temporal-proxy<br/>upstream address, TLS, API key,<br/>Namespace rewrite, payload sealing"]
+            proxy["temporal-proxy<br/>upstreams, API key,<br/>payload sealing"]
             kms["KMS server — cmd/kms"]
             apikey[("Secret<br/>temporal-cloud-api-key")]
             master[("Secret<br/>kms-master-secret")]
@@ -75,9 +76,9 @@ flowchart TB
 
 Solid arrows carry traffic, dotted ones are Secrets a Pod reads. The
 Worker's and the API's arrows into temporal-proxy both leave the
-application: the Worker's is a long poll on its Task Queue, so a
-Workflow reaches the Worker over a connection the Worker itself opened,
-and nothing outside the cluster ever dials in. The third arrow into
+application. The Worker long-polls its Task Queue, so its Workflow
+Tasks and Activity Tasks arrive over a connection the Worker itself
+opened, and nothing ever dials into it. The third arrow into
 temporal-proxy is a Web UI's,
 [described below](#a-web-ui-that-reads-through-temporal-proxy). Only
 Traefik's web entrypoint is published — the two arrows that cross the
@@ -90,10 +91,11 @@ there until the configuration says otherwise, which is
 
 ## Prerequisites
 
-- Docker — builds the image, and runs the cluster's nodes. Podman also
-  works: run `make` with `CONTAINER_TOOL=podman`, and `kind` picks
-  Podman up by itself unless a `docker` CLI is also on `PATH`
-- [kind][kind] — the local Kubernetes cluster
+- Docker — builds the image and runs the cluster's node. Podman works
+  too: run `make` with `CONTAINER_TOOL=podman`. `kind` picks Podman up
+  by itself, unless a `docker` CLI is also on `PATH`; then set
+  `KIND_EXPERIMENTAL_PROVIDER=podman` as well
+- [kind][kind] — the local Kubernetes cluster, a single node
 - `kubectl` and [Helm][helm] 3.16+ — Traefik, cert-manager and
   temporal-proxy all come from their upstream charts, each pinned to an
   explicit version
@@ -101,7 +103,7 @@ there until the configuration says otherwise, which is
 - A Temporal Cloud Namespace that accepts API keys only, and the API key
   of a service account scoped to it, with Write
 
-The image is built locally and loaded straight into the cluster's nodes,
+The image is built locally and loaded straight into the cluster's node,
 so there is no registry and nothing to push.
 
 ### Creating the Namespace and the API key
@@ -153,16 +155,14 @@ key would reach every Namespace the user can see, and the standalone
 Web UI would list them all. See [API keys][api-keys] and
 [service accounts][service-accounts] for the Cloud side.
 
-The key goes in `.env`, as `TEMPORAL_CLOUD_API_KEY`. `.env` is
-git-ignored, so the key stays out of version control.
-
 ## Quick start
 
 Copy the environment template and fill in the three Temporal Cloud
 values — the short Namespace name and the account id, the two halves of
 a fully-qualified Cloud Namespace (`quickstart.a1b2c` is `quickstart`
 plus `a1b2c`), and the API key — then generate the payload key's master
-secret:
+secret. `.env` is git-ignored, so none of these values reaches version
+control:
 
 ```bash
 cp .env.example .env
@@ -192,15 +192,15 @@ starts an Execution, and the request is drawn travelling through the
 stack and back while it runs, so a Workflow is watched from a browser
 rather than read off a JSON line. Both go through the same endpoint.
 
-On a cluster that has just been created, Traefik loads a new route a
-moment after the rollout finishes, so the very first `make demo` can
-answer `503`. Run it again.
+On a freshly created cluster, Traefik can take a couple of seconds to
+pick up the API's new Pod — it applies cluster changes at most once
+every two seconds — so the very first `make demo` can answer `503`. Run
+it again.
 
-Run `make` to list every target. `make app-down` removes the Worker and
-the API and leaves the cluster, Traefik, temporal-proxy, the KMS server,
-the self-hosted Temporal Service and the Web UI in `temporal-ui`
-standing, so `make app-up` puts the demo back without rebuilding any of
-that; `make cluster-down` deletes everything.
+Run `make` to list every target. `make app-down` removes the Worker, the
+API and the Web UI that reads through temporal-proxy, and leaves
+everything else standing, so `make app-up` puts the demo back without
+recreating the cluster; `make cluster-down` deletes everything.
 
 ## What runs where
 
@@ -216,17 +216,10 @@ that; `make cluster-down` deletes everything.
 `secretgen-controller` namespace, for the two controllers that issue the
 KMS server's certificate and generate its bearer token.
 
-Traefik's web entrypoint is the single published port, and the three
-routes behind it are the API and the two Web UIs, the self-hosted one
-and the one reading through temporal-proxy. Everything else is
-reachable only from inside the cluster, temporal-proxy included.
-
-Traefik, cert-manager and temporal-proxy come from their upstream Helm
-charts, each pinned to an explicit version, with the values this demo
-needs in `k8s/charts/`. The Worker and the API come from the manifests
-under `k8s/app`, the self-hosted Temporal Service from `k8s/temporal`,
-and the Web UI reading through temporal-proxy from `k8s/ui`, all
-applied with Kustomize.
+The workloads come from Kustomize manifests — the Worker and the API
+from `k8s/app`, the KMS server from `k8s/kms`, the self-hosted Temporal
+Service from `k8s/temporal` and the Web UI from `k8s/ui` — and the three
+charts take their values from `k8s/charts/`.
 
 ## How the API key travels
 
@@ -243,9 +236,8 @@ TEMPORAL_CLOUD_API_KEY in .env
 ```
 
 temporal-proxy expands that reference at startup and sends the key with
-every request to Cloud, over TLS verified against the public roots —
-the Cloud upstream carries no `tls` block, because that default is
-already the right one.
+every request to Cloud, over TLS. `make apply` restarts temporal-proxy,
+so rotating the key is editing `.env` and running `make apply`.
 
 What the chart references is an ordinary Kubernetes Secret, and nothing
 assumes where that Secret came from. `make` fills it here so the demo
@@ -257,17 +249,23 @@ with it.
 
 ## How the payload key travels
 
-Nothing seals a payload with a key from a file. temporal-proxy generates
-a data encryption key, seals payloads with it, and asks the KMS server
-to wrap that key:
+temporal-proxy generates a data encryption key, seals payloads with it,
+and asks the KMS server to wrap that key:
 
 ```text
 KMS_MASTER_SECRET in .env
   → Secret kms-master-secret
-  → the KMS server, which derives one AES-256-GCM key per Namespace
-  → wraps each data encryption key temporal-proxy sends it
+  → the KMS server, which derives one 256-bit key per Namespace
+  → wraps each data encryption key temporal-proxy sends it, with AES-256-GCM
   → the wrapped key travels inside the sealed payload
 ```
+
+temporal-proxy reuses a data key for an hour and caches the keys it has
+unwrapped, so it calls the KMS server for a new key or one it has not
+opened yet, not once per payload. It calls over TLS, trusting the
+self-signed certificate cert-manager issues for the KMS server, and
+presents a bearer token secretgen-controller generates in the cluster:
+neither appears in any file of this repository.
 
 The KMS server derives its key from the short Namespace name the
 application asked for — `demo` — never the fully-qualified Cloud name.
@@ -284,9 +282,7 @@ container, everything in memory, nothing persisted, with the `demo`
 Namespace created at startup. It is there to answer a question the
 Worker has no way to ask — which Temporal Service is serving it.
 
-Both upstreams are declared in `k8s/charts/temporal-proxy.yaml`.
-temporal-proxy opens a connection to every declared upstream at startup
-and refuses to start if one is unreachable, so both have to be up.
+Both upstreams are declared in `k8s/charts/temporal-proxy.yaml`, and
 `routing.default` alone picks which one serves requests, which makes
 switching a single word:
 
@@ -308,10 +304,12 @@ make apply
 make demo
 ```
 
-The Temporal Cloud values and the API key stay required even when the
-Workers are routed at the self-hosted Service, and not only by
-`make apply`'s setup guard: temporal-proxy itself needs them, because the
-Cloud upstream is still declared and so still dialled at startup.
+Both upstreams have to be up whichever one is selected: temporal-proxy
+dials every upstream with a fixed address at startup, and refuses to
+start if one is unreachable. That is also why the Temporal Cloud values
+and the API key stay required while the self-hosted Service serves: the
+Cloud upstream is still declared, so its address must connect, and its
+configuration refuses an empty API key.
 
 `routing.system` is absent on purpose. Left unset, it hands the
 requests that carry no Namespace — the `GetSystemInfo` a Client sends on
@@ -320,11 +318,12 @@ ever one name to change.
 
 The second upstream is three lines. `insecure: true` stands where a
 `tls` block would, because the endpoint serves plaintext inside the
-cluster and an upstream that does not state its transport is dialled
-over TLS. No `namespaces.rules`, because that Service registers the
-Namespace under `demo` — the very name the application asks for — so
-there is nothing to rewrite, where Cloud knows it as
-`NAMESPACE.ACCOUNT`.
+cluster, and an upstream that does not state its transport is dialled
+over TLS, verified against the system roots — which is also why the
+Cloud upstream carries no `tls` block. No `namespaces.rules`, because
+that Service registers the Namespace under `demo` — the very name the
+application asks for — so there is nothing to rewrite, where Cloud
+knows it as `NAMESPACE.ACCOUNT`.
 
 Nothing else moves. The image is not rebuilt, the Worker and the API are
 neither restarted nor reconfigured, and they still hold the same two
@@ -337,15 +336,14 @@ single Traefik port as the demo. Run `make demo` on either side of the
 switch and the two Executions land in different Temporal Services — the
 first in the Cloud Namespace, the second in this one.
 
-Payload encryption is not part of the switch. temporal-proxy seals every
-payload whichever upstream it forwards to, so the self-hosted Web UI
-shows sealed payloads exactly as the Cloud one does: the Temporal
-Service on the far end is never the one holding the key.
+Payload encryption is not part of the switch. temporal-proxy seals
+payloads whichever upstream it forwards to, so the self-hosted Web UI
+shows them sealed exactly as the Cloud one does: the Temporal Service on
+the far end never holds the key.
 
-The self-hosted Service keeps nothing. It starts empty, and a restart
-takes the history with it — which is what makes it disposable, and why
-Temporal Cloud is the upstream the demo ships routed at. Write `cloud`
-back and run `make apply` to return.
+Living in memory is what makes the self-hosted Service disposable, and
+why Temporal Cloud is the upstream the demo ships routed at. Write
+`cloud` back and run `make apply` to return.
 
 One upstream at a time is only the simplest case: `routing.rules`
 matches on the Namespace a request asks for, so a single temporal-proxy
@@ -381,8 +379,8 @@ The UI is read-only: its own server refuses every call that would change
 state.
 
 Nothing in front of this UI asks who is reading, and everything it shows
-is decrypted. Keep it on this machine: Traefik's port must never be
-reachable from beyond it.
+is decrypted. Kind would publish Traefik's port on every interface, so
+the cluster config binds it to `127.0.0.1`: keep it so.
 
 ## What the application does not carry
 

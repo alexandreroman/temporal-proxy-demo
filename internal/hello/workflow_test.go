@@ -1,7 +1,9 @@
 package hello
 
 import (
+	"context"
 	"errors"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -44,9 +46,16 @@ func TestHelloWorkflowActivityFails(t *testing.T) {
 
 	req := Request{Name: "Ada"}
 
+	// Counted by hand rather than with .Times(3): a call past that limit panics inside the mock, and
+	// the SDK reports the panic as one more failed attempt, so a fourth attempt would go unnoticed.
+	var attempts atomic.Int32
+
 	var suite testsuite.WorkflowTestSuite
 	env := suite.NewTestWorkflowEnvironment()
-	env.OnActivity(Greet, mock.Anything, req).Return(Response{}, errors.New("greeting unavailable"))
+	env.OnActivity(Greet, mock.Anything, req).Return(func(context.Context, Request) (Response, error) {
+		attempts.Add(1)
+		return Response{}, errors.New("greeting unavailable")
+	})
 
 	env.ExecuteWorkflow(HelloWorkflow, req)
 
@@ -56,4 +65,8 @@ func TestHelloWorkflowActivityFails(t *testing.T) {
 	if err := env.GetWorkflowError(); err == nil {
 		t.Fatal("workflow error = nil, want the activity failure")
 	}
+	if got, want := attempts.Load(), int32(3); got != want {
+		t.Errorf("activity attempts = %d, want %d", got, want)
+	}
+	env.AssertExpectations(t)
 }

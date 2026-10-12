@@ -1,23 +1,19 @@
 ---
 name: "One environment file, loaded for every target"
-description: "Why the Makefile reads a single .env for every target, with no per-target include tier"
+description: "Why every Make target reads the same .env file"
 type: feedback
 ---
 
 # One environment file, loaded for every target
 
-The project uses one environment file, `.env`, and
-no per-target include tier: every target sees the
-same values.
+Every Make target reads the same environment file,
+`.env`, so the values behind a target are exactly
+what that file holds.
 
-**Why:** the configuration behind a target is
-simply what `.env` holds, readable without working
-out which includes the named goal activates.
-Selecting environment files from `MAKECMDGOALS`
-makes the effective values depend on the target
-typed on the command line — invisible in the file
-itself, and a detour in a demo where every file
-has to be explainable on a slide.
+**Why:** a reader can tell the configuration of any
+command by reading one file, whatever target was
+typed — which a demo where every file has to be
+explainable on a slide depends on.
 
 **How to apply:** put shared configuration in
 `.env`, documented in `.env.example`, and

@@ -28,8 +28,9 @@ view of it catches up blackholes the request, so Traefik
 times out with a 504 rather than failing fast.
 
 On a freshly created cluster one window stays open that the
-overlap cannot close: Traefik loads a route only after its
-`providersThrottleDuration`, two seconds by default.
+overlap cannot close: Traefik applies provider changes at
+most once per `providersThrottleDuration`, two seconds by
+default, so it can take that long to pick up the new pod.
 `app-up` does not poll the published route to hide it — the
 README tells the reader to retry instead, which keeps the
 recipe on a slide.

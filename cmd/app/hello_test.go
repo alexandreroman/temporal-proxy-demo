@@ -37,6 +37,8 @@ func (f *fakeGreeter) greet(_ context.Context, req hello.Request) (helloResponse
 }
 
 func TestHelloEndpoint(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name     string
 		body     io.Reader
@@ -55,9 +57,7 @@ func TestHelloEndpoint(t *testing.T) {
 
 			var fake fakeGreeter
 			rec := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodPost, "/hello", tt.body)
-			req.Header.Set("Content-Type", "application/json")
-			newMux(fake.greet).ServeHTTP(rec, req)
+			newMux(fake.greet).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/hello", tt.body))
 
 			if rec.Code != http.StatusOK {
 				t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -68,32 +68,23 @@ func TestHelloEndpoint(t *testing.T) {
 			if fake.req.Name != tt.wantName {
 				t.Errorf("greeted name = %q, want %q", fake.req.Name, tt.wantName)
 			}
+
+			// The page reads two field names off the body, "greeting" and "workflowId", and
+			// "runId" completes the Execution's identity on the wire. All three sit flat, so the
+			// embedded hello.Response has to contribute a "greeting" and not a nested object.
+			var got map[string]any
+			if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+				t.Fatalf("decode body %q: %v", rec.Body.String(), err)
+			}
+			want := map[string]any{
+				"greeting":   "Hello, " + tt.wantName + "!",
+				"workflowId": "hello-" + tt.wantName,
+				"runId":      "run-1",
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("body = %v, want %v", got, want)
+			}
 		})
-	}
-}
-
-// The page reads two field names off the body, "greeting" and "workflowId", and "runId"
-// completes the Execution's identity on the wire. All three sit flat, so the embedded
-// hello.Response has to contribute a "greeting" and not a nested object.
-func TestHelloEndpointBodyFields(t *testing.T) {
-	t.Parallel()
-
-	var fake fakeGreeter
-	rec := httptest.NewRecorder()
-	newMux(fake.greet).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/hello", nil))
-
-	var got map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatalf("decode body %q: %v", rec.Body.String(), err)
-	}
-
-	want := map[string]any{
-		"greeting":   "Hello, " + defaultName + "!",
-		"workflowId": "hello-" + defaultName,
-		"runId":      "run-1",
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("body = %v, want %v", got, want)
 	}
 }
 

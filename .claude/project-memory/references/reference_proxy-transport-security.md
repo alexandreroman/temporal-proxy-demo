@@ -28,11 +28,11 @@ and each extension server — and it reads differently by direction:
   default, and the gateway serves cleartext without a field of its own.
 
 **Why:** an upstream silent about its transport is the failure this shape
-produces. It passes validation, the proxy starts cleanly, and the error
-surfaces only when the first request reaches a frontend that answers no
-TLS handshake — far from the configuration that caused it. Reading an
-absent `tls` block as plaintext yields a proxy that cannot reach its own
-upstream.
+produces. It passes validation, then temporal-proxy fails to start: every
+static upstream has to reach gRPC READY at startup, the TLS handshake with
+a plaintext frontend never completes, and startup times out with an error
+that names readiness rather than TLS. Reading an absent `tls` block as
+plaintext yields a proxy that cannot reach its own upstream.
 
 **How to access:** at the pinned release tag, read
 `internal/config/listen.go` for `ListenConfig.Insecure`, `Dialer` and

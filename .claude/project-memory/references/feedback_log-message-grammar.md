@@ -1,6 +1,6 @@
 ---
 name: "Runtime log messages follow one grammar"
-description: "Lowercase, no trailing punctuation, either '<subject> <past-participle>' or '<gerund ...> failed'"
+description: "Lowercase, no trailing punctuation, constant per call site: two outcome shapes and a present participle for a phase"
 type: feedback
 ---
 
@@ -9,7 +9,7 @@ type: feedback
 Every runtime log message in the Go code is a short
 phrase that starts with a lowercase letter and
 carries no trailing punctuation. Two shapes cover
-the whole codebase:
+outcomes, and a present participle reports a phase:
 
 - `<subject> <past-participle>` for something that
   happened — `worker started`, `app stopped`,
@@ -18,14 +18,13 @@ the whole codebase:
   `rendering the page failed`,
   `writing response failed`,
   `building the keyring failed`.
+- a present participle for a phase the process is
+  in — `connecting to Temporal`, `shutting down`.
 
 A message that reads as a bare label (`Greeting`) or
 as a sentence about the program's intent
 (`Failed to serve`, `Starting hello workflow`) does
-not belong. Present participles used as a status —
-`connecting to Temporal`, `shutting down` — stay
-within the convention: they report a phase the
-process is in, not an outcome.
+not belong.
 
 Detail belongs in structured fields, never in the
 message: the message is the stable key, and
@@ -35,13 +34,14 @@ constant per call site — no formatting, no
 interpolation.
 
 An uppercase letter is allowed only for a proper
-noun mid-phrase (`connecting to Temporal`) or for
-an identifier quoted verbatim — `cmd/kms` logs
-`KMS_MASTER_SECRET is required`, and that is the
-environment variable's own literal name.
+noun mid-phrase (`connecting to Temporal`). A
+missing environment variable is reported the same
+way as any other detail: `cmd/kms` logs
+`required variable not set` with the variable's
+name in a field.
 
-A fatal message names the component that is
-stopping, matching the surviving process's
+The message a binary logs when it stops names the
+component, matching the surviving process's
 vocabulary: `cmd/kms` logs `kms stopped` where
 `cmd/app` logs `app stopped` and `cmd/worker` logs
 `worker stopped`. All three carry the error as a
@@ -60,7 +60,7 @@ stream scannable, and a constant message per call
 site is what makes a line greppable and groupable.
 
 **How to apply:** when adding a log call, pick one
-of the two shapes and put every variable part in a
+of the shapes above and put every variable part in a
 field. To audit the tree:
 
 ```sh
@@ -68,6 +68,6 @@ grep -rnE '\.(Debug|Info|Warn|Error|Fatal)f?\("[A-Z]' \
   --include='*.go' . | grep -v '_test\.go'
 ```
 
-Only proper nouns and quoted identifiers may match.
+Only proper nouns may match.
 Checked by hand — `make check` runs `go test` and
 `go vet`, not this grep.

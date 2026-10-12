@@ -2,17 +2,18 @@
 
 A hands-on demo showing how Temporal Workers written with the Go SDK
 run against [temporal-proxy](https://github.com/temporalio/temporal-proxy)
-without carrying any upstream connection, TLS, credential, or Namespace
-configuration of their own.
+without carrying any upstream address, TLS, credential, or
+fully-qualified Namespace of their own.
 
 See [README.md](README.md) for full documentation.
 
 ## Tech stack
 
-- Go — Temporal Go SDK (Worker) and net/http (API)
+- Go — Temporal Go SDK (Worker), net/http (API), and gRPC
+  through temporal-proxy's `pkg/ext` (KMS server)
 - Tailwind CSS and Alpine.js — the embedded page, both from a CDN
 - temporal-proxy — one gRPC endpoint in front of every upstream
-- Kubernetes on Kind — the local cluster the demo runs in
+- Kubernetes on Kind — the local cluster the demo runs in, one node
 - Kustomize — the Worker, the API, the KMS server, the
   self-hosted Temporal Service and the Web UI reading through
   temporal-proxy
@@ -27,7 +28,7 @@ See [README.md](README.md) for full documentation.
 ## Build & run
 
 ```bash
-make worktree-init  # generate this worktree's cluster config
+make worktree-init  # optional: pin this worktree's port
 make                # list every target
 make app-up         # cluster and everything the demo runs on
 make demo           # curl the API to start one Workflow
@@ -35,9 +36,8 @@ make check          # tests and static checks
 make cluster-down   # delete the cluster
 ```
 
-`.env` also needs `TEMPORAL_CLOUD_API_KEY` and
-`KMS_MASTER_SECRET`; `require-setup` refuses to deploy
-without them.
+`.env` needs the four values `.env.example` documents;
+`require-setup` refuses to deploy while any one is missing.
 
 ## Modules
 
@@ -47,12 +47,14 @@ without them.
 - `internal/hello` — the hello-workflow Workflow and its Activity
 - `internal/temporalclient` — the shared client: plaintext, no credentials
 - `cmd/kms` — gRPC server wrapping and unwrapping payload keys
-- `internal/kms` — derives one AES-256-GCM key per Namespace
+  with AES-256-GCM
+- `internal/kms` — derives one 256-bit key per Namespace
+  (HKDF-SHA256)
 - `k8s` — the cluster configuration: the application's manifests in
   `app`, the KMS server's in `kms`, the self-hosted Temporal Service's
   in `temporal`, the standalone Web UI's in `ui`, the charts' values in
   `charts`, plus `namespaces.yaml`, applied on its own, and
-  `kind-config.yaml.in`, the template `worktree-init` renders
+  `kind-config.yaml.in`, the template the Kind config is rendered from
 
 ## Agents
 
@@ -90,9 +92,9 @@ the team.
   - Text / Markdown: 80 columns max
   - Code: 120 columns max
   - Exempt, single lines by format: the
-    `.claude/project-memory` index's entries and each note's
-    frontmatter `description:`; the notes' prose bodies keep
-    the 80-column limit
+    `.claude/project-memory` index's entries, each note's
+    frontmatter `description:`, and SVG path data copied into
+    the page; the notes' prose bodies keep the 80-column limit
 - Follow standard Markdown conventions: blank line
   before and after headings, blank line before and
   after lists, fenced code blocks with a language tag

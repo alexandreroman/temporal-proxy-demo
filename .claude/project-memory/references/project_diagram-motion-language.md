@@ -13,11 +13,15 @@ worker), the Activity dwells, the result is reported
 (worker to proxy to Temporal), and the caller's long
 poll returns (Temporal to proxy to application). Each
 of the four movements detours through the key service
-on its way: every payload is sealed on its way out and
-unsealed on its way in, so the proxy calls there and
-comes back before the movement goes on. Every wire
-therefore carries traffic in both directions over one
-run.
+on its way, to show where the keys behind sealing come
+from: every payload is sealed on its way out and
+unsealed on its way in. The detour is a deliberate
+simplification. temporal-proxy seals with one data key
+per Namespace for that key's lifetime and caches the
+keys it has unwrapped, so in practice it calls the key
+service only for a new data key or one it has not
+unwrapped yet. Every wire carries traffic in both
+directions over one run.
 
 **The wires carry no arrowheads.** Direction is the
 travelling pulse's job alone, so the diagram never

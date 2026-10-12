@@ -9,8 +9,8 @@ type: project
 The page's diagram draws the real topology: the API
 and the Worker are both clients of temporal-proxy,
 which alone reaches anything past itself — Temporal
-upstream, and the key service holding the key its
-payloads are sealed with. Each component is a card
+upstream, and the key service holding the keys that
+wrap its payloads' data keys. Each component is a card
 with a hairline border, and the connections are SVG
 wires.
 
@@ -130,14 +130,6 @@ than an icon beside text, the caption aligns to where
 the lockup's lettering starts, not to the shared
 column, because the mark that precedes the lettering
 sets the artwork's edge.
-
-One constraint is not obvious from the code: the
-scroll band's `overflow-y` cannot stay `visible`
-beside `overflow-x: auto`, so the band needs padding
-of its own on both axes or it clips what hangs outside
-the rows — the cards' halos, the persona boxes' own
-borders, and above the rail the chip that carries a
-persona's name.
 
 **Why:** the diagram is the demo's argument, so it has
 to be true before it is attractive; and it is watched

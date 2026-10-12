@@ -39,7 +39,7 @@ browser on a Workflow page, including a Query sent from the
 page: curl on `/api/v1` passes where the page redirects, and
 curl carries no CSRF cookie to lose. The source is temporal-proxy's
 `internal/cloud/translation/doc.go` and
-`internal/config/cloudapi.go` at the pinned tag. See [A codec
-server serves both Web UIs from
-loopback](project_codec-server-design.md) and [Demo
+`internal/config/cloudapi.go` at the pinned tag. See [Codec
+server candidate: loopback, port-forward, no
+auth](project_codec-server-design.md) and [Demo
 scope](project_demo-scope.md).

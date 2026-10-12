@@ -15,9 +15,8 @@ straight into the Make variable Traefik's published port
 is built from, so that variable name is a contract between
 the two files. `.casper.json` also copies `.env` into a
 fresh workspace, and a workspace deploys the whole demo as
-soon as `.env` holds valid Temporal Cloud values, a
-`TEMPORAL_CLOUD_API_KEY` and a `KMS_MASTER_SECRET`. A copied
-`.env` missing any one of those values stops at
+soon as `.env` holds the four values `.env.example` documents. A
+copied `.env` missing any one of them stops at
 `require-setup`.
 
 The Make targets it calls are neutral: they are named for
@@ -29,12 +28,14 @@ tests both `CASPER_WORKSPACE_ID` and the presence of the
 `.casper.json` is read by Casper alone, so a check for the
 CLI there is noise.
 
-The info panel mirrors what the stack publishes: `app-up`
-publishes `make endpoints` once the rollout is up, and both
-`app-down` and `cluster-down` clear the panel once the
-address it advertises stops answering. Targets in between,
-such as `cluster-up` and `apply`, touch neither the panel
-nor `make endpoints`.
+The info panel mirrors what the stack publishes, and `make
+endpoints` lists an in-cluster address only while its
+Deployment exists. `app-up` publishes the panel once the
+rollout is up; `app-down` removes the application and the
+Web UI reading through temporal-proxy, then republishes it
+with the rows still answering; `cluster-down` clears it.
+Targets in between, such as `cluster-up` and `apply`, touch
+neither the panel nor `make endpoints`.
 
 **Why:** the demo has to read as an ordinary Temporal demo
 to someone who has never heard of the workspace tool, and

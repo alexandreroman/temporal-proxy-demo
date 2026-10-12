@@ -20,7 +20,9 @@ configuration, so the Worker and the API are
 byte-identical whatever that configuration says.
 
 Payload encryption seals every payload before it
-leaves the cluster, under data encryption keys
+leaves the cluster — Search Attribute values stay in
+the clear, so the upstream can index them — under data
+encryption keys
 temporal-proxy caches and reuses across payloads for
 their configured lifetime. A KMS extension server this
 repository runs (`cmd/kms`) wraps those keys, because

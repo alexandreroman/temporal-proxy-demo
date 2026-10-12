@@ -1,8 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# One image, three binaries: the Worker, the API and the KMS server are always
-# the same build, and each Deployment picks the binary it runs with its own
-# `command`.
+# One image, three binaries: the Worker, the API and the KMS server.
 FROM golang:1.27-alpine AS build
 WORKDIR /src
 

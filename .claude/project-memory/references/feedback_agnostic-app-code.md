@@ -6,30 +6,21 @@ type: feedback
 
 # Application code stays endpoint-agnostic
 
-The Go code knows exactly one thing about where it
-connects: a local Temporal endpoint it dials in
-plaintext with a short Namespace name. What backs
-that endpoint — a dev server, a proxy, a
-self-hosted frontend, Temporal Cloud — is a
-deployment concern the code has no opinion about.
-
-The rule covers vocabulary, not just configuration.
-Comments, doc comments, log messages, error
-messages and identifiers avoid `temporal-proxy` by
-name and avoid proxy vocabulary in general:
-"upstream", "gateway", and "the proxy handles X"
-all presuppose the thing the code is meant to be
-ignorant of.
-
-Spelling those words out here is deliberate: this
-note is where the repository quotes its banned
-vocabulary, so the check below has something to
-match.
+CLAUDE.md states the rule: the Go code dials a local
+endpoint in plaintext with a short Namespace name, and
+never names what backs it. The rule covers vocabulary
+as well as configuration — "proxy", "upstream",
+"gateway" and "the proxy handles X" all presuppose
+the thing the code is meant to be ignorant of. This
+note spells those words out so the check below has
+something to match.
 
 Stating what is deliberately **absent** from the
-client options stays welcome — no TLS material, no
+client options is welcome — no TLS material, no
 credentials, no fully-qualified Namespace — as long
-as it does not name who supplies it.
+as it does not name who supplies it. The
+`internal/temporalclient` package doc says it once
+for both binaries.
 
 The prohibition binds the Go source, not the
 deployment configuration or the process's own
