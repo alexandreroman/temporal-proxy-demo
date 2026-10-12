@@ -199,10 +199,10 @@ require-setup:
 # `kubectl create secret` refuses to overwrite a Secret that already exists, so
 # every one of them is rendered client-side and piped into `apply` instead:
 # that is what makes `make apply` runnable a second time. Every Secret this
-# builds belongs to temporal-proxy's namespace, so it is part of this shared
-# shape; each call supplies only the kind, the name and the sources.
+# builds is generic and belongs to temporal-proxy's namespace, so both are part
+# of this shared shape; each call supplies only the name and the sources.
 define apply-secret
-kubectl --context kind-$(CLUSTER) -n temporal-proxy create secret $(1) \
+kubectl --context kind-$(CLUSTER) -n temporal-proxy create secret generic $(1) \
 	--dry-run=client -o yaml | kubectl --context kind-$(CLUSTER) apply -f -
 endef
 
@@ -213,16 +213,16 @@ endef
 .PHONY: apply
 apply: require-setup ## Deploy the demo's workloads into the cluster (after image)
 	kubectl --context kind-$(CLUSTER) apply -f k8s/namespaces.yaml
-	$(call apply-secret,generic temporal-cloud-config \
+	$(call apply-secret,temporal-cloud-config \
 		--from-literal=TEMPORAL_CLOUD_NAMESPACE='$(TEMPORAL_CLOUD_NAMESPACE)' \
 		--from-literal=TEMPORAL_ACCOUNT='$(TEMPORAL_ACCOUNT)')
 # A Secret of its own: temporal-cloud-config above is loaded whole with envFrom,
 # so a key there would reach the container a second time. This line and the
 # next are silenced with @: each expands to a secret, and make echoes every
 # recipe line not prefixed with @.
-	@$(call apply-secret,generic temporal-cloud-api-key \
+	@$(call apply-secret,temporal-cloud-api-key \
 		--from-literal=TEMPORAL_CLOUD_API_KEY='$(TEMPORAL_CLOUD_API_KEY)')
-	@$(call apply-secret,generic kms-master-secret \
+	@$(call apply-secret,kms-master-secret \
 		--from-literal=KMS_MASTER_SECRET='$(KMS_MASTER_SECRET)')
 	kubectl --context kind-$(CLUSTER) apply -k k8s/kms
 	kubectl --context kind-$(CLUSTER) -n temporal-proxy wait --for=condition=Ready \
