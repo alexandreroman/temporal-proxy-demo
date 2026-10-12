@@ -168,10 +168,15 @@ cluster-down: ## Delete the Kind cluster
 # load a name the cluster never looks up.
 IMAGE = docker.io/library/temporal-proxy-demo:dev
 
+# `kind load docker-image` always shells out to docker, so the image travels as
+# an archive saved by CONTAINER_TOOL instead. kind takes a path and opens it once
+# per node, so the archive is a temporary file rather than a pipe.
 .PHONY: image
 image: ## Build the image and load it into the cluster (after cluster-up)
 	$(CONTAINER_TOOL) build -t $(IMAGE) .
-	kind load docker-image $(IMAGE) --name '$(CLUSTER)'
+	archive=$$(mktemp) && trap 'rm -f "$$archive"' EXIT && \
+		$(CONTAINER_TOOL) save -o "$$archive" $(IMAGE) && \
+		kind load image-archive "$$archive" --name '$(CLUSTER)'
 
 # temporal-proxy and the KMS server both validate their configuration on
 # startup, so anything missing here crash-loops far from the command that
