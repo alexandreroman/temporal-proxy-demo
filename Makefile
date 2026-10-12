@@ -26,29 +26,21 @@ CLUSTER ?= $(notdir $(CURDIR))
 kubectl = kubectl --context kind-$(CLUSTER)
 helm = helm --kube-context kind-$(CLUSTER)
 
-# The single host port this cluster publishes, into Traefik. It reaches Kind
-# through k8s/kind-config.yaml, generated at this default by `cluster-create`
-# and overwritten by `worktree-init` to pin a port per worktree.
+# The single host port this cluster publishes, into Traefik.
 TRAEFIK_PORT ?= 8080
 
 # kind's config file cannot read environment variables and no kind flag sets a
 # port mapping, so the host port is frozen into k8s/kind-config.yaml, rendered
-# from k8s/kind-config.yaml.in.
+# from k8s/kind-config.yaml.in. `worktree-init` overwrites it to pin this
+# worktree's own port. `cluster-create` renders it at the default only when it
+# is absent, so `make app-up` works on a fresh clone and a pinned port stays.
 render-kind-config = sed '/hostPort:/s/@TRAEFIK_PORT@/$(TRAEFIK_PORT)/' k8s/kind-config.yaml.in > k8s/kind-config.yaml
 
-# The host name the demo answers on, matched by k8s/app/httproute.yaml. A
-# manifest cannot read a make variable, so that file spells it out too.
+# The host name the demo answers on. Every host name in this file matches the
+# `hostnames:` of a k8s/*/httproute.yaml, which cannot read a make variable.
 DEMO_HOST = hello.127-0-0-1.nip.io
 
-# The host name the self-hosted Web UI answers on, matched by
-# k8s/temporal/httproute.yaml, which spells it out too for the same reason.
-TEMPORAL_UI_HOST = temporal.127-0-0-1.nip.io
-
-# The host name the Web UI reading through temporal-proxy answers on, matched
-# by k8s/ui/httproute.yaml, which spells it out too for the same reason.
-TEMPORAL_PROXY_UI_HOST = temporal-webui.127-0-0-1.nip.io
-
-# The CLI that builds the image and runs the cluster's nodes. A Podman user
+# The CLI that builds the image and runs the cluster's node. A Podman user
 # overrides this one variable; kind detects Podman on its own, and needs
 # KIND_EXPERIMENTAL_PROVIDER=podman only when a docker CLI is on PATH too,
 # which kind would otherwise pick.
@@ -64,9 +56,6 @@ traefik-port = $$(p=$$($(CONTAINER_TOOL) port '$(CLUSTER)-control-plane' 30080 2
 
 ##@ Develop
 
-# CLUSTER, the directory name, keeps two worktrees from sharing a cluster,
-# and the Kind config rendered at TRAEFIK_PORT keeps them from sharing a host
-# port.
 .PHONY: worktree-init
 worktree-init: ## Pin this worktree's port (overwrites k8s/kind-config.yaml)
 	$(render-kind-config)
@@ -94,8 +83,8 @@ endpoints: ## Print this worktree's published endpoints as Markdown
 		'| Service | Address |' '| --- | --- |' \
 		"| Demo App | <http://$(DEMO_HOST):$$port> |" \
 		"| Temporal Web UI (Cloud) | $$web_ui |" \
-		"| Temporal Web UI (self-hosted) | <http://$(TEMPORAL_UI_HOST):$$port> |" \
-		"| Temporal Web UI (through temporal-proxy) | <http://$(TEMPORAL_PROXY_UI_HOST):$$port> |"
+		"| Temporal Web UI (self-hosted) | <http://temporal.127-0-0-1.nip.io:$$port> |" \
+		"| Temporal Web UI (through temporal-proxy) | <http://temporal-webui.127-0-0-1.nip.io:$$port> |"
 
 # The workspace info panel mirrors `make endpoints`, so whichever command
 # brought the stack up or down leaves it telling the truth. The CLI is on PATH
@@ -119,13 +108,9 @@ check: ## Run tests and static checks
 # The node image is pinned like every other version here, because the
 # application's preStop lifecycle sleep needs a recent Kubernetes: an older
 # node drops that field silently and takes the overlapping rollout with it.
-# The Kind config is rendered here at the default TRAEFIK_PORT when it is
-# absent: `make app-up` then works on a fresh clone with no preliminary
-# step. An existing file is left alone, because it holds the port a running
-# worktree already published. The cluster this target creates carries no
-# ingress until cluster-up has finished with it, so cluster-up is the name a
-# reader types and this one exists only as its prerequisite, without a help
-# description.
+# The cluster this target creates carries no ingress until cluster-up has
+# finished with it, so cluster-up is the name a reader types and this one
+# exists only as its prerequisite, without a help description.
 .PHONY: cluster-create
 cluster-create:
 	@test -f k8s/kind-config.yaml || $(render-kind-config)
@@ -253,9 +238,7 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 	$(kubectl) apply -k k8s/ui
 
 # The image tag is fixed, so a rebuild is invisible to Kubernetes
-# until the pods are told to restart. `apply` has already restarted
-# temporal-proxy and waited for it, its pod template being just as
-# blind to a changed configuration or API key.
+# until the pods are told to restart.
 .PHONY: app-up
 app-up: require-setup cluster-up image apply ## Bring up the cluster and everything the demo runs on
 	$(kubectl) -n hello rollout restart deploy/app deploy/worker
