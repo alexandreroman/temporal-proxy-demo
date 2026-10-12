@@ -13,7 +13,8 @@ ifneq (,$(wildcard .env))
 include .env
 endif
 
-# Who `make demo` greets.
+# Who `make demo` greets. Plain text only, with no quotes: the recipe pastes it
+# into a JSON string that sits inside single quotes.
 NAME ?= John Doe
 
 # The Kind cluster name is this worktree's directory name, so two
