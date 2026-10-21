@@ -274,6 +274,11 @@ Turning encryption off is one flag, `encryption.enabled`, plus
 `make apply`. Payloads sealed earlier stay readable, which is why the
 flag rather than the whole block is what turns encryption off.
 
+Each sealed payload also carries the Namespace it was sealed under —
+its name on the upstream, after the override — authenticated with the
+ciphertext. `encryption.namespaceBinding` is `strict`, so temporal-proxy
+refuses a payload labeled for another Namespace or carrying no label.
+
 ## Routing at another Temporal Service
 
 Temporal Cloud is not the only upstream in the cluster. A self-hosted
