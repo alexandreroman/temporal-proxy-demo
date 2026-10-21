@@ -7,7 +7,7 @@
 # The chart would otherwise default to its own appVersion, which
 # trails the image releases.
 image:
-  tag: v0.8.0
+  tag: v1.0.0
 
 # Also becomes the gateway's listen address, since the chart derives
 # config.hostPort from this port.
@@ -26,16 +26,17 @@ resources:
     memory: 256Mi
 
 # temporal-proxy registers the standard gRPC health service under the
-# empty service name, which is what a bare grpc probe asks for. Helm
-# merges maps, so `httpGet: null` is what deletes the chart's default
-# HTTP probe — left in place, the probe would carry two handlers and
-# the API server would reject it.
+# empty service name, which is what a bare grpc probe asks for: a
+# stronger check than the chart's default TCP probe, which only sees
+# the listener accept a connection. Helm merges maps, so
+# `tcpSocket: null` is what deletes that default — left in place, the
+# probe would carry two handlers and the API server would reject it.
 livenessProbe:
-  httpGet: null
+  tcpSocket: null
   grpc:
     port: 7233
 readinessProbe:
-  httpGet: null
+  tcpSocket: null
   grpc:
     port: 7233
 
@@ -141,10 +142,17 @@ config:
   # `enabled: false` stops sealing new payloads while leaving everything sealed
   # earlier readable, because the key below is what builds the vault and inbound
   # decryption is never gated. That makes this flag the whole of what turns
-  # encryption off — deleting the block instead would take the vault with it and
-  # leave the existing history unreadable.
+  # encryption off — deleting the block instead would take the vault with it
+  # and leave the existing history unreadable.
   encryption:
     enabled: true
+    # Required whenever keys are configured: temporal-proxy refuses to start
+    # without it. Each sealed payload carries the Namespace it was sealed under
+    # (its name on the upstream, after the override), authenticated with the
+    # ciphertext. `strict` opens a payload only when that label matches the
+    # request's Namespace, so a payload copied into another Namespace does not
+    # open.
+    namespaceBinding: strict
     default:
       uri: extension://kms/payloads
       # How long one Namespace's data key seals new payloads before a fresh

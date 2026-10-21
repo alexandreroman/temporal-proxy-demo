@@ -7,7 +7,7 @@ type: project
 # Codec server candidate: loopback, port-forward, no auth
 
 The demo ships no codec server. temporal-proxy has one built
-in (`codecServer`, from v0.8.0), and adding it is an open,
+in (`http.codecServer`), and adding it is an open,
 unscheduled candidate. Any version of it supports both the
 Temporal Cloud Web UI and the self-hosted Web UI: one UI
 alone does not qualify. The Web UI in `k8s/ui` reads through

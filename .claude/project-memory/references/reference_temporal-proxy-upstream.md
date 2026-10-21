@@ -9,15 +9,18 @@ type: reference
 temporal-proxy is a gRPC proxy that sits between
 SDK Clients, Workers and the Web UI on one side
 and one or more upstream Temporal Services on the
-other. It is **pre-release** and evolving quickly.
+other. It is in Public Preview from v1.0.0 and
+evolving quickly.
 
 - Source: <https://github.com/temporalio/temporal-proxy>
 - Docs: <https://docs.temporal.io/production-deployment/temporal-proxy/>
-- Go package: `github.com/temporalio/temporal-proxy/cmd/proxy`
+- Go module: `go.temporal.io/proxy` (binary at `cmd/proxy`;
+  the demo's KMS server imports its `pkg/ext`)
 - Container image: `temporalio/temporal-proxy` on Docker Hub
 - Helm chart: `temporal-proxy` in <https://go.temporal.io/helm-charts>
 - Worked examples in the upstream repo, under
-  `examples/`: `cloud`, `kms`, `authz`, `listnamespace`
+  `examples/`: `cloud`, `kms`, `authz`, `listnamespace`,
+  `codecserver`
 
 **Why:** the proxy's configuration schema is not
 stable, so the upstream repository — not memory

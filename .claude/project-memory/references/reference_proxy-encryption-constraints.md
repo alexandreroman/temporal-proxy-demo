@@ -6,7 +6,7 @@ type: reference
 
 # temporal-proxy encryption constraints
 
-Nine facts govern payload encryption whose keys come
+Ten facts govern payload encryption whose keys come
 from a KMS temporal-proxy does not implement natively,
 none of them visible from a configuration file alone:
 
@@ -67,6 +67,15 @@ none of them visible from a configuration file alone:
   carries opaque bytes, never inspected by temporal-proxy,
   so it chooses only how the DEK is wrapped — never the
   cipher that seals the payload itself.
+- `encryption.namespaceBinding` has no default, and
+  `internal/config/encryption.go` refuses to start a proxy
+  that configures a key without it. `strict` and
+  `permissive` label each sealed payload with its upstream
+  Namespace name, after translation, as AEAD additional
+  data; `strict` opens a payload only when its label
+  matches the request's Namespace, and refuses an unlabeled
+  one, which is what every payload sealed before v1.0.0 is.
+  The demo runs `strict`, and documents no migration path.
 
 **Why:** these constraints decide the shape of an
 encryption setup before a line of it is built: whether a
@@ -85,7 +94,9 @@ interface, `pkg/ext/doc.go`, `pkg/ext/keywrap.go` and
 `KeyMaterial` framing, `internal/config/extensions.go` for
 the credentials rule, `internal/proxy/codec.go` for the
 `Enabled` gate, `internal/kms/fx.go` for the always-on vault,
-`internal/config/encryption.go` for `DEKCacheSize`,
+`internal/config/encryption.go` for `DEKCacheSize` and
+`namespaceBinding`, the upstream README's "Namespace binding"
+section for its modes,
 and `pkg/crypto/dek.go` for the fixed cipher. What the Helm
 chart wires for an extension server is in [temporal-proxy's
 Helm chart](reference_proxy-helm-chart.md). See

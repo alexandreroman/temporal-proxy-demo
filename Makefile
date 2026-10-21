@@ -141,9 +141,9 @@ cluster-create:
 .PHONY: cluster-up
 cluster-up: cluster-create ## Create the cluster and install its platform components
 	$(kubectl) apply -f \
-		https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml
+		https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.3/standard-install.yaml
 	$(helm) upgrade --install traefik traefik \
-		--repo https://traefik.github.io/charts --version 41.6.1 \
+		--repo https://traefik.github.io/charts --version 42.1.1 \
 		--namespace traefik --create-namespace \
 		-f k8s/charts/traefik.yaml --hide-notes --wait
 	$(helm) upgrade --install cert-manager cert-manager \
@@ -151,7 +151,7 @@ cluster-up: cluster-create ## Create the cluster and install its platform compon
 		--namespace cert-manager --create-namespace \
 		-f k8s/charts/cert-manager.yaml --hide-notes --wait
 	$(kubectl) apply -f \
-		https://github.com/carvel-dev/secretgen-controller/releases/download/v0.21.3/release.yml
+		https://github.com/carvel-dev/secretgen-controller/releases/download/v0.21.4/release.yml
 	$(kubectl) -n secretgen-controller rollout status \
 		deploy/secretgen-controller --timeout=120s
 
@@ -238,7 +238,7 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 	$(kubectl) apply -k k8s/temporal
 	$(kubectl) -n temporal rollout status deploy/temporal --timeout=300s
 	$(helm) upgrade --install temporal-proxy temporal-proxy \
-		--repo https://go.temporal.io/helm-charts --version 0.2.1 \
+		--repo https://go.temporal.io/helm-charts --version 0.2.2 \
 		--namespace temporal-proxy \
 		-f k8s/charts/temporal-proxy.yaml --hide-notes
 # Unconditional, because nothing above changes the pod template: temporal-proxy

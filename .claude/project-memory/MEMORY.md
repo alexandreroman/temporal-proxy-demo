@@ -31,7 +31,7 @@
 - [Transport security is stated, not inferred](references/reference_proxy-transport-security.md) — silence means TLS; plaintext is `insecure: true`
 - [One environment file, loaded for every target](references/feedback_single-env-file.md) — every target reads the same `.env`
 - [Local development needs no cluster](references/project_local-development.md) — the Go inner loop runs against an ephemeral Temporal dev server
-- [temporal-proxy encryption constraints](references/reference_proxy-encryption-constraints.md) — what payload encryption must satisfy
+- [temporal-proxy encryption constraints](references/reference_proxy-encryption-constraints.md) — what payload encryption must satisfy, Namespace binding included
 - [temporal-proxy's Helm chart](references/reference_proxy-helm-chart.md) — where it lives, and the behaviours its values file answers to
 - [A shared temporal-proxy means no tenant is called default](references/feedback_namespace-identifies-the-tenant.md) — the app asks for `demo`
 - [Pinned versions are literals in the recipe](references/feedback_pinned-versions-inline.md) — no `make` variable, and where the rationale lives

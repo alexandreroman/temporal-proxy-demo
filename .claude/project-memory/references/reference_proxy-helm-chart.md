@@ -12,8 +12,8 @@ temporal-proxy is deployed from the upstream
 values in `k8s/charts/temporal-proxy.yaml`. Both the chart
 version and `image.tag` are pinned explicitly, because the
 chart's `appVersion` trails the published image. With
-`image.tag: v0.8.0` against an `appVersion` of `v0.5.0`, every
-rendered object carries `app.kubernetes.io/version: "v0.5.0"`:
+`image.tag: v1.0.0` against an `appVersion` of `v0.9.0`, every
+rendered object carries `app.kubernetes.io/version: "v0.9.0"`:
 the label reports the chart's version, not the running image's,
 and it is cosmetic.
 
@@ -35,11 +35,13 @@ to say:
   `auth.staticToken` only, never for an extension server,
   whose CA and token reach the container through the
   chart's top-level `volumes`, `volumeMounts` and `envFrom`.
-- The chart's default probes are `httpGet` on `/`. Helm
-  merges maps, so a `grpc` probe has to set `httpGet: null`
-  in the same block. Otherwise the rendered probe carries
-  two handlers, which `helm template` prints without
-  complaint and the API server rejects.
+- The chart's default probes are `tcpSocket` on the `http`
+  port. Helm merges maps, so a `grpc` probe has to set
+  `tcpSocket: null` in the same block. Otherwise the
+  rendered probe carries two handlers, which `helm
+  template` prints without complaint and the API server
+  rejects. A null on a key the defaults lack deletes
+  nothing and is rendered as a literal `null`.
 - The pod template carries no checksum of the ConfigMap, and
   the ConfigMap and the Secrets it reads have fixed names, so
   editing the configuration or rotating the API key leaves

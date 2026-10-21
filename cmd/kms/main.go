@@ -20,9 +20,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/temporalio/temporal-proxy/pkg/ext"
-	"github.com/temporalio/temporal-proxy/pkg/logger"
-	"github.com/temporalio/temporal-proxy/pkg/logger/tag"
+	"go.temporal.io/proxy/pkg/ext"
+	"go.temporal.io/proxy/pkg/logger"
+	"go.temporal.io/proxy/pkg/logger/tag"
 
 	"github.com/alexandreroman/temporal-proxy-demo/internal/kms"
 )

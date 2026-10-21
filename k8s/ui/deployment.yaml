@@ -21,7 +21,7 @@ spec:
       containers:
         - name: ui
           # Pinned like every other version here.
-          image: temporalio/ui:2.55.0
+          image: temporalio/ui:2.56.0
           # The image renders its configuration from these variables at
           # startup.
           env:
