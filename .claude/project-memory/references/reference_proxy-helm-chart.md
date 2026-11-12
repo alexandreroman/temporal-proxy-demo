@@ -12,8 +12,8 @@ temporal-proxy is deployed from the upstream
 values in `k8s/charts/temporal-proxy.yaml`. Both the chart
 version and `image.tag` are pinned explicitly, because the
 chart's `appVersion` trails the published image. With
-`image.tag: v1.0.0` against an `appVersion` of `v0.9.0`, every
-rendered object carries `app.kubernetes.io/version: "v0.9.0"`:
+`image.tag: v1.1.1` against an `appVersion` of `v1.0.1`, every
+rendered object carries `app.kubernetes.io/version: "v1.0.1"`:
 the label reports the chart's version, not the running image's,
 and it is cosmetic.
 

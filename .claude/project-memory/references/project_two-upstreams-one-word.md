@@ -44,8 +44,8 @@ choice. `routing.rules` matches on the Namespace a request
 asks for, so serving several upstreams at once is a rule per
 Namespace rather than a second copy of this arrangement. The
 fallback and the rule evaluation are in `internal/router/mux.go`
-(`Mux.Switch`) and `internal/config/routing.go` at v0.8.0, and
-the startup connection check is in
+(`Mux.Switch`) and `internal/config/routing.go` at the pinned
+tag, and the startup connection check is in
 `internal/dataplane/lifecycle.go`. See
 [Demo scope](project_demo-scope.md),
 [temporal-proxy's Helm chart](reference_proxy-helm-chart.md),
