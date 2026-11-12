@@ -132,22 +132,25 @@ cluster-create:
 
 # Gateway API CRDs are not shipped by the Traefik chart, so they come from the
 # pinned upstream release, applied before it: an HTTPRoute or a Gateway has no
-# API to land on otherwise. cert-manager issues the certificate the KMS server
-# presents, and secretgen-controller generates the bearer token that server
-# reads at runtime; its controller is waited for, because nothing answers a
-# request for a generated Secret until it is running. Every chart install
-# hides its notes: they are advisory, and Traefik's ask the reader to install
-# the Gateway API CRDs this recipe has already applied.
+# API to land on otherwise. That release follows the sigs.k8s.io/gateway-api
+# version in the go.mod of the Traefik release the pinned chart deploys, its
+# appVersion; re-check it there with each chart version, as it can trail the
+# newest Gateway API release. cert-manager issues the certificate the KMS
+# server presents, and secretgen-controller generates the bearer token that
+# server reads at runtime; its controller is waited for, because nothing
+# answers a request for a generated Secret until it is running. Every chart
+# install hides its notes: they are advisory, and Traefik's ask the reader to
+# install the Gateway API CRDs this recipe has already applied.
 .PHONY: cluster-up
 cluster-up: cluster-create ## Create the cluster and install its platform components
 	$(kubectl) apply -f \
 		https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.3/standard-install.yaml
 	$(helm) upgrade --install traefik traefik \
-		--repo https://traefik.github.io/charts --version 42.1.1 \
+		--repo https://traefik.github.io/charts --version 42.3.2 \
 		--namespace traefik --create-namespace \
 		-f k8s/charts/traefik.yaml --hide-notes --wait
 	$(helm) upgrade --install cert-manager cert-manager \
-		--repo https://charts.jetstack.io --version v1.21.2 \
+		--repo https://charts.jetstack.io --version v1.21.3 \
 		--namespace cert-manager --create-namespace \
 		-f k8s/charts/cert-manager.yaml --hide-notes --wait
 	$(kubectl) apply -f \
@@ -238,7 +241,7 @@ apply: require-setup ## Deploy the demo's workloads into the cluster (after imag
 	$(kubectl) apply -k k8s/temporal
 	$(kubectl) -n temporal rollout status deploy/temporal --timeout=300s
 	$(helm) upgrade --install temporal-proxy temporal-proxy \
-		--repo https://go.temporal.io/helm-charts --version 0.2.2 \
+		--repo https://go.temporal.io/helm-charts --version 0.3.0 \
 		--namespace temporal-proxy \
 		-f k8s/charts/temporal-proxy.yaml --hide-notes
 # Unconditional, because nothing above changes the pod template: temporal-proxy
